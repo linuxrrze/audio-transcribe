@@ -94,3 +94,21 @@ def word_accuracy(words: list[Word], ref: list[tuple[float, float, str]]) -> flo
             mapping[hyp] = truth
             used.add(truth)
     return sum(mapping.get(h) == t for t, h in pairs) / max(1, len(pairs))
+
+
+def speaker_purity(words: list[Word], ref: list[tuple[float, float, str]]) -> float:
+    """Many-to-one: each hypothesis speaker counts as its majority reference speaker.
+
+    This is the accuracy after a user merges split speakers; it only penalises clusters
+    that mix voices, which merging cannot fix (one-to-one accuracy also penalises
+    over-splitting).
+    """
+    by_hyp: dict[str | None, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    n = 0
+    for w in words:
+        mid = (w.t0 + w.t1) / 2
+        active = {s for a, b, s in ref if a <= mid <= b}
+        if len(active) == 1:
+            by_hyp[w.speaker_id][active.pop()] += 1
+            n += 1
+    return sum(max(c.values()) for c in by_hyp.values()) / max(1, n)

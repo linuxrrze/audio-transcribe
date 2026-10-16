@@ -125,3 +125,29 @@ def test_live_session_applies_corrections(tmp_path):
                           vocabulary=Vocabulary.parse("fanfress -> Fentriss"))
     final = session.run_sync()
     assert final.segments[0].text == "hallo herr Fentriss wie geht es"
+
+
+def test_style_prompt_only_without_other_prompt(monkeypatch):
+    import faster_whisper
+
+    from transcribe.asr import faster_whisper as fw
+
+    seen = []
+
+    class FakeModel:
+        def __init__(self, *a, **k):
+            pass
+
+        def transcribe(self, audio, **kwargs):
+            seen.append(kwargs["initial_prompt"])
+            return iter(()), None
+
+    monkeypatch.setattr(faster_whisper, "WhisperModel", FakeModel)
+    monkeypatch.setattr(fw, "resolve_device", lambda d, c: ("cpu", "int8"))
+    engine = fw.FasterWhisperEngine("small")
+    audio = np.zeros(16000, np.float32)
+    engine.transcribe(audio, language="de")
+    engine.transcribe(audio, language="en", prompt="previous text")
+    engine.transcribe(audio, language=None)
+    fw.FasterWhisperEngine("small", style_prompt=False).transcribe(audio, language="de")
+    assert seen == [fw.STYLE_PROMPTS["de"], "previous text", None, None]

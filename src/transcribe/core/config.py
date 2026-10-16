@@ -29,6 +29,7 @@ class AsrConfig:
     languages: list[str] = field(default_factory=lambda: ["de", "en"])
     beam_size: int = 5
     cpu_threads: int = 0  # 0 = library default
+    style_prompt: bool = True  # punctuated example prompt (see asr/faster_whisper.py)
     # Custom vocabulary (core/vocabulary.py): hint words for names, acronyms, jargon ...
     vocabulary: list[str] = field(default_factory=list)
     # ... and corrections applied to the transcript, e.g. {"Fanfress" = "Fentriss"}

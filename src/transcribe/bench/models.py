@@ -31,9 +31,17 @@ from pathlib import Path
 
 import numpy as np
 
+from transcribe.asr.faster_whisper import STYLE_PROMPTS
 from transcribe.audio.base import SAMPLE_RATE
 from transcribe.audio.file import load_audio
-from transcribe.bench.ami import DEFAULT_MEETINGS, fetch, load_rttm, reference_text, word_accuracy
+from transcribe.bench.ami import (
+    DEFAULT_MEETINGS,
+    fetch,
+    load_rttm,
+    reference_text,
+    speaker_purity,
+    word_accuracy,
+)
 from transcribe.bench.metrics import edit_distance, normalize
 from transcribe.core.config import Config
 from transcribe.diarize.align import Turn, assign_speakers, words_to_segments
@@ -82,12 +90,19 @@ def bench_meeting(meeting: str, engines: dict, config: Config, embedder) -> list
     for model, engine in engines.items():
         words, seconds = _timed_transcribe(engine, audio, "en")
         assign_speakers(words, turns)
-        base = word_accuracy(words, ref_spk)
+        base, base_purity = word_accuracy(words, ref_spk), speaker_purity(words, ref_spk)
+        text = "".join(w.text for w in words)
         resegment(words, audio, embedder, max_speakers=k_max)
         rows.append(Row(model, meeting, {
-            "wer": round(wer_without_fillers(ref_text, "".join(w.text for w in words)), 4),
+            "wer": round(wer_without_fillers(ref_text, text), 4),
+            "sentence_ends_per_100w": round(
+                100 * sum(w.text.rstrip().endswith((".", "?", "!")) for w in words)
+                / max(1, len(words)), 1),
             "speaker_acc_diarizer": round(base, 4),
             "speaker_acc_second_pass": round(word_accuracy(words, ref_spk), 4),
+            "purity_diarizer": round(base_purity, 4),
+            "purity_second_pass": round(speaker_purity(words, ref_spk), 4),
+            "prompt_leaks": sum(text.count(p) for p in STYLE_PROMPTS.values()),
             "speakers": len({w.speaker_id for w in words if w.speaker_id}),
             "asr_s": round(seconds, 1), "rtf": round(seconds / duration, 3),
         }))
@@ -175,11 +190,14 @@ def main() -> None:
     ap.add_argument("--lang", default="de")
     ap.add_argument("--check-words", default="")
     ap.add_argument("--json", type=Path)
+    ap.add_argument("--no-style-prompt", action="store_true",
+                    help="decode without the punctuated style prompt (for comparison)")
     args = ap.parse_args()
 
     from transcribe.speakers.embedder import SherpaEmbedder
 
     config = Config()
+    config.asr.style_prompt = not args.no_style_prompt
     embedder = SherpaEmbedder(config.speakers.embedding_model)
     rows: list[Row] = []
     if args.meetings or args.audio:

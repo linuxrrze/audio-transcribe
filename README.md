@@ -3,7 +3,8 @@
 Local, privacy-preserving live audio transcription with speaker identification
 for Windows, Linux and macOS. CLI (`tx`) and Qt GUI share one headless core.
 
-See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap.
+See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap and
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md) for measured accuracy and speed.
 
 ## Status
 - **M0** core: transcript model, event bus, plugin registry, config, exporters
