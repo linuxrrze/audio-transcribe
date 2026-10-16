@@ -29,6 +29,9 @@ pyannote = ["pyannote.audio>=3.3"]
 [project.scripts]
 tx = "transcribe.cli.main:app"
 
+[project.gui-scripts]
+tx-gui = "transcribe.gui.app:main"
+
 [project.entry-points."transcribe.sources"]
 file = "transcribe.audio.file:FileSource"
 mic = "transcribe.audio.mic:MicSource"
@@ -74,5 +77,5 @@ markers = ["slow: needs downloaded models (run with TX_SLOW=1)"]
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["soundcard", "keyring", "keyring.*", "ctranslate2", "faster_whisper.*", "faster_whisper", "sherpa_onnx", "sounddevice", "soundfile", "soxr"]
+module = ["PySide6", "PySide6.*", "soundcard", "keyring", "keyring.*", "ctranslate2", "faster_whisper.*", "faster_whisper", "sherpa_onnx", "sounddevice", "soundfile", "soxr"]
 ignore_missing_imports = true

@@ -17,6 +17,9 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap.
 - **M3** voiceprints: people are recognised across sessions. Name a speaker once
   (`tx speakers name`) or enroll from audio (`tx speakers enroll`); later sessions label
   them automatically or ask "might be X?". Consent, no-storage mode, encryption at rest.
+- **M4** desktop app (`tx gui` / `tx-gui`): live view, speaker panel (name, merge,
+  "Is this X?" suggestions), session browser with playback synced to the text, export,
+  refine, settings and a "Known people" privacy dialog.
 - **M5** system audio: transcribe what the computer plays (`--source system`), or
   microphone + system audio as separate channels (`--source both`) with echo suppression
   - the basis for recording Zoom/Teams/Jitsi calls.
@@ -69,6 +72,24 @@ the default finds only 2.
   `tx refine` works on an interrupted session.
 - Linux needs the PortAudio library for microphone input (`apt install libportaudio2`);
   the Windows/macOS wheels bundle it.
+
+### Desktop app
+```sh
+uv sync --extra asr --extra speakers --extra audio --extra gui
+uv run tx gui
+```
+![Sessions tab](docs/screenshots/sessions.png)
+
+- **Live:** pick microphone, system audio or both; partial text appears dimmed, finished
+  lines get coloured speaker labels. Naming a speaker while recording applies at once;
+  the voice is learned (with the consent checkbox ticked) when the session stops.
+- **Sessions:** click a timestamp to play from there; the playing line is highlighted.
+  Fix diarization by merging speakers, accept or decline suggestions, refine (optionally
+  with a known speaker count), export.
+- **File → Known people:** see and delete stored voiceprints.
+- The GUI is a thin layer over the same core as the CLI (`transcribe.sessions`,
+  `transcribe.live.factory`); core events reach the Qt thread through a signal bridge,
+  model loading and refinement run in background threads.
 
 ### System audio / calls (`--source system|both`)
 ```sh

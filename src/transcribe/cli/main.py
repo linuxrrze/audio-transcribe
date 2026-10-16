@@ -34,6 +34,14 @@ def version() -> None:
 
 
 @app.command()
+def gui() -> None:
+    """Open the desktop app."""
+    from transcribe.gui.app import main
+
+    raise typer.Exit(main())
+
+
+@app.command()
 def plugins() -> None:
     """List installed plugins per group."""
     for group in registry.GROUPS:
@@ -215,34 +223,20 @@ def refine(
     device: DeviceOpt = None,
 ) -> None:
     """Re-run full diarization + transcription on a session's recording."""
-    from transcribe.core.offline import load_engines, transcribe_audio
-    from transcribe.live.session import refine_channels
-    from transcribe.storage.recorder import load_recording, recorded_channels
+    from transcribe.sessions import refine_session
+    from transcribe.storage.recorder import recorded_channels
 
     config = _config(model, device, lang, threshold)
-    audio = {ch: load_recording(session, ch) for ch in recorded_channels(session)}
-    audio = {ch: a for ch, a in audio.items() if len(a)}
-    if not audio:
-        err.print(f"[red]No recording in {session}[/]")
-        raise typer.Exit(1)
-    path = session_store.resolve_transcript(session)
-    previous = Transcript.load(path) if path.exists() else Transcript()
-    with err.status("Loading models..."):
-        asr, diarizer = load_engines(config, diarize=True)
-
-    def run(signal, report):
-        return transcribe_audio(signal, asr, diarizer, config.asr.languages, num_speakers,
-                                report)
-
-    stages = [f"{ch} {st}".strip() for ch in audio for st in _offline_stages(config, True)]
-    with _stage_progress(stages) as report:
-        final = refine_channels(audio, run, previous, report)
-    final.meta["asr_model"] = config.asr.model
-    if final.speakers:
-        _identify(config, session, audio if len(audio) > 1 else next(iter(audio.values())),
-                  final)
-    final.save(path)
-    err.print(f"Refined transcript saved to [bold]{path}[/]")
+    channels = recorded_channels(session)
+    stages = [f"{ch} {st}".strip() if len(channels) > 1 else st
+              for ch in channels for st in _offline_stages(config, True)]
+    try:
+        with err.status("Loading models..."), _stage_progress(stages) as report:
+            refine_session(session, config, num_speakers, report)
+    except FileNotFoundError as e:
+        err.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from e
+    err.print(f"Refined transcript saved to [bold]{session_store.resolve_transcript(session)}[/]")
 
 
 def _identify(config: Config, session_dir: Path | None, audio, transcript: Transcript) -> None:
