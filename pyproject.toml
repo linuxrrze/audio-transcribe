@@ -29,6 +29,10 @@ tx = "transcribe.cli.main:app"
 
 [project.entry-points."transcribe.sources"]
 file = "transcribe.audio.file:FileSource"
+mic = "transcribe.audio.mic:MicSource"
+
+[project.entry-points."transcribe.embedders"]
+sherpa-onnx = "transcribe.speakers.embedder:SherpaEmbedder"
 
 [project.entry-points."transcribe.asr"]
 faster-whisper = "transcribe.asr.faster_whisper:FasterWhisperEngine"

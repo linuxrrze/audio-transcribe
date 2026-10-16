@@ -39,3 +39,22 @@ def test_diarize_real_four_speakers_with_known_count(tmp_path):
     urllib.request.urlretrieve(FOUR_SPEAKERS_URL, wav)
     turns = SherpaDiarizer().diarize(load_audio(wav), num_speakers=4)
     assert len({t.speaker_id for t in turns}) == 4
+
+
+def test_live_replay_dialogue(tmp_path):
+    """Deterministic live replay; checks live quality (refinement off) and refinement."""
+    from transcribe.audio.file import FileSource
+    from transcribe.live.factory import build_live_session
+    from transcribe.live.session import LIVE_TRANSCRIPT
+    from transcribe.storage.transcript_model import Transcript
+
+    wav = tmp_path / "dialogue.wav"
+    ref = synthesize(wav)
+    session = build_live_session(FileSource(wav), Config(), tmp_path / "session")
+    final = session.run_sync(refine=True)
+    live = Transcript.load(tmp_path / "session" / LIVE_TRANSCRIPT)
+    for transcript in (live, final):
+        report = evaluate(transcript, ref)
+        assert report.num_hyp_speakers == 2
+        assert report.speaker_accuracy > 0.95
+        assert max(report.wer_by_language.values()) < 0.15

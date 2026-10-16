@@ -27,6 +27,7 @@ class Segment:
     speaker_id: str | None = None
     lang: str | None = None
     channel_id: str = "default"
+    id: str = ""
 
     @property
     def text(self) -> str:

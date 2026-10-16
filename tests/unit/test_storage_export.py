@@ -45,9 +45,9 @@ def test_event_bus_threaded():
     bus, got = EventBus(), []
     bus.subscribe(got.append)
     bus.start()
-    bus.publish(PartialText(t=1.0, text="hi"))
+    bus.publish(PartialText(t=1.0, committed="hi", pending=""))
     bus.stop()
-    assert got == [PartialText(t=1.0, text="hi")]
+    assert got == [PartialText(t=1.0, committed="hi", pending="")]
 
 
 def test_exporters_omit_label_without_speaker():

@@ -8,8 +8,12 @@ from enum import Enum
 
 import numpy as np
 
-from transcribe.speakers.online_cluster import l2norm
 from transcribe.speakers.voiceprint_db import VoiceprintDB
+
+
+def l2norm(v: np.ndarray) -> np.ndarray:
+    n = float(np.linalg.norm(v))
+    return v / n if n > 0 else v
 
 
 class Decision(Enum):

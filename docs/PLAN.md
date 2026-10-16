@@ -27,6 +27,7 @@ We need a local, privacy-preserving tool for live audio transcription that runs 
 The core is a **headless library** (`transcribe.core`) built around a `Session` object that emits typed events. The CLI and the GUI are thin consumers of the same event stream, so neither frontend contains any pipeline logic.
 
 ### Threading model
+*(As implemented in M2: a capture thread feeds a queue; one processing thread records, streams ASR and assigns speakers; events go through the EventBus dispatch thread. Completion is signalled with an Event, not `Thread.join`, because a KeyboardInterrupt inside `join()` can leave a still-running thread marked finished.)*
 Each stage runs in a worker thread and passes data through bounded `queue.Queue`s. ML inference releases the GIL in CTranslate2 and ONNX Runtime, so threads are enough here; we don't need multiprocessing. The audio callback only copies data into a lock-free ring buffer and must never block. Backpressure: if ASR falls behind, it grows the chunks it processes rather than dropping audio.
 
 ---
@@ -59,7 +60,7 @@ Each stage runs in a worker thread and passes data through bounded `queue.Queue`
 - Optional future backend: `sherpa-onnx` streaming transducers, for true low-latency and low-power operation.
 
 ### 2.4 Speaker diarization — two tiers
-**Live tier (provisional):**
+**Live tier (provisional):** *(M2 implementation: utterances end at the first VAD gap ≥ 0.4 s between padded regions — including gaps inside the buffer, since the next speaker often starts before the next decode. Each finalized segment ≥ 1 s is embedded with WeSpeaker; all embeddings are re-clustered with sherpa-onnx FastClustering after each new one and mapped onto previous ids, so labels stay stable and earlier lines can be relabelled. This replaced the incremental centroid clusterer: measured on a real 4-speaker clip, raw cosine similarities of different speakers overlapped heavily with same-speaker ones, so one-pass threshold decisions were unreliable.)*
 1. For each VAD speech chunk (sub-windowed at about 1.5 s with 50 % overlap), compute a speaker embedding with **WeSpeaker ResNet34-LM (ONNX via `sherpa-onnx`)**. (3D-Speaker CAM++ was evaluated in M1 and dropped: it collapses to one speaker when the speaker count is fixed.) These are CPU-friendly, need no HF token and can be bundled.
 2. **Online clustering:** compare each new embedding by cosine similarity against the active speakers' centroids and the voiceprint DB. If it is above threshold τ, assign it and update the centroid with an EMA. Otherwise create `Speaker N`. Run a periodic merge pass for clusters that drift together.
 3. Use speaker-change detection to split ASR segments when an embedding switch falls mid-segment.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Sequence
 
 import numpy as np
@@ -11,6 +12,8 @@ from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core.config import Config
 from transcribe.core.models import models_dir
 from transcribe.storage.transcript_model import Word
+
+_FALLBACK = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
 
 
 def resolve_device(device: str, compute_type: str) -> tuple[str, str]:
@@ -35,10 +38,22 @@ class FasterWhisperEngine:
         self.device, self.compute_type = resolve_device(device, compute_type)
         self.model_name = model
         self.beam_size = beam_size
+        self.temperature_fallback = True
         self._model = WhisperModel(
             model, device=self.device, compute_type=self.compute_type,
             cpu_threads=cpu_threads, download_root=str(models_dir() / "whisper"),
         )
+
+    def with_options(self, beam_size: int, temperature_fallback: bool) -> FasterWhisperEngine:
+        """A view of this engine (sharing the loaded model) with other decoding options.
+
+        Live decoding disables the temperature fallback: on short, low-confidence buffers
+        it re-decodes up to six times, which turns one decode into >10 s.
+        """
+        clone = copy.copy(self)
+        clone.beam_size = beam_size
+        clone.temperature_fallback = temperature_fallback
+        return clone
 
     @classmethod
     def from_config(cls, config: Config) -> FasterWhisperEngine:
@@ -59,6 +74,7 @@ class FasterWhisperEngine:
             audio,
             language=language,
             beam_size=self.beam_size,
+            temperature=_FALLBACK if self.temperature_fallback else 0.0,
             word_timestamps=True,
             vad_filter=True,
             initial_prompt=prompt,

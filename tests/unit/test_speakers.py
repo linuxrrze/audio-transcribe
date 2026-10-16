@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from transcribe.speakers.matching import Decision, SpeakerMatcher
-from transcribe.speakers.online_cluster import OnlineClusterer
 from transcribe.speakers.voiceprint_db import VoiceprintDB
 
 rng = np.random.default_rng(0)
@@ -15,24 +14,6 @@ def voice():
 
 def sample(base, noise=0.3):
     return base + noise * rng.normal(size=DIM).astype(np.float32)
-
-
-def test_online_clusterer_separates_speakers():
-    a, b = voice(), voice()
-    c = OnlineClusterer(threshold=0.5)
-    ids = [c.add(sample(x))[0] for x in [a, b, a, a, b, b, a]]
-    assert ids == ["S1", "S2", "S1", "S1", "S2", "S2", "S1"]
-
-
-def test_merge_combines_split_cluster():
-    a = voice()
-    c = OnlineClusterer(threshold=0.99)
-    c.add(sample(a, 0.2))
-    c.add(sample(a, 0.2))
-    assert len(c.clusters) == 2
-    c.threshold = 0.8
-    remap = c.merge()
-    assert len(c.clusters) == 1 and len(remap) == 1
 
 
 @pytest.fixture

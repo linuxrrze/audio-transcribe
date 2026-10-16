@@ -38,7 +38,6 @@ class SpeakerConfig:
     embedding_model: str = "wespeaker-resnet34-lm"
     diarize_threshold: float = 0.5  # clustering distance; lower -> more speakers
     num_threads: int = 0  # 0 = half the CPU cores
-    cluster_threshold: float = 0.55
     identify_known: bool = True
     store_voiceprints: bool = True
     match_threshold_high: float = 0.65
@@ -46,9 +45,20 @@ class SpeakerConfig:
 
 
 @dataclass
+class LiveConfig:
+    step: float = 1.0  # seconds of new audio between decodes
+    end_silence: float = 0.4  # gap between (padded) VAD regions that ends an utterance
+    max_buffer: float = 12.0
+    beam_size: int = 1  # live decoding favours latency; refinement uses asr.beam_size
+    refine: bool = True  # re-run full offline pipeline when the session stops
+    refine_model: str = ""  # Whisper model for refinement; "" = same as asr.model
+
+
+@dataclass
 class Config:
     asr: AsrConfig = field(default_factory=AsrConfig)
     speakers: SpeakerConfig = field(default_factory=SpeakerConfig)
+    live: LiveConfig = field(default_factory=LiveConfig)
     sessions_dir: str = ""
 
     def resolved_sessions_dir(self) -> Path:
@@ -63,6 +73,7 @@ class Config:
         return cls(
             asr=_build(AsrConfig, raw.get("asr", {})),
             speakers=_build(SpeakerConfig, raw.get("speakers", {})),
+            live=_build(LiveConfig, raw.get("live", {})),
             sessions_dir=raw.get("sessions_dir", ""),
         )
 

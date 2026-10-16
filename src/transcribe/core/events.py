@@ -17,15 +17,27 @@ class Event:
 
 @dataclass(frozen=True)
 class PartialText(Event):
-    """Uncommitted hypothesis; replaces the previous partial for the same channel."""
+    """The utterance in progress; replaces the previous partial for the same channel.
 
-    text: str
+    ``committed`` text is stable (LocalAgreement), ``pending`` may still change.
+    """
+
+    committed: str
+    pending: str
     channel_id: str = "default"
 
 
 @dataclass(frozen=True)
 class FinalSegment(Event):
     segment: Segment
+
+
+@dataclass(frozen=True)
+class SegmentRelabeled(Event):
+    """Live re-clustering moved an earlier segment to another speaker."""
+
+    segment_id: str
+    speaker_id: str
 
 
 @dataclass(frozen=True)
@@ -44,8 +56,9 @@ class AudioLevel(Event):
 
 @dataclass(frozen=True)
 class StatusChanged(Event):
-    status: str  # "starting" | "running" | "paused" | "refining" | "stopped" | "error"
+    status: str  # "starting" | "running" | "refining" | "stopped" | "error"
     detail: str = ""
+    progress: float | None = None
 
 
 Listener = Callable[[Event], None]

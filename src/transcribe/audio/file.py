@@ -37,16 +37,19 @@ class FileSource:
         self._audio = load_audio(self.path)
 
     def frames(self) -> Iterator[AudioFrame]:
-        if self._audio is None:
+        audio = self._audio  # local ref: close() may run concurrently
+        if audio is None:
             raise RuntimeError("open() must be called first")
         start = time.monotonic()
-        for i in range(0, len(self._audio), self.frame_len):
+        for i in range(0, len(audio), self.frame_len):
             t = i / SAMPLE_RATE
             if self.realtime:
                 delay = start + t - time.monotonic()
                 if delay > 0:
                     time.sleep(delay)
-            yield AudioFrame(self._audio[i : i + self.frame_len], t, self.channel_id)
+            if self._audio is None:  # closed
+                return
+            yield AudioFrame(audio[i : i + self.frame_len], t, self.channel_id)
 
     def close(self) -> None:
         self._audio = None

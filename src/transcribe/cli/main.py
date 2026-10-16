@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated
 
@@ -47,28 +49,21 @@ def plugins() -> None:
         console.print(f"[bold]{group}[/]: {', '.join(names) or '-'}")
 
 
-@app.command()
-def transcribe(
-    file: Annotated[Path, typer.Argument(exists=True, dir_okay=False, help="Audio/video file.")],
-    model: Annotated[str | None, typer.Option("--model", "-m", help="Whisper model.")] = None,
-    lang: Annotated[str | None, typer.Option(
-        "--lang", "-l", help="Allowed languages, comma-separated (e.g. de,en or de).")] = None,
-    num_speakers: Annotated[int | None, typer.Option(
-        "--speakers", "-n", min=1,
-        help="Number of speakers, if known (most reliable diarization).")] = None,
-    diarize: Annotated[bool, typer.Option(help="Identify speakers.")] = True,
-    threshold: Annotated[float | None, typer.Option(
-        "--diarize-threshold", help="Clustering threshold; lower finds more speakers.")] = None,
-    device: Annotated[str | None, typer.Option(help="auto | cpu | cuda")] = None,
-    fmt: Annotated[str, typer.Option("--format", "-f", help="Output format.")] = "txt",
-    out: Annotated[Path | None, typer.Option("--out", "-o", help="Write output here.")] = None,
-    save_session: Annotated[bool, typer.Option(
-        "--session/--no-session", help="Store a session folder.")] = True,
-) -> None:
-    """Transcribe an audio file with speaker diarization."""
-    from transcribe.audio.file import load_audio
-    from transcribe.core.offline import load_engines, transcribe_audio
+ModelOpt = Annotated[str | None, typer.Option("--model", "-m", help="Whisper model.")]
+LangOpt = Annotated[str | None, typer.Option(
+    "--lang", "-l", help="Allowed languages, comma-separated (e.g. de,en or de).")]
+SpeakersOpt = Annotated[int | None, typer.Option(
+    "--speakers", "-n", min=1, help="Number of speakers, if known (most reliable).")]
+DiarizeOpt = Annotated[bool, typer.Option(help="Identify speakers.")]
+ThresholdOpt = Annotated[float | None, typer.Option(
+    "--diarize-threshold", help="Clustering threshold; lower finds more speakers.")]
+DeviceOpt = Annotated[str | None, typer.Option(help="auto | cpu | cuda")]
+FormatOpt = Annotated[str, typer.Option("--format", "-f", help="Output format.")]
+OutOpt = Annotated[Path | None, typer.Option("--out", "-o", help="Write output here.")]
 
+
+def _config(model: str | None = None, device: str | None = None, lang: str | None = None,
+            threshold: float | None = None) -> Config:
     config = Config.load()
     if model:
         config.asr.model = model
@@ -78,25 +73,54 @@ def transcribe(
         config.speakers.diarize_threshold = threshold
     if lang:
         config.asr.languages = [x.strip() for x in lang.split(",") if x.strip()]
-    exporter = registry.load("transcribe.exporters", fmt)()
+    return config
 
-    with err.status("Loading models (first run downloads them)..."):
-        asr, diarizer = load_engines(config, diarize)
-        audio = load_audio(file)
 
-    columns = (TextColumn("{task.description:<11}"), BarColumn(), TextColumn(
-        "{task.percentage:>3.0f}%"), TimeElapsedColumn())
-    with Progress(*columns, console=err, transient=False) as progress:
-        stages = ["diarize"] if diarize else []
-        if len(config.asr.languages) > 1:
-            stages.append("language")
-        stages.append("transcribe")
+@contextmanager
+def _stage_progress(stages: list[str]) -> Iterator[Callable[[str, float], None]]:
+    columns = (TextColumn("{task.description:<11}"), BarColumn(),
+               TextColumn("{task.percentage:>3.0f}%"), TimeElapsedColumn())
+    with Progress(*columns, console=err) as progress:
         tasks = {name: progress.add_task(name, total=1.0) for name in stages}
 
         def report(stage: str, frac: float) -> None:
             if stage in tasks:
                 progress.update(tasks[stage], completed=frac)
 
+        yield report
+
+
+def _offline_stages(config: Config, diarize: bool) -> list[str]:
+    stages = ["diarize"] if diarize else []
+    if len(config.asr.languages) > 1:
+        stages.append("language")
+    return [*stages, "transcribe"]
+
+
+@app.command()
+def transcribe(
+    file: Annotated[Path, typer.Argument(exists=True, dir_okay=False, help="Audio/video file.")],
+    model: ModelOpt = None,
+    lang: LangOpt = None,
+    num_speakers: SpeakersOpt = None,
+    diarize: DiarizeOpt = True,
+    threshold: ThresholdOpt = None,
+    device: DeviceOpt = None,
+    fmt: FormatOpt = "txt",
+    out: OutOpt = None,
+    save_session: Annotated[bool, typer.Option(
+        "--session/--no-session", help="Store a session folder.")] = True,
+) -> None:
+    """Transcribe an audio file with speaker diarization."""
+    from transcribe.audio.file import load_audio
+    from transcribe.core.offline import load_engines, transcribe_audio
+
+    config = _config(model, device, lang, threshold)
+    exporter = registry.load("transcribe.exporters", fmt)()
+    with err.status("Loading models (first run downloads them)..."):
+        asr, diarizer = load_engines(config, diarize)
+        audio = load_audio(file)
+    with _stage_progress(_offline_stages(config, diarize)) as report:
         transcript = transcribe_audio(audio, asr, diarizer, config.asr.languages,
                                       num_speakers, report)
 
@@ -112,6 +136,122 @@ def transcribe(
         })
         err.print(f"Session saved to [bold]{path}[/]")
     _emit(exporter.render(transcript), out)
+
+
+@app.command()
+def live(
+    file: Annotated[Path | None, typer.Option(
+        "--file", exists=True, dir_okay=False,
+        help="Replay a file instead of the microphone (for testing).")] = None,
+    fast: Annotated[bool, typer.Option(help="Replay --file as fast as possible.")] = False,
+    input_device: Annotated[str | None, typer.Option(
+        "--input", "-i", help="Input device index or name (see `tx devices`).")] = None,
+    name: Annotated[str, typer.Option(help="Session name.")] = "live",
+    model: ModelOpt = None,
+    lang: LangOpt = None,
+    num_speakers: SpeakersOpt = None,
+    diarize: DiarizeOpt = True,
+    threshold: ThresholdOpt = None,
+    device: DeviceOpt = None,
+    refine: Annotated[bool, typer.Option(
+        help="Re-run the full pipeline on the recording when stopped.")] = True,
+    fmt: FormatOpt = "txt",
+    out: OutOpt = None,
+) -> None:
+    """Transcribe live from the microphone; Ctrl+C stops (and refines)."""
+    from rich.live import Live
+
+    from transcribe.audio.base import AudioSource
+    from transcribe.cli.live_view import LiveView
+    from transcribe.live.factory import build_live_session
+
+    config = _config(model, device, lang, threshold)
+    exporter = registry.load("transcribe.exporters", fmt)()
+    source: AudioSource
+    if file is not None:
+        from transcribe.audio.file import FileSource
+
+        source = FileSource(file, realtime=not fast)
+        name = file.stem if name == "live" else name
+    else:
+        from transcribe.audio.mic import MicSource
+
+        source = MicSource(input_device)
+    session_dir = session_store.new_session_dir(config.resolved_sessions_dir(), name)
+    with err.status("Loading models (first run downloads them)..."):
+        session = build_live_session(source, config, session_dir, num_speakers, diarize,
+                                     meta={"title": name, "source": source.describe().name})
+    view = LiveView()
+    session.bus.subscribe(view)
+    try:
+        session.start()
+    except RuntimeError as e:
+        err.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from e
+    with Live(view, console=err, refresh_per_second=8, transient=False):
+        try:
+            while not session.wait(0.2):
+                pass
+        except KeyboardInterrupt:
+            pass
+        try:
+            transcript = session.stop(refine=refine)
+        except KeyboardInterrupt:
+            err.print("[yellow]Refinement aborted; live transcript kept.[/]")
+            transcript = Transcript.load(session_dir / "transcript.live.json")
+    err.print(f"Session saved to [bold]{session_dir}[/]")
+    _emit(exporter.render(transcript), out)
+
+
+@app.command()
+def refine(
+    session: Annotated[Path, typer.Argument(exists=True, file_okay=False,
+                                            help="Session folder.")],
+    model: ModelOpt = None,
+    lang: LangOpt = None,
+    num_speakers: SpeakersOpt = None,
+    threshold: ThresholdOpt = None,
+    device: DeviceOpt = None,
+) -> None:
+    """Re-run full diarization + transcription on a session's recording."""
+    from transcribe.core.offline import load_engines, transcribe_audio
+    from transcribe.diarize.refine import relabel
+    from transcribe.storage.recorder import load_recording
+
+    config = _config(model, device, lang, threshold)
+    audio = load_recording(session)
+    if not len(audio):
+        err.print(f"[red]No recording in {session}[/]")
+        raise typer.Exit(1)
+    path = session_store.resolve_transcript(session)
+    previous = Transcript.load(path) if path.exists() else Transcript()
+    with err.status("Loading models..."):
+        asr, diarizer = load_engines(config, diarize=True)
+    with _stage_progress(_offline_stages(config, True)) as report:
+        refined = transcribe_audio(audio, asr, diarizer, config.asr.languages,
+                                   num_speakers, report)
+    final = relabel(refined, previous)
+    final.meta = {**previous.meta, **refined.meta, "refined": True,
+                  "asr_model": config.asr.model}
+    final.save(path)
+    err.print(f"Refined transcript saved to [bold]{path}[/]")
+
+
+@app.command()
+def devices() -> None:
+    """List audio input devices."""
+    from transcribe.audio.mic import list_input_devices
+
+    try:
+        devs = list_input_devices()
+    except RuntimeError as e:
+        err.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from e
+    table = Table("Index", "Name", "Channels", "Rate", "Host API", "Default")
+    for d in devs:
+        table.add_row(str(d.index), d.name, str(d.channels), f"{d.default_samplerate:.0f}",
+                      d.hostapi, "*" if d.is_default else "")
+    console.print(table)
 
 
 @app.command()
