@@ -28,9 +28,34 @@ from transcribe.storage.transcript_model import (  # noqa: E402
 )
 
 
+def _delete_widgets(app):
+    """Delete every top-level widget now, while Qt is intact.
+
+    Widgets left alive until interpreter exit are destroyed in arbitrary order, which
+    segfaulted at exit in ~80 % of runs (after all tests had passed).
+    """
+    from PySide6.QtCore import QCoreApplication, QEvent
+
+    for w in app.topLevelWidgets():
+        w.close()
+        w.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.processEvents()
+
+
 @pytest.fixture(scope="module")
 def app():
-    return QApplication.instance() or QApplication([])
+    application = QApplication.instance() or QApplication([])
+    yield application
+    _delete_widgets(application)
+    application.shutdown()
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_widgets(request):
+    yield
+    if "app" in request.fixturenames:
+        _delete_widgets(request.getfixturevalue("app"))
 
 
 def pump(app, until, timeout=20.0):

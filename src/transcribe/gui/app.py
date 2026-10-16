@@ -23,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     window.show()
     if "--smoke-test" in argv:  # packaging check: the window builds, then quit
         QTimer.singleShot(500, app.quit)
-        code = app.exec()
+        code = _run(app, window)
         print("smoke test ok")
         return code
 
@@ -36,7 +36,22 @@ def main(argv: list[str] | None = None) -> int:
             ModelSetupDialog(missing, window).exec()
 
     QTimer.singleShot(0, first_run)
-    return app.exec()
+    return _run(app, window)
+
+
+def _run(app, window) -> int:
+    """Run the event loop, then tear Qt down deterministically.
+
+    Leaving widgets (and the QtMultimedia player) to interpreter shutdown destroys them
+    in arbitrary order, which can segfault on exit.
+    """
+    from PySide6.QtCore import QCoreApplication, QEvent
+
+    code = app.exec()
+    window.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.shutdown()
+    return code
 
 
 if __name__ == "__main__":
