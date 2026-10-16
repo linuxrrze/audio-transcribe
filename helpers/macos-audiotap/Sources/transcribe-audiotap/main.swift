@@ -36,16 +36,45 @@ func check(_ status: OSStatus, _ what: String) {
     if status != noErr { fail(what, status) }
 }
 
-func getProperty<T>(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
-                    _ initial: T) -> T {
-    var address = AudioObjectPropertyAddress(mSelector: selector,
-                                             mScope: kAudioObjectPropertyScopeGlobal,
-                                             mElement: kAudioObjectPropertyElementMain)
-    var value = initial
-    var size = UInt32(MemoryLayout<T>.size)
+func globalAddress(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
+    AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
+                               mElement: kAudioObjectPropertyElementMain)
+}
+
+/// Read an object-ID property (e.g. the default output device).
+func getObjectID(_ object: AudioObjectID,
+                 _ selector: AudioObjectPropertySelector) -> AudioObjectID {
+    var address = globalAddress(selector)
+    var value = AudioObjectID(kAudioObjectUnknown)
+    var size = UInt32(MemoryLayout<AudioObjectID>.size)
     check(AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value),
           "AudioObjectGetPropertyData(\(selector))")
     return value
+}
+
+/// Read a stream-format property (e.g. the tap's format).
+func getStreamFormat(_ object: AudioObjectID,
+                     _ selector: AudioObjectPropertySelector) -> AudioStreamBasicDescription {
+    var address = globalAddress(selector)
+    var value = AudioStreamBasicDescription()
+    var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+    check(AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value),
+          "AudioObjectGetPropertyData(\(selector))")
+    return value
+}
+
+/// Read a CFString property. Core Audio returns a +1 (copied) reference, so the
+/// result is taken as retained via Unmanaged instead of being written into a CFString
+/// variable through a raw pointer (which bypasses Swift reference counting).
+func getStringProperty(_ object: AudioObjectID,
+                       _ selector: AudioObjectPropertySelector) -> String {
+    var address = globalAddress(selector)
+    var value: Unmanaged<CFString>?
+    var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+    check(AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value),
+          "AudioObjectGetPropertyData(\(selector))")
+    guard let value else { fail("property \(selector) is empty") }
+    return value.takeRetainedValue() as String
 }
 
 /// Translate a Unix pid into a Core Audio process object.
@@ -79,19 +108,17 @@ var tapID = AudioObjectID(kAudioObjectUnknown)
 check(AudioHardwareCreateProcessTap(tapDescription, &tapID), "AudioHardwareCreateProcessTap")
 
 // 2. Private aggregate device containing the tap (clocked by the default output device).
-let outputDevice: AudioDeviceID = getProperty(AudioObjectID(kAudioObjectSystemObject),
-                                              kAudioHardwarePropertyDefaultOutputDevice,
-                                              AudioDeviceID(0))
-let outputUID: CFString = getProperty(outputDevice, kAudioDevicePropertyDeviceUID,
-                                      "" as CFString)
+let outputDevice = getObjectID(AudioObjectID(kAudioObjectSystemObject),
+                               kAudioHardwarePropertyDefaultOutputDevice)
+let outputUID = getStringProperty(outputDevice, kAudioDevicePropertyDeviceUID)
 let aggregate: [String: Any] = [
     kAudioAggregateDeviceNameKey: "transcribe-audiotap",
     kAudioAggregateDeviceUIDKey: UUID().uuidString,
-    kAudioAggregateDeviceMainSubDeviceKey: outputUID as String,
+    kAudioAggregateDeviceMainSubDeviceKey: outputUID,
     kAudioAggregateDeviceIsPrivateKey: true,
     kAudioAggregateDeviceIsStackedKey: false,
     kAudioAggregateDeviceTapAutoStartKey: true,
-    kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: outputUID as String]],
+    kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: outputUID]],
     kAudioAggregateDeviceTapListKey: [[
         kAudioSubTapDriftCompensationKey: true,
         kAudioSubTapUIDKey: tapDescription.uuid.uuidString,
@@ -102,8 +129,7 @@ check(AudioHardwareCreateAggregateDevice(aggregate as CFDictionary, &aggregateID
       "AudioHardwareCreateAggregateDevice")
 
 // 3. Converter: tap format -> mono float32 at the requested rate.
-var tapFormat: AudioStreamBasicDescription = getProperty(tapID, kAudioTapPropertyFormat,
-                                                         AudioStreamBasicDescription())
+var tapFormat = getStreamFormat(tapID, kAudioTapPropertyFormat)
 guard let inFormat = AVAudioFormat(streamDescription: &tapFormat),
       let outFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: opts.rate,
                                     channels: 1, interleaved: false),

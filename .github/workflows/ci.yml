@@ -68,5 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: helpers/macos-audiotap/build.sh
+        env:
+          SWIFT_FLAGS: -Xswiftc -warnings-as-errors  # the helper does raw Core Audio memory access
       - name: Help output runs
         run: helpers/macos-audiotap/.build/apple/Products/Release/transcribe-audiotap --help
