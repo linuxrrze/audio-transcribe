@@ -44,7 +44,14 @@ jobs:
       - run: uv sync ${{ env.EXTRAS }}
       - run: uv run ruff check .
       - run: uv run mypy src
-      - run: uv run pytest -q
+      - name: Tests
+        shell: bash
+        env:
+          PYTHONFAULTHANDLER: "1"  # traceback if the process crashes natively
+        run: |
+          # Windows showed an intermittent non-zero exit *after* "N passed" (crash at
+          # interpreter shutdown); report the real code so it can be diagnosed.
+          uv run pytest -q || { code=$?; echo "pytest exited with code $code"; exit $code; }
 
   slow:
     if: github.event_name == 'schedule' || inputs.slow

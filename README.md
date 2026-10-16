@@ -81,8 +81,8 @@ mid-sentence 22 % → 2 %.
   best for meetings with distinct voices (ES2004a: 97.3 %, exactly 4 speakers), but it
   merged a radio play's similar young voices into 3 speakers.
 - Similar voices (e.g. several teenage boys in one studio) stay the hardest case.
-- Numbers come from three recordings; reproduce with the scripts described in
-  `src/transcribe/diarize/resegment.py`.
+- Numbers come from three recordings. Reproduce the AMI rows with
+  `python -m transcribe.bench.diarization` (downloads ~60 MB; ~10 min on CPU).
 
 ### Live mode
 - Partial text appears as you speak (dim = may still change); an utterance is finalized
