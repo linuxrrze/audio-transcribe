@@ -32,13 +32,14 @@ class FasterWhisperEngine:
     name = "faster-whisper"
 
     def __init__(self, model: str = "small", device: str = "auto", compute_type: str = "auto",
-                 beam_size: int = 5, cpu_threads: int = 0) -> None:
+                 beam_size: int = 5, cpu_threads: int = 0, hotwords: str | None = None) -> None:
         from faster_whisper import WhisperModel
 
         self.device, self.compute_type = resolve_device(device, compute_type)
         self.model_name = model
         self.beam_size = beam_size
         self.temperature_fallback = True
+        self.hotwords = hotwords  # custom vocabulary hint words (every decoding window)
         self._model = WhisperModel(
             model, device=self.device, compute_type=self.compute_type,
             cpu_threads=cpu_threads, download_root=str(whisper_dir()),
@@ -57,8 +58,11 @@ class FasterWhisperEngine:
 
     @classmethod
     def from_config(cls, config: Config) -> FasterWhisperEngine:
+        from transcribe.core.config import vocabulary
+
         a = config.asr
-        return cls(a.model, a.device, a.compute_type, a.beam_size, a.cpu_threads)
+        return cls(a.model, a.device, a.compute_type, a.beam_size, a.cpu_threads,
+                   vocabulary(config).hotwords())
 
     def detect_language(self, audio: np.ndarray, languages: Sequence[str]) -> dict[str, float]:
         _, _, all_probs = self._model.detect_language(audio=audio)
@@ -78,6 +82,7 @@ class FasterWhisperEngine:
             word_timestamps=True,
             vad_filter=True,
             initial_prompt=prompt,
+            hotwords=self.hotwords,
             hallucination_silence_threshold=2.0,
         )
         words: list[Word] = []

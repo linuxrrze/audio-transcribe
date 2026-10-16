@@ -33,6 +33,7 @@ from transcribe.core.events import (
     SpeakerIdentified,
     StatusChanged,
 )
+from transcribe.core.vocabulary import Vocabulary
 from transcribe.diarize.refine import relabel
 from transcribe.live.echo import echo_of, suppress_echo
 from transcribe.live.streamer import ChannelStreamer, StreamerConfig, VadFn
@@ -63,10 +64,12 @@ class LiveSession:
         meta: dict[str, object] | None = None,
         save_interval: float = 5.0,
         identity: SessionIdentity | None = None,
+        vocabulary: Vocabulary | None = None,
     ) -> None:
         self.source, self.session_dir = source, session_dir
         self.embedder, self.tracker, self.refine_fn = embedder, tracker, refine
         self.identity = identity
+        self.vocabulary = vocabulary
         self.bus = EventBus()
         self.channels = source.describe().channels
         self.multi = len(self.channels) > 1
@@ -206,6 +209,8 @@ class LiveSession:
             self._level_due[ch] = t + 0.1
 
     def _on_final(self, seg: Segment, audio: np.ndarray) -> None:
+        if self.vocabulary:
+            seg.words = self.vocabulary.correct(seg.words)
         if self.multi and self._drop_echo(seg):
             return
         if self.tracker is not None:

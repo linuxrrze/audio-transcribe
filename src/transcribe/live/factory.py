@@ -12,7 +12,7 @@ import numpy as np
 from transcribe.asr.base import AsrEngine
 from transcribe.audio.base import AudioSource
 from transcribe.core import registry
-from transcribe.core.config import Config
+from transcribe.core.config import Config, vocabulary
 from transcribe.live.session import LiveSession, StageProgress
 from transcribe.live.streamer import StreamerConfig
 from transcribe.speakers.live_tracker import LiveSpeakerTracker, sherpa_cluster
@@ -33,7 +33,7 @@ def make_refiner(config: Config, asr: AsrEngine, num_speakers: int | None):
             cfg = replace(config, asr=replace(config.asr, model=config.live.refine_model))
             engine = asr_cls.from_config(cfg)
         return transcribe_audio(audio, engine, diarizer, config.asr.languages, num_speakers,
-                                progress)
+                                progress, vocabulary=vocabulary(config))
 
     return refine
 
@@ -75,4 +75,5 @@ def build_live_session(source: AudioSource, config: Config, session_dir: Path,
         meta={"asr_engine": config.asr.engine, "asr_model": config.asr.model,
               "languages": config.asr.languages, **(meta or {})},
         identity=identity,
+        vocabulary=vocabulary(config),
     )

@@ -23,7 +23,7 @@ from rich.text import Text
 from transcribe import __version__
 from transcribe.cli.speakers import speakers_app
 from transcribe.core import models, registry
-from transcribe.core.config import Config
+from transcribe.core.config import Config, vocabulary
 from transcribe.storage import session_store
 from transcribe.storage.transcript_model import Transcript
 
@@ -68,11 +68,25 @@ ThresholdOpt = Annotated[float | None, typer.Option(
 DeviceOpt = Annotated[str | None, typer.Option(help="auto | cpu | cuda")]
 FormatOpt = Annotated[str, typer.Option("--format", "-f", help="Output format.")]
 OutOpt = Annotated[Path | None, typer.Option("--out", "-o", help="Write output here.")]
+VocabOpt = Annotated[str | None, typer.Option(
+    "--vocab", help="Names/acronyms to recognise, comma-separated (adds to the config).")]
+VocabFileOpt = Annotated[Path | None, typer.Option(
+    "--vocab-file", exists=True, dir_okay=False,
+    help="Vocabulary file: one term per line, 'wrong -> right' for corrections.")]
 
 
 def _config(model: str | None = None, device: str | None = None, lang: str | None = None,
-            threshold: float | None = None) -> Config:
+            threshold: float | None = None, vocab: str | None = None,
+            vocab_file: Path | None = None) -> Config:
+    from transcribe.core.vocabulary import Vocabulary
+
     config = Config.load()
+    extra = Vocabulary.parse(vocab.replace(",", "\n")) if vocab else Vocabulary()
+    if vocab_file:
+        extra = extra.merged(Vocabulary.load(vocab_file))
+    if extra:
+        merged = Vocabulary(config.asr.vocabulary, config.asr.corrections).merged(extra)
+        config.asr.vocabulary, config.asr.corrections = merged.terms, merged.corrections
     if model:
         config.asr.model = model
     if device:
@@ -149,6 +163,8 @@ def transcribe(
     diarize: DiarizeOpt = True,
     threshold: ThresholdOpt = None,
     device: DeviceOpt = None,
+    vocab: VocabOpt = None,
+    vocab_file: VocabFileOpt = None,
     fmt: FormatOpt = "txt",
     out: OutOpt = None,
     save_session: Annotated[bool, typer.Option(
@@ -158,14 +174,14 @@ def transcribe(
     from transcribe.audio.file import load_audio
     from transcribe.core.offline import load_engines, transcribe_audio
 
-    config = _config(model, device, lang, threshold)
+    config = _config(model, device, lang, threshold, vocab, vocab_file)
     exporter = registry.load("transcribe.exporters", fmt)()
     with err.status("Loading models (first run downloads them)..."):
         asr, diarizer = load_engines(config, diarize)
         audio = load_audio(file)
     with _stage_progress(_offline_stages(config, diarize)) as report:
         transcript = transcribe_audio(audio, asr, diarizer, config.asr.languages,
-                                      num_speakers, report)
+                                      num_speakers, report, vocabulary=vocabulary(config))
 
     transcript.meta.update(title=file.stem, source=str(file.resolve()),
                            asr_model=config.asr.model)
@@ -207,6 +223,8 @@ def live(
     diarize: DiarizeOpt = True,
     threshold: ThresholdOpt = None,
     device: DeviceOpt = None,
+    vocab: VocabOpt = None,
+    vocab_file: VocabFileOpt = None,
     refine: Annotated[bool, typer.Option(
         help="Re-run the full pipeline on the recording when stopped.")] = True,
     fmt: FormatOpt = "txt",
@@ -219,7 +237,7 @@ def live(
     from transcribe.cli.live_view import LiveView
     from transcribe.live.factory import build_live_session
 
-    config = _config(model, device, lang, threshold)
+    config = _config(model, device, lang, threshold, vocab, vocab_file)
     exporter = registry.load("transcribe.exporters", fmt)()
     try:
         source = build_source(source_kind, input_device, output_device, mix, file,
@@ -264,12 +282,14 @@ def refine(
     num_speakers: SpeakersOpt = None,
     threshold: ThresholdOpt = None,
     device: DeviceOpt = None,
+    vocab: VocabOpt = None,
+    vocab_file: VocabFileOpt = None,
 ) -> None:
     """Re-run full diarization + transcription on a session's recording."""
     from transcribe.sessions import refine_session
     from transcribe.storage.recorder import recorded_channels
 
-    config = _config(model, device, lang, threshold)
+    config = _config(model, device, lang, threshold, vocab, vocab_file)
     channels = recorded_channels(session)
     stages = [f"{ch} {st}".strip() if len(channels) > 1 else st
               for ch in channels for st in _offline_stages(config, True)]

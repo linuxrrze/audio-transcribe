@@ -29,6 +29,10 @@ class AsrConfig:
     languages: list[str] = field(default_factory=lambda: ["de", "en"])
     beam_size: int = 5
     cpu_threads: int = 0  # 0 = library default
+    # Custom vocabulary (core/vocabulary.py): hint words for names, acronyms, jargon ...
+    vocabulary: list[str] = field(default_factory=list)
+    # ... and corrections applied to the transcript, e.g. {"Fanfress" = "Fentriss"}
+    corrections: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -62,6 +66,12 @@ class LiveConfig:
     beam_size: int = 1  # live decoding favours latency; refinement uses asr.beam_size
     refine: bool = True  # re-run full offline pipeline when the session stops
     refine_model: str = ""  # Whisper model for refinement; "" = same as asr.model
+
+
+def vocabulary(config: Config):
+    from transcribe.core.vocabulary import Vocabulary
+
+    return Vocabulary.from_config(config.asr.vocabulary, config.asr.corrections)
 
 
 def required_models(config: Config) -> tuple[list[str], list[str]]:

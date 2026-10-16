@@ -241,3 +241,16 @@ def test_device_check_dialog_use_selects_device(app, config):
     assert tab.output.currentData() == "zoom"
     assert tab.source.currentData() == "both"  # switched so system audio is captured
     dlg.reject()
+
+
+def test_settings_vocabulary_roundtrip(app, config):
+    from transcribe.gui.dialogs import SettingsDialog
+
+    config.asr.vocabulary = ["Justus"]
+    config.asr.corrections = {"Fanfress": "Fentriss"}
+    dlg = SettingsDialog(config)
+    assert dlg.vocabulary.toPlainText() == "Justus\nFanfress -> Fentriss"
+    dlg.vocabulary.setPlainText("Justus\nDSGVO, FAU\nHitschcock -> Hitchcock")
+    c = dlg.apply()
+    assert c.asr.vocabulary == ["Justus", "DSGVO", "FAU"]
+    assert c.asr.corrections == {"Hitschcock": "Hitchcock"}

@@ -59,6 +59,29 @@ transcribes runs of same-language turns with the language pinned. Without diariz
 VAD regions serve as the language units. Limitation: one speaker switching language
 mid-recording is transcribed in their dominant language.
 
+### Custom vocabulary (names, acronyms, jargon)
+Whisper guesses unknown names phonetically ("Fanfress" for *Fentriss*). Give it hints:
+```sh
+tx transcribe folge1.m4a --vocab "Justus, Peter, Bob, Fentriss, Hitchcock"
+tx transcribe meeting.m4a --vocab-file vocab.txt
+```
+`vocab.txt` - one entry per line, `#` comments, `wrong -> right` corrections:
+```
+# cast
+Justus, Peter, Bob
+Fentriss
+DSGVO          # acronyms and jargon work the same way
+Fanfress -> Fentriss          # fix what the model still mishears
+Mr Fan Fress -> Mr. Fentriss  # multi-word, keeps the timestamps
+```
+- Hint words are passed to Whisper as *hotwords* for every 30 s window (not just the
+  start); keep the list short (~100 words) - it shares Whisper's prompt space.
+- Corrections run on the recognised words (case-insensitive, whole words) in file
+  transcription, live mode and refinement.
+- Permanent entries: `[asr] vocabulary = [...]` and `[asr.corrections]` in
+  `config.toml`, or **File → Settings → Vocabulary** in the app. `--vocab` /
+  `--vocab-file` add to them for one run.
+
 ### Speaker accuracy
 Speakers are found in two passes: the diarizer (pyannote segmentation + WeSpeaker), then
 a second pass that cuts the transcript into phrases (sentence ends, pauses ≥ 0.5 s),

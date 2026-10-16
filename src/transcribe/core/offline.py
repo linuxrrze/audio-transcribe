@@ -18,6 +18,7 @@ import numpy as np
 
 from transcribe.asr.base import AsrEngine
 from transcribe.audio.base import SAMPLE_RATE
+from transcribe.core.vocabulary import Vocabulary
 from transcribe.diarize.align import Turn, assign_speakers, words_to_segments
 from transcribe.diarize.base import Diarizer
 from transcribe.diarize.resegment import resegment, speaker_count, speech_per_speaker
@@ -108,6 +109,7 @@ def transcribe_audio(
     num_speakers: int | None = None,
     progress: StageProgress | None = None,
     vad: VadFn | None = None,
+    vocabulary: Vocabulary | None = None,
 ) -> Transcript:
     duration = len(audio) / SAMPLE_RATE
     report = progress or (lambda stage, frac: None)
@@ -181,6 +183,8 @@ def transcribe_audio(
     timings["transcribe_s"] = time.perf_counter() - t
     report("transcribe", 1.0)
 
+    if vocabulary:
+        words = vocabulary.correct(words)
     if turns:
         assign_speakers(words, turns)
         make_embedder = getattr(diarizer, "phrase_embedder", None)

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from transcribe.core.config import Config
+from transcribe.core.vocabulary import Vocabulary
 
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large-v3-turbo", "large-v3"]
 
@@ -88,6 +90,12 @@ class SettingsDialog(QDialog):
         self.threshold.setRange(0.05, 0.95)
         self.threshold.setSingleStep(0.05)
         self.threshold.setValue(config.speakers.diarize_threshold)
+        self.vocabulary = QPlainTextEdit(Vocabulary.from_config(
+            config.asr.vocabulary, config.asr.corrections).to_text())
+        self.vocabulary.setPlaceholderText("Justus\nFentriss\nDSGVO\nFanfress -> Fentriss")
+        self.vocabulary.setToolTip("Names, acronyms, jargon - one per line. "
+                                   "'wrong -> right' corrects a word the model mishears.")
+        self.vocabulary.setFixedHeight(90)
         self.refine = QCheckBox("Refine transcript when a live session stops")
         self.refine.setChecked(config.live.refine)
         self.identify = QCheckBox("Recognise known people")
@@ -106,6 +114,7 @@ class SettingsDialog(QDialog):
         form.addRow("Compute device:", self.device)
         form.addRow("Languages:", self.languages)
         form.addRow("Speaker threshold:", self.threshold)
+        form.addRow("Vocabulary:", self.vocabulary)
         form.addRow(self.refine)
         form.addRow(QLabel("<b>Voiceprints (biometric data)</b>"))
         form.addRow(self.identify)
@@ -121,6 +130,8 @@ class SettingsDialog(QDialog):
         c.asr.device = self.device.currentText()
         c.asr.languages = [x.strip() for x in self.languages.text().split(",") if x.strip()]
         c.speakers.diarize_threshold = self.threshold.value()
+        vocab = Vocabulary.parse(self.vocabulary.toPlainText())
+        c.asr.vocabulary, c.asr.corrections = vocab.terms, vocab.corrections
         c.live.refine = self.refine.isChecked()
         c.speakers.identify_known = self.identify.isChecked()
         c.speakers.store_voiceprints = self.store.isChecked()

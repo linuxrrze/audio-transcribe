@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from transcribe.audio.base import SAMPLE_RATE
-from transcribe.core.config import Config
+from transcribe.core.config import Config, vocabulary
 from transcribe.live.session import LIVE_TRANSCRIPT, refine_channels
 from transcribe.storage import session_store
 from transcribe.storage.recorder import MERGED, load_recording, recorded_channels
@@ -142,7 +142,7 @@ def refine_session(session_dir: Path, config: Config, num_speakers: int | None =
 
     def run(signal: np.ndarray, report: StageProgress) -> Transcript:
         return transcribe_audio(signal, asr, diarizer, config.asr.languages, num_speakers,
-                                report)
+                                report, vocabulary=vocabulary(config))
 
     final = refine_channels(audio, run, previous, progress)
     final.meta["asr_model"] = config.asr.model
