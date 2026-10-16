@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * *"  # nightly: also runs the slow model tests
+  workflow_dispatch:
+    inputs:
+      slow:
+        description: "Run slow end-to-end tests (downloads ~800 MB of models)"
+        type: boolean
+        default: false
+
+env:
+  EXTRAS: --extra asr --extra speakers --extra audio --extra gui --extra secure --extra system
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: System libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libportaudio2 libegl1 libgl1 libxkbcommon0 \
+            libxkbcommon-x11-0 libfontconfig1 libdbus-1-3 pulseaudio pulseaudio-utils
+      - name: PulseAudio with a virtual output (Linux system-audio test)
+        if: runner.os == 'Linux'
+        run: |
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=speakers
+          pactl set-default-sink speakers
+      - run: uv sync ${{ env.EXTRAS }}
+      - run: uv run ruff check .
+      - run: uv run mypy src
+      - run: uv run pytest -q
+
+  slow:
+    if: github.event_name == 'schedule' || inputs.slow
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/transcribe/models
+          key: models-${{ hashFiles('src/transcribe/core/models.py') }}
+      - run: uv sync --extra asr --extra speakers --extra secure
+      - run: uv run pytest -q tests/integration
+        env:
+          TX_SLOW: "1"
+
+  macos-helper:
+    runs-on: macos-14  # Xcode 15.4: macOS 14.2+ SDK for Core Audio process taps
+    steps:
+      - uses: actions/checkout@v4
+      - run: helpers/macos-audiotap/build.sh
+      - name: Help output runs
+        run: helpers/macos-audiotap/.build/apple/Products/Release/transcribe-audiotap --help

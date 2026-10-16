@@ -305,18 +305,32 @@ def models_list() -> None:
     for a in models.ASSETS.values():
         table.add_row(a.name, a.kind, "yes" if models.is_present(a.name) else "-", a.description)
     console.print(table)
-    console.print(f"Cache: {models.models_dir()}  (Whisper models are fetched on first use)")
+    from transcribe.core.config import required_models
+
+    whisper, _ = required_models(Config.load())
+    for w in dict.fromkeys(whisper):
+        state = "yes" if models.whisper_present(w) else "-"
+        console.print(f"whisper:{w}  cached: {state}")
+    console.print(f"Cache: {models.models_dir()}")
 
 
 @models_app.command("download")
 def models_download(
-    names: Annotated[list[str] | None, typer.Argument(help="Asset names; default: defaults.")]
-    = None,
+    names: Annotated[list[str] | None, typer.Argument(
+        help="Asset names or whisper:<model>; default: everything the config needs.")] = None,
 ) -> None:
-    """Download model assets (default: the configured diarization models)."""
+    """Download models (default: the configured Whisper and diarization models)."""
+    from transcribe.core.config import required_models
+
     config = Config.load()
-    for name in names or [config.speakers.segmentation_model, config.speakers.embedding_model]:
-        if name not in models.ASSETS:
+    if not names:
+        whisper, assets = required_models(config)
+        names = models.missing_models(whisper, assets)
+        if not names:
+            err.print("All configured models are present.")
+            return
+    for name in names:
+        if not name.startswith("whisper:") and name not in models.ASSETS:
             err.print(f"[red]Unknown model {name}[/]")
             raise typer.Exit(1)
         with Progress(console=err, transient=True) as progress:
@@ -325,8 +339,8 @@ def models_download(
             def on_bytes(done: int, total: int, task: TaskID = task) -> None:
                 progress.update(task, completed=done, total=total or None)
 
-            models.ensure(name, on_bytes)
-        err.print(f"{name}: {models.ensure(name)}")
+            path = models.download(name, on_bytes)
+        err.print(f"{name}: {path}")
 
 
 if __name__ == "__main__":

@@ -147,3 +147,40 @@ def _sha256(path: Path) -> str:
         while chunk := f.read(1 << 20):
             h.update(chunk)
     return h.hexdigest()
+
+
+# --- Whisper (Hugging Face hub, cached by faster-whisper) ---------------------------------
+def whisper_dir() -> Path:
+    return models_dir() / "whisper"
+
+
+def whisper_present(model: str) -> bool:
+    """True if the faster-whisper model is in the local cache (or ``model`` is a path)."""
+    if Path(model).is_dir():
+        return True
+    from faster_whisper.utils import download_model
+
+    try:
+        download_model(model, local_files_only=True, cache_dir=str(whisper_dir()))
+    except Exception:  # noqa: BLE001 - huggingface_hub raises various "not cached" errors
+        return False
+    return True
+
+
+def ensure_whisper(model: str) -> Path:
+    from faster_whisper.utils import download_model
+
+    return Path(download_model(model, cache_dir=str(whisper_dir())))
+
+
+def missing_models(whisper_models: list[str], assets: list[str]) -> list[str]:
+    """Names of models that still need downloading (``whisper:<name>`` or asset names)."""
+    out = [f"whisper:{m}" for m in dict.fromkeys(whisper_models) if m and not whisper_present(m)]
+    return out + [a for a in assets if not is_present(a)]
+
+
+def download(name: str, progress: ProgressFn | None = None) -> Path:
+    """Download ``whisper:<model>`` or a named asset (see ``missing_models``)."""
+    if name.startswith("whisper:"):
+        return ensure_whisper(name.split(":", 1)[1])
+    return ensure(name, progress)

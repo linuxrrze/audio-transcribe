@@ -60,6 +60,13 @@ class LiveConfig:
     refine_model: str = ""  # Whisper model for refinement; "" = same as asr.model
 
 
+def required_models(config: Config) -> tuple[list[str], list[str]]:
+    """(Whisper models, other assets) the configuration needs."""
+    whisper = [config.asr.model] + ([config.live.refine_model] if config.live.refine_model
+                                    else [])
+    return whisper, [config.speakers.segmentation_model, config.speakers.embedding_model]
+
+
 @dataclass
 class Config:
     asr: AsrConfig = field(default_factory=AsrConfig)

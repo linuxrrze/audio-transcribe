@@ -55,3 +55,22 @@ def test_exporters_omit_label_without_speaker():
     for name in ["txt", "md", "srt", "vtt"]:
         out = registry.load("transcribe.exporters", name)().render(t)
         assert "Unknown" not in out and "Hallo." in out
+
+
+def test_builtin_plugins_resolve_without_entry_points(monkeypatch):
+    import transcribe.core.registry as reg
+
+    monkeypatch.setattr(reg, "entry_points", lambda **kw: [])  # e.g. frozen app
+    assert reg.load("transcribe.exporters", "srt").__name__ == "SrtExporter"
+    assert "faster-whisper" in reg.available("transcribe.asr")
+
+
+def test_builtins_match_declared_entry_points():
+    import tomllib
+    from pathlib import Path
+
+    import transcribe.core.registry as reg
+
+    root = Path(__file__).resolve().parents[2]
+    declared = tomllib.loads((root / "pyproject.toml").read_text())["project"]["entry-points"]
+    assert {g: dict(v) for g, v in declared.items()} == reg.BUILTINS

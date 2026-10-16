@@ -184,3 +184,69 @@ class KnownPeopleDialog(QDialog):
     def done(self, result: int) -> None:
         self.db.close()
         super().done(result)
+
+
+class ModelSetupDialog(QDialog):
+    """First run: download the models the configuration needs (shows progress)."""
+
+    def __init__(self, missing: list[str], parent=None) -> None:
+        from PySide6.QtWidgets import QProgressBar
+
+        super().__init__(parent)
+        self.setWindowTitle("Download models")
+        self.missing = list(missing)
+        intro = QLabel("Transcribe runs entirely on this computer. These models are needed "
+                       "once (several hundred MB in total):")
+        intro.setWordWrap(True)
+        self.items = QLabel("\n".join(f"• {m}" for m in self.missing))
+        self.bar = QProgressBar()
+        self.bar.setRange(0, len(self.missing))
+        self.current = QLabel("")
+        self.download_btn = QPushButton("Download")
+        self.download_btn.clicked.connect(self.start)
+        later = QPushButton("Later")
+        later.clicked.connect(self.reject)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(later)
+        row.addWidget(self.download_btn)
+        layout = QVBoxLayout(self)
+        for w in (intro, self.items, self.bar, self.current):
+            layout.addWidget(w)
+        layout.addLayout(row)
+
+    def start(self) -> None:
+        from transcribe.core import models
+        from transcribe.gui.bridge import Job
+
+        self.download_btn.setEnabled(False)
+        names = list(self.missing)
+        job = Job(lambda: [models.download(n) for n in names], self)
+
+        # progress per finished item is approximated by polling the cache
+        def poll() -> None:
+            done = len(names) - len(models.missing_models(
+                [n.split(":", 1)[1] for n in names if n.startswith("whisper:")],
+                [n for n in names if not n.startswith("whisper:")]))
+            self.bar.setValue(done)
+            if done < len(names):
+                self.current.setText(f"Downloading {names[done]}…")
+
+        from PySide6.QtCore import QTimer
+
+        timer = QTimer(self)
+        timer.timeout.connect(poll)
+        timer.start(1000)
+        def done(_result: object) -> None:
+            timer.stop()
+            self.bar.setValue(len(names))
+            self.accept()
+
+        def failed(message: str) -> None:
+            timer.stop()
+            self.current.setText(message)
+            self.download_btn.setEnabled(True)
+
+        job.done.connect(done)
+        job.failed.connect(failed)
+        job.start()

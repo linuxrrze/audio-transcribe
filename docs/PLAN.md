@@ -149,7 +149,7 @@ transcription/
 4. **M3 Voiceprints:** SQLite store, enrollment (implicit and explicit), open-set matching with calibrated thresholds, `tx speakers` commands, privacy options.
 5. **M4 GUI:** PySide6 app covering live view, speaker panel, session browser with synced playback.
 6. **M5 System audio:** WASAPI loopback, PipeWire monitor, macOS audio-tap helper; mixer for mic + system as separate channels.
-7. **M6 Packaging:** PyInstaller (or Briefcase) builds via GitHub Actions; macOS signing/notarization with mic and audio-capture entitlements; first-run model download wizard.
+7. **M6 Packaging:** *(done: PyInstaller one-folder bundle with `tx` + `Transcribe`, smoke-tested in `packaging/build.py`; CI on Linux/Windows/macOS incl. a PulseAudio null sink and a Swift helper build; release workflow with optional macOS signing/notarization; plugin registry has built-in fallbacks because frozen apps may lack entry-point metadata)* PyInstaller (or Briefcase) builds via GitHub Actions; macOS signing/notarization with mic and audio-capture entitlements; first-run model download wizard.
 8. **Later:** meeting sources (per-app capture → Jitsi bot → Zoom/Teams SDKs), optional pyannote plugin, `tx serve` API, summarisation hooks.
 
 ## 5. Key risks

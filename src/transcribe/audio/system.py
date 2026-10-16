@@ -124,8 +124,9 @@ AUDIOTAP = "transcribe-audiotap"
 def audiotap_path() -> Path | None:
     """The Swift helper: next to the frozen app, in PATH, or a local development build."""
     candidates = []
-    if getattr(sys, "frozen", False):
+    if getattr(sys, "frozen", False):  # PyInstaller: next to the exe or in the data dir
         candidates.append(Path(sys.executable).parent / AUDIOTAP)
+        candidates.append(Path(getattr(sys, "_MEIPASS", sys.executable)) / AUDIOTAP)
     if env := os.environ.get("TRANSCRIBE_AUDIOTAP"):
         candidates.append(Path(env))
     if found := shutil.which(AUDIOTAP):

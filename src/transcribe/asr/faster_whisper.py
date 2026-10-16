@@ -10,7 +10,7 @@ import numpy as np
 from transcribe.asr.base import ProgressFn
 from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core.config import Config
-from transcribe.core.models import models_dir
+from transcribe.core.models import whisper_dir
 from transcribe.storage.transcript_model import Word
 
 _FALLBACK = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
@@ -41,7 +41,7 @@ class FasterWhisperEngine:
         self.temperature_fallback = True
         self._model = WhisperModel(
             model, device=self.device, compute_type=self.compute_type,
-            cpu_threads=cpu_threads, download_root=str(models_dir() / "whisper"),
+            cpu_threads=cpu_threads, download_root=str(whisper_dir()),
         )
 
     def with_options(self, beam_size: int, temperature_fallback: bool) -> FasterWhisperEngine:

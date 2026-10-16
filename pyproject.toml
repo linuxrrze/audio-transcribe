@@ -54,6 +54,7 @@ json = "transcribe.export.json:JsonExporter"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10"]
+packaging = ["pyinstaller>=6.10"]
 
 [build-system]
 requires = ["hatchling"]

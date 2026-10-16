@@ -20,6 +20,8 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap.
 - **M4** desktop app (`tx gui` / `tx-gui`): live view, speaker panel (name, merge,
   "Is this X?" suggestions), session browser with playback synced to the text, export,
   refine, settings and a "Known people" privacy dialog.
+- **M6** packaging: PyInstaller bundles (CLI + desktop app) for Linux, Windows and macOS
+  built by GitHub Actions; first-run model download; CI on all three platforms.
 - **M5** system audio: transcribe what the computer plays (`--source system`), or
   microphone + system audio as separate channels (`--source both`) with echo suppression
   - the basis for recording Zoom/Teams/Jitsi calls.
@@ -141,6 +143,23 @@ uv run tx speakers list | consent NAME --revoke | delete NAME | export F | impor
   not authentication, no anti-spoofing.
 - Known limitation: diarization sometimes merges similar voices (e.g. two male voices);
   those speakers then stay unlabelled until refined (`tx refine -n N`).
+
+## Installing a release
+Download the archive for your platform from the GitHub releases page and unpack it. It
+contains `tx` (command line) and `Transcribe` (desktop app); on macOS, `Transcribe.app`.
+Models are not bundled: the app offers to download them on first start (or run
+`tx models download`, several hundred MB, stored in the user cache directory).
+
+- **Linux:** needs PortAudio and Qt's usual libraries (`apt install libportaudio2 libegl1
+  libxkbcommon0`) and, for system audio, `pulseaudio-utils` (also for PipeWire).
+- **macOS:** grant microphone and "System Audio Recording" access when asked. Unsigned
+  builds must be opened once via right-click → Open.
+- **Windows:** system audio uses WASAPI loopback (no extra drivers).
+
+Build a bundle yourself: `uv sync --group packaging --extra asr --extra speakers --extra
+audio --extra gui --extra secure --extra system && uv run python packaging/build.py`
+(on macOS run `helpers/macos-audiotap/build.sh` first). The Linux bundle is ~335 MB
+(228 MB archived) and was verified here by transcribing with the frozen `tx`.
 
 ## Development
 ```sh
