@@ -18,11 +18,11 @@ if [ ! -d "$SRC" ]; then
   mv "$DEST/whisper.cpp-${VERSION#v}" "$SRC"
 fi
 cmake -S "$SRC" -B "$DEST/build-cpu" -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF ${CMAKE_ARGS:-}
-cmake --build "$DEST/build-cpu" -j "$JOBS" --target whisper-cli
+cmake --build "$DEST/build-cpu" -j "$JOBS" --target whisper-cli whisper-bench
 if [ "${SKIP_VULKAN:-0}" != 1 ]; then
   cmake -S "$SRC" -B "$DEST/build-vulkan" -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON \
     -DWHISPER_BUILD_TESTS=OFF ${CMAKE_ARGS:-}
-  cmake --build "$DEST/build-vulkan" -j "$JOBS" --target whisper-cli
+  cmake --build "$DEST/build-vulkan" -j "$JOBS" --target whisper-cli whisper-bench
 fi
-echo "CPU:    $DEST/build-cpu/bin/whisper-cli"
-[ "${SKIP_VULKAN:-0}" = 1 ] || echo "Vulkan: $DEST/build-vulkan/bin/whisper-cli"
+echo "CPU:    $DEST/build-cpu/bin/whisper-cli (+ whisper-bench)"
+[ "${SKIP_VULKAN:-0}" = 1 ] || echo "Vulkan: $DEST/build-vulkan/bin/whisper-cli (+ whisper-bench)"
