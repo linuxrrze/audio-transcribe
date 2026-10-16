@@ -41,6 +41,14 @@ class SegmentRelabeled(Event):
 
 
 @dataclass(frozen=True)
+class SegmentRemoved(Event):
+    """A finalized segment was withdrawn (e.g. identified as microphone echo)."""
+
+    segment_id: str
+    reason: str = ""
+
+
+@dataclass(frozen=True)
 class SpeakerDetected(Event):
     speaker_id: str
     label: str

@@ -1,8 +1,12 @@
 """Live session: capture -> record -> stream ASR -> live speaker labels -> refinement.
 
 Threads: a capture thread pulls frames from the source into a queue; a processing thread
-records, measures levels, feeds the channel streamer and assigns speakers. Events go
+records, measures levels, feeds one streamer per channel and assigns speakers. Events go
 through the EventBus (own dispatch thread), so frontends never block processing.
+
+Multi-channel sources (e.g. microphone + system audio) get one streamer and recording
+per channel, a shared speaker tracker, and echo suppression: a microphone segment that
+repeats what the system channel played is dropped.
 """
 
 from __future__ import annotations
@@ -24,11 +28,13 @@ from transcribe.core.events import (
     FinalSegment,
     PartialText,
     SegmentRelabeled,
+    SegmentRemoved,
     SpeakerDetected,
     SpeakerIdentified,
     StatusChanged,
 )
 from transcribe.diarize.refine import relabel
+from transcribe.live.echo import echo_of, suppress_echo
 from transcribe.live.streamer import ChannelStreamer, StreamerConfig, VadFn
 from transcribe.speakers.embedder import Embedder
 from transcribe.speakers.identity import SessionIdentity, apply_matches
@@ -62,11 +68,14 @@ class LiveSession:
         self.embedder, self.tracker, self.refine_fn = embedder, tracker, refine
         self.identity = identity
         self.bus = EventBus()
-        self.transcript = Transcript(meta=dict(meta or {}))
+        self.channels = source.describe().channels
+        self.multi = len(self.channels) > 1
+        self.transcript = Transcript(meta={**(meta or {}), "channels": self.channels})
         self.final_transcript: Transcript | None = None
-        self.recorder = AudioRecorder(session_dir)
-        self.streamer = ChannelStreamer(asr, languages, vad, self._on_partial, self._on_final,
-                                        config=streamer_config)
+        self.recorders = {ch: AudioRecorder(session_dir, channel=ch if self.multi else "")
+                          for ch in self.channels}
+        self.streamers = {ch: self._make_streamer(asr, languages, vad, ch, streamer_config)
+                          for ch in self.channels}
         self._segments: dict[str, Segment] = {}
         self._queue: queue.Queue[AudioFrame | None] = queue.Queue()
         self._stop = threading.Event()
@@ -76,10 +85,28 @@ class LiveSession:
         self._done = threading.Event()
         self._threads: list[threading.Thread] = []
         self._error: BaseException | None = None
-        self._level_due = 0.0
+        self._level_due = dict.fromkeys(self.channels, 0.0)
         self._save_interval = save_interval
         self._last_save = 0.0
+        self._echo_dropped = 0
         self._lock = threading.Lock()
+
+    def _make_streamer(self, asr: AsrEngine, languages: list[str], vad: VadFn, channel: str,
+                       config: StreamerConfig | None) -> ChannelStreamer:
+        def on_partial(t: float, committed: str, pending: str) -> None:
+            self.bus.publish(PartialText(t, committed, pending, channel))
+
+        return ChannelStreamer(asr, languages, vad, on_partial, self._on_final, channel,
+                               config)
+
+    @property
+    def streamer(self) -> ChannelStreamer:
+        """The first channel's streamer (the only one for single-channel sources)."""
+        return self.streamers[self.channels[0]]
+
+    @property
+    def now(self) -> float:
+        return max(s.now for s in self.streamers.values())
 
     # --- public API ---------------------------------------------------------------------
     def start(self) -> None:
@@ -117,7 +144,8 @@ class LiveSession:
         """Process the whole source in the calling thread (deterministic replay)."""
         self.source.open()
         for frame in self.source.frames():
-            self._handle(frame)
+            self._ingest(frame)
+            self.streamers[frame.channel_id].update()
         self.source.close()
         return self._finish(refine)
 
@@ -157,29 +185,30 @@ class LiveSession:
                     batch.append(nxt)
                 for f in batch:
                     self._ingest(f)
-                self.streamer.update()
+                for ch in {f.channel_id for f in batch}:
+                    self.streamers[ch].update()
         except BaseException as e:  # noqa: BLE001
             self._error = e
             self._emit_status("error", repr(e))
 
     # --- processing ---------------------------------------------------------------------
-    def _handle(self, frame: AudioFrame) -> None:
-        self._ingest(frame)
-        self.streamer.update()
-
     def _ingest(self, frame: AudioFrame) -> None:
-        self.recorder.write(frame.samples)
-        self.streamer.feed(frame.samples)
-        t = self.recorder.total_samples / SAMPLE_RATE
-        if t >= self._level_due and len(frame.samples):
+        ch = frame.channel_id
+        if ch not in self.streamers:
+            raise ValueError(f"Frame for undeclared channel {ch!r}; source declares "
+                             f"{self.channels}")
+        recorder = self.recorders[ch]
+        recorder.write(frame.samples)
+        self.streamers[ch].feed(frame.samples)
+        t = recorder.total_samples / SAMPLE_RATE
+        if t >= self._level_due[ch] and len(frame.samples):
             rms = float(np.sqrt(np.mean(np.square(frame.samples))))
-            self.bus.publish(AudioLevel(t, frame.channel_id, 20 * math.log10(max(rms, 1e-6))))
-            self._level_due = t + 0.1
-
-    def _on_partial(self, t: float, committed: str, pending: str) -> None:
-        self.bus.publish(PartialText(t, committed, pending, self.streamer.channel_id))
+            self.bus.publish(AudioLevel(t, ch, 20 * math.log10(max(rms, 1e-6))))
+            self._level_due[ch] = t + 0.1
 
     def _on_final(self, seg: Segment, audio: np.ndarray) -> None:
+        if self.multi and self._drop_echo(seg):
+            return
         if self.tracker is not None:
             emb = self.embedder.embed(audio) if self.embedder and len(audio) else None
             speaker, changes = self.tracker.assign(seg.id, emb, seg.t1 - seg.t0)
@@ -197,6 +226,21 @@ class LiveSession:
         self.bus.publish(FinalSegment(seg.t1, seg))
         if time.monotonic() - self._last_save >= self._save_interval:
             self._save_live()
+
+    def _drop_echo(self, seg: Segment) -> bool:
+        """Drop ``seg`` if it is mic echo; withdraw earlier mic segments it duplicates."""
+        with self._lock:
+            echoes = echo_of(seg, self.transcript.segments)
+            if echoes == [seg]:
+                self._echo_dropped += 1
+                return True
+            for old in echoes:
+                self.transcript.segments.remove(old)
+                self._segments.pop(old.id, None)
+                self._echo_dropped += 1
+        for old in echoes:
+            self.bus.publish(SegmentRemoved(seg.t1, old.id, "echo"))
+        return False
 
     def _identify(self, t: float) -> None:
         assert self.tracker is not None and self.identity is not None
@@ -226,26 +270,26 @@ class LiveSession:
         used = {s.speaker_id for s in transcript.segments}
         transcript.speakers = {k: v for k, v in transcript.speakers.items() if k in used}
 
+    # --- end of session -----------------------------------------------------------------
     def _finish(self, refine: bool) -> Transcript:
-        self.streamer.finish()
-        duration = self.recorder.total_samples / SAMPLE_RATE
-        self.recorder.finalize()
+        for streamer in self.streamers.values():
+            streamer.finish()
+        duration = max(r.total_samples for r in self.recorders.values()) / SAMPLE_RATE
+        for recorder in self.recorders.values():
+            recorder.finalize()
+        with self._lock:  # channels finalize independently: restore time order
+            self.transcript.segments.sort(key=lambda s: s.t0)
         self.transcript.meta["duration_s"] = round(duration, 3)
+        if self.multi:
+            self.transcript.meta["echo_segments_dropped"] = self._echo_dropped
         self._save_live()
         final = self.transcript
-        audio: np.ndarray | None = None
+        audio: dict[str, np.ndarray] = {}
         if refine and self.refine_fn is not None and duration > 0:
-            audio = load_recording(self.session_dir)
-            self._emit_status("refining", progress=0.0)
-
-            def progress(stage: str, frac: float) -> None:
-                self._emit_status("refining", stage, frac)
-
-            refined = self.refine_fn(audio, progress)
-            final = relabel(refined, self.transcript)
-            final.meta = {**self.transcript.meta, **refined.meta, "refined": True}
+            audio = self._load_audio()
+            final = self._refine(audio)
         if self.identity is not None and final.speakers and duration > 0:
-            audio = load_recording(self.session_dir) if audio is None else audio
+            audio = audio or self._load_audio()
             self._emit_status("identifying")
             self.identity.finalize(self.session_dir, audio, final)
         session_store.save_session(self.session_dir, final, {
@@ -254,5 +298,57 @@ class LiveSession:
         self._emit_status("stopped")
         return final
 
+    def _load_audio(self) -> dict[str, np.ndarray]:
+        return {ch: load_recording(self.session_dir, ch if self.multi else "")
+                for ch in self.channels}
+
+    def _refine(self, audio: dict[str, np.ndarray]) -> Transcript:
+        assert self.refine_fn is not None
+
+        def progress(stage: str, frac: float) -> None:
+            self._emit_status("refining", stage, frac)
+
+        return refine_channels(audio, self.refine_fn, self.transcript, progress)
+
     def _emit_status(self, status: str, detail: str = "", progress: float | None = None) -> None:
-        self.bus.publish(StatusChanged(self.streamer.now, status, detail, progress))
+        self.bus.publish(StatusChanged(self.now, status, detail, progress))
+
+
+def refine_channels(audio: dict[str, np.ndarray], refine_fn: RefineFn, reference: Transcript,
+                    progress: StageProgress | None = None) -> Transcript:
+    """Refine each channel, map its speakers onto the reference ids, merge, drop echoes.
+
+    ``audio`` maps channel id -> recording (a single entry for one-channel sessions).
+    """
+    report = progress or (lambda stage, frac: None)
+    multi = len(audio) > 1
+    segments: list[Segment] = []
+    speakers: dict[str, Speaker] = {}
+    meta: dict[str, object] = {}
+    for ch, signal in audio.items():
+        prefix = f"{ch} " if multi else ""
+
+        def channel_progress(stage: str, frac: float, prefix: str = prefix) -> None:
+            report(prefix + stage, frac)
+
+        refined = refine_fn(signal, channel_progress)
+        channel_ref = Transcript(
+            segments=[s for s in reference.segments if not multi or s.channel_id == ch],
+            speakers=reference.speakers)
+        mapped = relabel(refined, channel_ref, reserved=set(speakers))
+        for seg in mapped.segments:
+            seg.channel_id = ch if multi else seg.channel_id
+        segments += mapped.segments
+        speakers.update(mapped.speakers)
+        meta = meta or dict(refined.meta)
+    dropped: list[Segment] = []
+    if multi:
+        segments, dropped = suppress_echo(segments)
+    segments.sort(key=lambda s: s.t0)
+    used = {s.speaker_id for s in segments}
+    return Transcript(
+        segments=segments,
+        speakers={k: v for k, v in sorted(speakers.items(), key=lambda kv: int(kv[0][1:]))
+                  if k in used},
+        meta={**reference.meta, **meta, "refined": True,
+              **({"echo_segments_dropped": len(dropped)} if multi else {})})

@@ -23,6 +23,7 @@ speakers = ["sherpa-onnx>=1.12", "sherpa-onnx-core>=1.12"]  # core listed explic
 audio = ["sounddevice>=0.4"]
 gui = ["PySide6>=6.7"]
 secure = ["cryptography>=42", "keyring>=25"]
+system = ["soundcard>=0.4; sys_platform == 'win32'"]  # Linux: parec, macOS: Swift helper
 pyannote = ["pyannote.audio>=3.3"]
 
 [project.scripts]
@@ -73,5 +74,5 @@ markers = ["slow: needs downloaded models (run with TX_SLOW=1)"]
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["keyring", "keyring.*", "ctranslate2", "faster_whisper.*", "faster_whisper", "sherpa_onnx", "sounddevice", "soundfile", "soxr"]
+module = ["soundcard", "keyring", "keyring.*", "ctranslate2", "faster_whisper.*", "faster_whisper", "sherpa_onnx", "sounddevice", "soundfile", "soxr"]
 ignore_missing_imports = true

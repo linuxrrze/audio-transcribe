@@ -46,6 +46,8 @@ Each stage runs in a worker thread and passes data through bounded `queue.Queue`
 | File | `ffmpeg`/`soundfile` decode, real-time or as-fast-as-possible | same | same |
 | Mixer | combines N sources, keeps a separate channel per source | | |
 
+*(M5 as implemented: `CommandSource` reads 16 kHz float32 PCM from a helper process - `parec` on Linux, the Swift `transcribe-audiotap` on macOS; Windows uses `soundcard` WASAPI loopback. `MixerSource` keeps channels separate, `MixDownSource` sums them (padding a silent real-time channel instead of stalling). Sessions run one streamer and recorder per channel with a shared speaker tracker, and drop mic segments that repeat overlapping system audio (echo).)*
+
 **Designing for meetings later:** a meeting source is just a composite source. Its simplest form is mic + per-app loopback, i.e. "me" vs. "them" on separate channels, which already makes diarization much easier. Richer forms are bot or SDK integrations that deliver **per-participant streams with names**: Jitsi via `lib-jitsi-meet` or a Jibri-style bot; Zoom via the Meeting SDK or RTMS; Teams via the Graph/ACS bot. These would set `channel_id`/`speaker_hint`, and the diarizer must honour them, for example by skipping clustering when a channel is known to carry a single speaker. Sources are discovered via Python entry points (`transcribe.sources`) so that third parties can add them.
 
 ### 2.2 VAD

@@ -139,8 +139,16 @@ def live(
         "--file", exists=True, dir_okay=False,
         help="Replay a file instead of the microphone (for testing).")] = None,
     fast: Annotated[bool, typer.Option(help="Replay --file as fast as possible.")] = False,
+    source_kind: Annotated[str, typer.Option(
+        "--source", "-s", help="mic | system (what the computer plays) | both")] = "mic",
     input_device: Annotated[str | None, typer.Option(
         "--input", "-i", help="Input device index or name (see `tx devices`).")] = None,
+    output_device: Annotated[str | None, typer.Option(
+        "--output", help="System audio device (see `tx devices`); default: default output.")]
+    = None,
+    mix: Annotated[bool, typer.Option(
+        help="With --source both: sum mic+system into one stream (cheaper, no echo "
+             "suppression or channel separation).")] = False,
     name: Annotated[str, typer.Option(help="Session name.")] = "live",
     model: ModelOpt = None,
     lang: LangOpt = None,
@@ -156,22 +164,20 @@ def live(
     """Transcribe live from the microphone; Ctrl+C stops (and refines)."""
     from rich.live import Live
 
-    from transcribe.audio.base import AudioSource
+    from transcribe.audio.factory import build_source
     from transcribe.cli.live_view import LiveView
     from transcribe.live.factory import build_live_session
 
     config = _config(model, device, lang, threshold)
     exporter = registry.load("transcribe.exporters", fmt)()
-    source: AudioSource
-    if file is not None:
-        from transcribe.audio.file import FileSource
-
-        source = FileSource(file, realtime=not fast)
-        name = file.stem if name == "live" else name
-    else:
-        from transcribe.audio.mic import MicSource
-
-        source = MicSource(input_device)
+    try:
+        source = build_source(source_kind, input_device, output_device, mix, file,
+                              realtime=not fast)
+    except (RuntimeError, ValueError) as e:
+        err.print(f"[red]{e}[/]")
+        raise typer.Exit(1) from e
+    if file is not None and name == "live":
+        name = file.stem
     session_dir = session_store.new_session_dir(config.resolved_sessions_dir(), name)
     with err.status("Loading models (first run downloads them)..."):
         session = build_live_session(source, config, session_dir, num_speakers, diarize,
@@ -210,26 +216,31 @@ def refine(
 ) -> None:
     """Re-run full diarization + transcription on a session's recording."""
     from transcribe.core.offline import load_engines, transcribe_audio
-    from transcribe.diarize.refine import relabel
-    from transcribe.storage.recorder import load_recording
+    from transcribe.live.session import refine_channels
+    from transcribe.storage.recorder import load_recording, recorded_channels
 
     config = _config(model, device, lang, threshold)
-    audio = load_recording(session)
-    if not len(audio):
+    audio = {ch: load_recording(session, ch) for ch in recorded_channels(session)}
+    audio = {ch: a for ch, a in audio.items() if len(a)}
+    if not audio:
         err.print(f"[red]No recording in {session}[/]")
         raise typer.Exit(1)
     path = session_store.resolve_transcript(session)
     previous = Transcript.load(path) if path.exists() else Transcript()
     with err.status("Loading models..."):
         asr, diarizer = load_engines(config, diarize=True)
-    with _stage_progress(_offline_stages(config, True)) as report:
-        refined = transcribe_audio(audio, asr, diarizer, config.asr.languages,
-                                   num_speakers, report)
-    final = relabel(refined, previous)
-    final.meta = {**previous.meta, **refined.meta, "refined": True,
-                  "asr_model": config.asr.model}
+
+    def run(signal, report):
+        return transcribe_audio(signal, asr, diarizer, config.asr.languages, num_speakers,
+                                report)
+
+    stages = [f"{ch} {st}".strip() for ch in audio for st in _offline_stages(config, True)]
+    with _stage_progress(stages) as report:
+        final = refine_channels(audio, run, previous, report)
+    final.meta["asr_model"] = config.asr.model
     if final.speakers:
-        _identify(config, session, audio, final)
+        _identify(config, session, audio if len(audio) > 1 else next(iter(audio.values())),
+                  final)
     final.save(path)
     err.print(f"Refined transcript saved to [bold]{path}[/]")
 
@@ -252,19 +263,25 @@ def _identify(config: Config, session_dir: Path | None, audio, transcript: Trans
 
 @app.command()
 def devices() -> None:
-    """List audio input devices."""
+    """List microphones and system-audio (output) devices."""
     from transcribe.audio.mic import list_input_devices
+    from transcribe.audio.system import output_devices
 
     try:
         devs = list_input_devices()
     except RuntimeError as e:
         err.print(f"[red]{e}[/]")
-        raise typer.Exit(1) from e
-    table = Table("Index", "Name", "Channels", "Rate", "Host API", "Default")
+        devs = []
+    table = Table("Index", "Microphone / input", "Channels", "Rate", "Host API", "Default",
+                  title="Inputs (--input)")
     for d in devs:
         table.add_row(str(d.index), d.name, str(d.channels), f"{d.default_samplerate:.0f}",
                       d.hostapi, "*" if d.is_default else "")
     console.print(table)
+    outs = Table("ID", "System audio source", "Default", title="System audio (--output)")
+    for o in output_devices():
+        outs.add_row(o.id, o.name, "*" if o.is_default else "")
+    console.print(outs)
 
 
 @app.command()

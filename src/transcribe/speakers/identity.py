@@ -51,7 +51,10 @@ def make_matcher(db: VoiceprintDB, model_id: str, config: Config,
 
 
 # --- exemplars ---------------------------------------------------------------------------
-def extract_exemplars(audio: np.ndarray, transcript: Transcript, embedder: Embedder,
+Audio = np.ndarray | dict[str, np.ndarray]  # one signal, or one per channel
+
+
+def extract_exemplars(audio: Audio, transcript: Transcript, embedder: Embedder,
                       min_duration: float = 3.0, window: float = 6.0,
                       per_speaker: int = 8) -> list[Exemplar]:
     """Embed each speaker's clean speech (no overlapping words) in ~``window`` s pieces.
@@ -65,8 +68,10 @@ def extract_exemplars(audio: np.ndarray, transcript: Transcript, embedder: Embed
         if seg.speaker_id and not any(w.overlap for w in seg.words):
             by_speaker[seg.speaker_id].append(seg)
 
-    def clip(t0: float, t1: float) -> np.ndarray:
-        return audio[int(t0 * SAMPLE_RATE) : int(t1 * SAMPLE_RATE)]
+    def clip(t0: float, t1: float, channel: str) -> np.ndarray:
+        signal = audio.get(channel, next(iter(audio.values()))) if isinstance(
+            audio, dict) else audio
+        return signal[int(t0 * SAMPLE_RATE) : int(t1 * SAMPLE_RATE)]
 
     out: list[Exemplar] = []
     for sid, segs in by_speaker.items():
@@ -76,13 +81,13 @@ def extract_exemplars(audio: np.ndarray, transcript: Transcript, embedder: Embed
                 t = r0                                # an undetected change of speaker
                 while r1 - t >= min_duration:
                     end = r1 if r1 - t < window + min_duration else t + window
-                    pieces.append((t, end, s.id))
+                    pieces.append((t, end, s.id, s.channel_id))
                     t = end
         pieces.sort(key=lambda p: p[1] - p[0], reverse=True)
-        for t0, t1, seg_id in pieces[:per_speaker]:
-            out.append(Exemplar(sid, embedder.embed(clip(t0, t1)), t1 - t0, seg_id))
+        for t0, t1, seg_id, ch in pieces[:per_speaker]:
+            out.append(Exemplar(sid, embedder.embed(clip(t0, t1, ch)), t1 - t0, seg_id))
         if not pieces and sum(s.t1 - s.t0 for s in segs) >= min_duration:
-            joined = np.concatenate([clip(s.t0, s.t1) for s in segs])[
+            joined = np.concatenate([clip(s.t0, s.t1, s.channel_id) for s in segs])[
                 : int(MAX_EXEMPLAR_SECONDS * SAMPLE_RATE)]
             out.append(Exemplar(sid, embedder.embed(joined), len(joined) / SAMPLE_RATE, ""))
     return out
@@ -212,7 +217,7 @@ def apply_matches(transcript: Transcript, matches: dict[str, Match]) -> list[str
     return changed
 
 
-def process_session(session_dir: Path | None, audio: np.ndarray, transcript: Transcript,
+def process_session(session_dir: Path | None, audio: Audio, transcript: Transcript,
                     embedder: Embedder, config: Config, db: VoiceprintDB | None = None,
                     channel_type: str | None = None) -> dict[str, Match]:
     """Extract (and, if allowed, store) exemplars; identify speakers if enabled."""
@@ -309,7 +314,7 @@ class SessionIdentity:
             return {}
         return match_speakers(self.matcher, embeddings)
 
-    def finalize(self, session_dir: Path, audio: np.ndarray,
+    def finalize(self, session_dir: Path, audio: Audio,
                  transcript: Transcript) -> dict[str, Match]:
         return process_session(session_dir, audio, transcript, self.embedder, self.config,
                                self.db, self.channel_type)

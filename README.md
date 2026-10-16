@@ -17,6 +17,9 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap.
 - **M3** voiceprints: people are recognised across sessions. Name a speaker once
   (`tx speakers name`) or enroll from audio (`tx speakers enroll`); later sessions label
   them automatically or ask "might be X?". Consent, no-storage mode, encryption at rest.
+- **M5** system audio: transcribe what the computer plays (`--source system`), or
+  microphone + system audio as separate channels (`--source both`) with echo suppression
+  - the basis for recording Zoom/Teams/Jitsi calls.
 
 ## Usage
 ```sh
@@ -67,6 +70,27 @@ the default finds only 2.
 - Linux needs the PortAudio library for microphone input (`apt install libportaudio2`);
   the Windows/macOS wheels bundle it.
 
+### System audio / calls (`--source system|both`)
+```sh
+uv run tx devices                         # inputs + system-audio sources
+uv run tx live -s both -n 3               # you (mic) + call participants (system audio)
+uv run tx live -s system --output <id>    # only what a given output device plays
+uv run tx live -s both --mix              # one summed stream: cheaper on CPU
+```
+| Platform | System audio capture | Status |
+|---|---|---|
+| Linux | PulseAudio/PipeWire monitor via `parec` (pulseaudio-utils) | tested (PulseAudio 17) |
+| Windows | WASAPI loopback via `soundcard` (extra `system`) | **untested** |
+| macOS 14.2+ | Core Audio process tap, Swift helper `helpers/macos-audiotap` | **not yet compiled/tested** |
+| macOS < 14.2 | BlackHole virtual device selected as `--input` | - |
+
+- `both` keeps two channels (`mic`, `system`): remote participants and you are separated
+  by channel, each channel is recorded (`audio-mic.flac`, `audio-system.flac`) and
+  refined separately. Without a headset the mic hears the speakers: a mic segment that
+  repeats overlapping system audio is dropped as echo (`echo_segments_dropped` in the
+  transcript meta). Two ASR streams double the CPU load - `--mix` sums both into one
+  stream (no echo suppression, and live speaker labels are weaker; refinement helps).
+
 ### Voiceprints (speaker identification across sessions)
 ```sh
 uv run tx transcribe meeting.m4a                      # speakers S1, S2, ...
@@ -100,7 +124,7 @@ uv run tx speakers list | consent NAME --revoke | delete NAME | export F | impor
 ## Development
 ```sh
 uv sync --extra asr --extra speakers --extra audio --extra secure
-uv run pytest                 # fast unit tests
+uv run pytest                 # fast unit tests (+ system-audio test if PulseAudio runs)
 TX_SLOW=1 uv run pytest       # + end-to-end tests (downloads ~650 MB of models)
 uv run python -m transcribe.bench.dialogue out.wav   # synthetic de/en test dialogue
 uv run python -m transcribe.bench.latency out.wav small  # real-time live latency

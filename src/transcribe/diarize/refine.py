@@ -12,10 +12,12 @@ def _speaker_time(transcript: Transcript) -> list[tuple[float, float, str]]:
             if s.speaker_id]
 
 
-def map_to_reference(refined: Transcript, reference: Transcript) -> dict[str, str]:
+def map_to_reference(refined: Transcript, reference: Transcript,
+                     reserved: set[str] | None = None) -> dict[str, str]:
     """Greedy one-to-one mapping refined id -> reference id by overlapping speech time.
 
-    Refined speakers without a counterpart get fresh ids after the reference's ids.
+    Refined speakers without a counterpart get fresh ids after the reference's ids and
+    any ``reserved`` ids (e.g. speakers of other channels).
     """
     ref_spans = _speaker_time(reference)
     overlap: dict[tuple[str, str], float] = defaultdict(float)
@@ -32,7 +34,8 @@ def map_to_reference(refined: Transcript, reference: Transcript) -> dict[str, st
         if new not in mapping and old not in used:
             mapping[new] = old
             used.add(old)
-    taken = [int(x[1:]) for x in set(reference.speakers) | used if x[1:].isdigit()]
+    taken = [int(x[1:]) for x in set(reference.speakers) | used | (reserved or set())
+             if x[1:].isdigit()]
     next_id = max(taken, default=0) + 1
     for new in sorted(refined.speakers, key=lambda s: int(s[1:]) if s[1:].isdigit() else 0):
         if new not in mapping:
@@ -41,9 +44,10 @@ def map_to_reference(refined: Transcript, reference: Transcript) -> dict[str, st
     return mapping
 
 
-def relabel(refined: Transcript, reference: Transcript) -> Transcript:
+def relabel(refined: Transcript, reference: Transcript,
+            reserved: set[str] | None = None) -> Transcript:
     """Apply ``map_to_reference`` and carry over labels/person links from the reference."""
-    mapping = map_to_reference(refined, reference)
+    mapping = map_to_reference(refined, reference, reserved)
     for seg in refined.segments:
         if seg.speaker_id:
             seg.speaker_id = mapping[seg.speaker_id]

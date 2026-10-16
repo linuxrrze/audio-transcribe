@@ -2357,6 +2357,19 @@ wheels = [
 ]
 
 [[package]]
+name = "soundcard"
+version = "0.4.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f5/ef/85322a77399b19b23bd741ad57d86677687cdf9c9d9bc01997bc6bf9d30d/soundcard-0.4.6.tar.gz", hash = "sha256:9b46d64a26f97cd7d88bcfc385c97c069f97c5ec3404e4e7c23771598a8cf47b", size = 40830, upload-time = "2026-04-12T13:46:24.743Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4c/be/eb381e700a61b4ce899e14850d7ae78f9600fd2f8b58b4c52b8714e81917/soundcard-0.4.6-py3-none-any.whl", hash = "sha256:ab44b8c1033ac6ec49c5d618ce096dab9b60c7d7a427c92bef15856e5ebb3e09", size = 43939, upload-time = "2026-04-12T13:46:23.224Z" },
+]
+
+[[package]]
 name = "sounddevice"
 version = "0.5.6"
 source = { registry = "https://pypi.org/simple" }
@@ -2656,6 +2669,9 @@ speakers = [
     { name = "sherpa-onnx" },
     { name = "sherpa-onnx-core" },
 ]
+system = [
+    { name = "soundcard", marker = "sys_platform == 'win32'" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -2677,13 +2693,14 @@ requires-dist = [
     { name = "rich", specifier = ">=13.7" },
     { name = "sherpa-onnx", marker = "extra == 'speakers'", specifier = ">=1.12" },
     { name = "sherpa-onnx-core", marker = "extra == 'speakers'", specifier = ">=1.12" },
+    { name = "soundcard", marker = "sys_platform == 'win32' and extra == 'system'", specifier = ">=0.4" },
     { name = "sounddevice", marker = "extra == 'audio'", specifier = ">=0.4" },
     { name = "soundfile", marker = "extra == 'asr'", specifier = ">=0.12" },
     { name = "soxr", marker = "extra == 'asr'", specifier = ">=0.4" },
     { name = "tomli-w", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.12" },
 ]
-provides-extras = ["asr", "speakers", "audio", "gui", "secure", "pyannote"]
+provides-extras = ["asr", "speakers", "audio", "gui", "secure", "system", "pyannote"]
 
 [package.metadata.requires-dev]
 dev = [

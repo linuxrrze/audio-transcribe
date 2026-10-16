@@ -18,10 +18,32 @@ PARTS_DIR = "audio"
 MERGED = "audio.flac"
 
 
+def _names(channel: str) -> tuple[str, str]:
+    """(parts dir, merged file) for a channel; "" is the single-channel default."""
+    return (PARTS_DIR, MERGED) if not channel else (f"{PARTS_DIR}-{channel}",
+                                                    f"audio-{channel}.flac")
+
+
+def recorded_channels(session_dir: Path) -> list[str]:
+    """Channels with a recording in a session ("" = single-channel session)."""
+    names = {p.name for p in session_dir.iterdir()}
+    out = [""] if names & {PARTS_DIR, MERGED} else []
+    for n in sorted(names):
+        if n.startswith("audio-") and n.endswith(".flac"):
+            out.append(n[len("audio-") : -len(".flac")])
+        elif n.startswith(f"{PARTS_DIR}-") and (session_dir / n).is_dir():
+            ch = n[len(PARTS_DIR) + 1 :]
+            if ch not in out:
+                out.append(ch)
+    return out
+
+
 class AudioRecorder:
-    def __init__(self, session_dir: Path, part_seconds: float = 30.0) -> None:
+    def __init__(self, session_dir: Path, part_seconds: float = 30.0,
+                 channel: str = "") -> None:
         self.session_dir = session_dir
-        self.parts_dir = session_dir / PARTS_DIR
+        parts, self.merged_name = _names(channel)
+        self.parts_dir = session_dir / parts
         self.parts_dir.mkdir(parents=True, exist_ok=True)
         self.part_samples = int(part_seconds * SAMPLE_RATE)
         self._file: Any = None  # soundfile.SoundFile (imported lazily)
@@ -56,23 +78,26 @@ class AudioRecorder:
         import soundfile as sf
 
         self._close_part()
-        merged = self.session_dir / MERGED
-        sf.write(merged, load_recording(self.session_dir), SAMPLE_RATE, subtype="PCM_16")
+        merged = self.session_dir / self.merged_name
+        channel = "" if self.merged_name == MERGED else self.merged_name[6:-5]
+        sf.write(merged, load_recording(self.session_dir, channel), SAMPLE_RATE,
+                 subtype="PCM_16")
         for part in sorted(self.parts_dir.glob("part-*.flac")):
             part.unlink()
         self.parts_dir.rmdir()
         return merged
 
 
-def load_recording(session_dir: Path) -> np.ndarray:
+def load_recording(session_dir: Path, channel: str = "") -> np.ndarray:
     """Load a session's audio: the merged file, or the parts left by an interrupted run."""
     import soundfile as sf
 
-    merged = session_dir / MERGED
+    parts_name, merged_name = _names(channel)
+    merged = session_dir / merged_name
     if merged.exists():
         return sf.read(merged, dtype="float32")[0]
     parts = []
-    for part in sorted((session_dir / PARTS_DIR).glob("part-*.flac")):
+    for part in sorted((session_dir / parts_name).glob("part-*.flac")):
         try:
             parts.append(sf.read(part, dtype="float32")[0])
         except RuntimeError:  # last part of a crashed session may be truncated

@@ -14,6 +14,8 @@ from transcribe.core.events import (
     FinalSegment,
     PartialText,
     SegmentRelabeled,
+    SegmentRemoved,
+    SpeakerIdentified,
     StatusChanged,
 )
 from transcribe.export.base import fmt_clock
@@ -26,13 +28,14 @@ class _Line:
     t0: float
     speaker: str | None
     text: str
+    channel: str = ""
 
 
 @dataclass
 class LiveView:
     lines: dict[str, _Line] = field(default_factory=dict)
-    committed: str = ""
-    pending: str = ""
+    labels: dict[str, str] = field(default_factory=dict)  # speaker id -> display name
+    partials: dict[str, tuple[str, str]] = field(default_factory=dict)  # channel -> text
     level_db: float = -100.0
     status: str = "starting"
     detail: str = ""
@@ -45,12 +48,19 @@ class LiveView:
             self.now = max(self.now, event.t)
             match event:
                 case PartialText():
-                    self.committed, self.pending = event.committed, event.pending
+                    self.partials[event.channel_id] = (event.committed, event.pending)
                 case FinalSegment(segment=seg):
-                    self.lines[seg.id] = _Line(seg.t0, seg.speaker_id, seg.text)
+                    self.lines[seg.id] = _Line(seg.t0, seg.speaker_id, seg.text, seg.channel_id)
                 case SegmentRelabeled():
                     if line := self.lines.get(event.segment_id):
                         line.speaker = event.speaker_id
+                case SegmentRemoved():
+                    self.lines.pop(event.segment_id, None)
+                case SpeakerIdentified():
+                    label = event.label
+                    if event.suggestion:
+                        label += f" ({event.suggestion}?)"
+                    self.labels[event.speaker_id] = label
                 case AudioLevel():
                     self.level_db = event.rms_db
                 case StatusChanged():
@@ -60,18 +70,24 @@ class LiveView:
     def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
         with self._lock:
             height = max(4, (options.height or console.height) - 4)
-            body = [self._line(line) for line in list(self.lines.values())[-height:]]
-            partial = Text("  … ", style="dim")
-            partial.append(self.committed)
-            if self.pending:
-                partial.append((" " if self.committed else "") + self.pending, style="dim italic")
-            yield Group(*body, partial, Text(""), self._status_bar(options.max_width))
+            ordered = sorted(self.lines.values(), key=lambda line: line.t0)
+            body = [self._line(line) for line in ordered[-height:]]
+            multi = len(self.partials) > 1
+            partials = []
+            for channel, (committed, pending) in self.partials.items():
+                partial = Text(f"  … {'[' + channel + '] ' if multi else ''}", style="dim")
+                partial.append(committed)
+                if pending:
+                    partial.append((" " if committed else "") + pending, style="dim italic")
+                partials.append(partial)
+            yield Group(*body, *partials, Text(""), self._status_bar(options.max_width))
 
     def _line(self, line: _Line) -> Text:
         t = Text(f"[{fmt_clock(line.t0)}] ", style="dim")
         if line.speaker:
             idx = int(line.speaker[1:]) - 1 if line.speaker[1:].isdigit() else 0
-            t.append(f"Speaker {line.speaker[1:]}: ", style=f"bold {COLORS[idx % len(COLORS)]}")
+            label = self.labels.get(line.speaker, f"Speaker {line.speaker[1:]}")
+            t.append(f"{label}: ", style=f"bold {COLORS[idx % len(COLORS)]}")
         t.append(line.text)
         return t
 
