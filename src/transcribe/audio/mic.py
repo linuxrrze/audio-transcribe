@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import queue
+import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -10,6 +11,11 @@ from typing import Any
 import numpy as np
 
 from transcribe.audio.base import SAMPLE_RATE, AudioFrame, SourceInfo
+
+# PortAudio is not thread-safe for opening/closing streams or querying devices; with
+# several devices open at once (level meters) concurrent calls crash inside the host
+# API (seen with PulseAudio: an assertion in libpulse). All such calls hold this lock.
+PORTAUDIO_LOCK = threading.RLock()
 
 
 def _sd():
@@ -37,6 +43,11 @@ class InputDevice:
 
 
 def list_input_devices() -> list[InputDevice]:
+    with PORTAUDIO_LOCK:
+        return _list_input_devices()
+
+
+def _list_input_devices() -> list[InputDevice]:
     sd = _sd()
     hostapis = sd.query_hostapis()
     default_in = sd.default.device[0]
@@ -82,6 +93,10 @@ class MicSource:
     def open(self) -> None:
         import soxr
 
+        with PORTAUDIO_LOCK:
+            self._open(soxr)
+
+    def _open(self, soxr) -> None:
         sd = _sd()
         index = resolve_device(self.device)
         info = sd.query_devices(index, "input")
@@ -112,8 +127,9 @@ class MicSource:
                 t += len(block) / SAMPLE_RATE
 
     def close(self) -> None:
-        if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
+        with PORTAUDIO_LOCK:
+            stream, self._stream = self._stream, None
+            if stream is not None:
+                stream.stop()
+                stream.close()
         self._queue.put(None)

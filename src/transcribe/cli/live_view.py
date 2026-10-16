@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from rich.console import Console, ConsoleOptions, Group, RenderResult
 from rich.text import Text
 
+from transcribe.audio.levels import Level
+from transcribe.cli.levels import meter
 from transcribe.core.events import (
     AudioLevel,
     Event,
@@ -36,7 +38,7 @@ class LiveView:
     lines: dict[str, _Line] = field(default_factory=dict)
     labels: dict[str, str] = field(default_factory=dict)  # speaker id -> display name
     partials: dict[str, tuple[str, str]] = field(default_factory=dict)  # channel -> text
-    level_db: float = -100.0
+    levels: dict[str, float] = field(default_factory=dict)  # channel -> RMS dBFS
     status: str = "starting"
     detail: str = ""
     progress: float | None = None
@@ -62,7 +64,7 @@ class LiveView:
                         label += f" ({event.suggestion}?)"
                     self.labels[event.speaker_id] = label
                 case AudioLevel():
-                    self.level_db = event.rms_db
+                    self.levels[event.channel_id] = event.rms_db
                 case StatusChanged():
                     self.status, self.detail, self.progress = (event.status, event.detail,
                                                                event.progress)
@@ -92,14 +94,14 @@ class LiveView:
         return t
 
     def _status_bar(self, width: int) -> Text:
-        bars = max(0, min(20, int((self.level_db + 60) / 3)))
         t = Text(f" {self.status.upper()} ", style="reverse bold")
         t.append(f" {fmt_clock(self.now)} ")
-        t.append("▮" * bars, style="green" if bars < 16 else "red")
-        t.append("▯" * (20 - bars), style="dim")
+        for channel, db in self.levels.items():  # one meter per channel (mic, system, ...)
+            t.append(f" {channel} ")
+            t.append_text(meter(Level(rms_db=db, receiving=True), 12))
         if self.status == "refining" and self.progress is not None:
             t.append(f"  {self.detail} {self.progress:.0%}")
-        else:
+        elif self.status == "running":
             t.append("  Ctrl+C to stop", style="dim")
         t.truncate(width)
         return t

@@ -59,5 +59,5 @@ class MainWindow(QMainWindow):
             if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return
-            self.live.shutdown()
+        self.live.shutdown()  # also stops the idle level preview
         event.accept()

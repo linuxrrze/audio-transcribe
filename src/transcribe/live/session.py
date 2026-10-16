@@ -11,7 +11,6 @@ repeats what the system channel played is dropped.
 
 from __future__ import annotations
 
-import math
 import queue
 import threading
 import time
@@ -22,6 +21,7 @@ import numpy as np
 
 from transcribe.asr.base import AsrEngine
 from transcribe.audio.base import SAMPLE_RATE, AudioFrame, AudioSource
+from transcribe.audio.levels import level_db
 from transcribe.core.events import (
     AudioLevel,
     EventBus,
@@ -202,8 +202,7 @@ class LiveSession:
         self.streamers[ch].feed(frame.samples)
         t = recorder.total_samples / SAMPLE_RATE
         if t >= self._level_due[ch] and len(frame.samples):
-            rms = float(np.sqrt(np.mean(np.square(frame.samples))))
-            self.bus.publish(AudioLevel(t, ch, 20 * math.log10(max(rms, 1e-6))))
+            self.bus.publish(AudioLevel(t, ch, level_db(frame.samples)[0]))
             self._level_due[ch] = t + 0.1
 
     def _on_final(self, seg: Segment, audio: np.ndarray) -> None:

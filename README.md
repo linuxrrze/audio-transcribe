@@ -100,6 +100,14 @@ uv run tx live -s both -n 3               # you (mic) + call participants (syste
 uv run tx live -s system --output <id>    # only what a given output device plays
 uv run tx live -s both --mix              # one summed stream: cheaper on CPU
 ```
+**Check the devices first:** `tx levels` shows a live meter for every microphone (🎤,
+`--input`) and every system-audio source (🔊, `--output`). Speak and play something in
+the meeting app: the rows that move are the devices to use. `tx levels -i <mic> --output
+<id>` shows only those two. During `tx live`, the status bar has one meter per channel.
+In the app, each device picker has a meter that previews the selected device while idle
+(and shows the session level while recording); **Check devices…** lists all devices with
+meters and a "Use" button.
+
 | Platform | System audio capture | Status |
 |---|---|---|
 | Linux | PulseAudio/PipeWire monitor via `parec` (pulseaudio-utils) | tested (PulseAudio 17) |

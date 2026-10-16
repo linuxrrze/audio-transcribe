@@ -112,12 +112,14 @@ def test_live_tab_start_stop(app, config, tmp_path):
                            tracker=LiveSpeakerTracker(threshold_cluster),
                            streamer_config=StreamerConfig(step=0.5), meta=meta)
 
-    tab = LiveTab(config, source_factory=source_factory, session_factory=session_factory)
+    tab = LiveTab(config, source_factory=source_factory, session_factory=session_factory,
+                  preview=False)
     finished = []
     tab.session_finished.connect(finished.append)
     tab.start()
     assert pump(app, lambda: tab.running and tab.view.segment_count() == 2)
-    assert tab.panel.list.count() == 2 and set(tab.meters) == {"default"}
+    assert tab.panel.list.count() == 2
+    assert tab.mic_meter.status != "no data"  # session levels drive the meter
     tab._name_live("S2", "Fiona", enroll=False)  # user names a speaker while recording
     tab.stop()
     assert pump(app, lambda: finished)
@@ -169,3 +171,48 @@ def test_main_window_builds(app, config):
     w = MainWindow(config)
     assert w.tabs.count() == 2
     w.close()
+
+
+def test_live_tab_previews_selected_devices(app, config):
+    from tests.unit.test_levels import Tone
+    from transcribe.gui.live_tab import LiveTab
+
+    opened = []
+
+    def level_source(entry):
+        opened.append((entry.kind, entry.device))
+        return Tone(0.5 if entry.kind == "input" else 0.05)
+
+    tab = LiveTab(config, level_source_factory=level_source)
+    tab.show()
+    assert pump(app, lambda: tab.mic_meter.status == "signal")
+    assert tab.sys_meter.status == "no data"  # source "mic": system audio not monitored
+    tab.source.setCurrentIndex(tab.source.findData("both"))
+    assert pump(app, lambda: tab.sys_meter.status == "signal")
+    assert tab.sys_meter.rms_db < tab.mic_meter.rms_db
+    assert ("output", None) in opened
+    tab.hide()
+    assert tab._preview is None  # hidden tab releases the devices
+
+
+def test_device_check_dialog_use_selects_device(app, config):
+    from tests.unit.test_levels import Broken, Tone
+    from transcribe.audio.levels import DeviceEntry
+    from transcribe.gui.level_meter import DeviceCheckDialog
+    from transcribe.gui.live_tab import LiveTab
+
+    entries = [DeviceEntry("in:3", "input", "3", "USB Headset", False),
+               DeviceEntry("out:zoom", "output", "zoom", "Zoom output", False),
+               DeviceEntry("out:hdmi", "output", "hdmi", "HDMI", True)]
+    tab = LiveTab(config, preview=False)
+    tab.input.addItem("USB Headset", "3")
+    tab.output.addItem("Zoom output", "zoom")
+    dlg = DeviceCheckDialog(tab.select_device, devices=(entries, []),
+                            source_factory=lambda e: Broken(0) if e.device == "hdmi"
+                            else Tone(0.3))
+    assert pump(app, lambda: dlg.meters["in:3"].status == "signal"
+                and dlg.meters["out:hdmi"].status == "error")
+    tab.select_device(entries[1])
+    assert tab.output.currentData() == "zoom"
+    assert tab.source.currentData() == "both"  # switched so system audio is captured
+    dlg.reject()

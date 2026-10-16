@@ -279,6 +279,68 @@ def devices() -> None:
 
 
 @app.command()
+def levels(
+    input_device: Annotated[list[str] | None, typer.Option(
+        "--input", "-i", help="Only these inputs (index or name); repeatable.")] = None,
+    output_device: Annotated[list[str] | None, typer.Option(
+        "--output", help="Only these system-audio devices (see `tx devices`); repeatable.")]
+    = None,
+    seconds: Annotated[float | None, typer.Option(
+        help="Stop after this many seconds (default: until Ctrl+C).")] = None,
+) -> None:
+    """Show live signal levels of microphones and system-audio devices.
+
+    Speak, and play something in the meeting app: the devices that move are the ones to
+    pass to `tx live --input ... --output ...`.
+    """
+    import time
+
+    from rich.live import Live
+
+    from transcribe.audio.levels import DeviceEntry, LevelMonitor, device_source, list_devices
+    from transcribe.cli.levels import levels_table
+
+    entries, errors = list_devices()
+    for e in errors:
+        err.print(f"[yellow]{e}[/]")
+    if input_device or output_device:
+        from transcribe.audio.mic import resolve_device
+
+        wanted_in = set()
+        for d in input_device or []:
+            try:
+                wanted_in.add(str(resolve_device(d)))
+            except ValueError as e:
+                err.print(f"[red]{e}[/]")
+                raise typer.Exit(1) from e
+        known_out = {e.device for e in entries if e.kind == "output"}
+        entries = [e for e in entries
+                   if (e.kind == "input" and e.device in wanted_in)
+                   or (e.kind == "output" and e.device in (output_device or []))]
+        for o in output_device or []:  # allow ids not listed (e.g. a pid on macOS)
+            if o not in known_out:
+                entries.append(DeviceEntry(f"out:{o}", "output", o, o, False))
+    if not entries:
+        err.print("[red]No audio devices found.[/]")
+        raise typer.Exit(1)
+    rows = [(e.key, f"{'🎤' if e.kind == 'input' else '🔊'} {e.name}", e.is_default)
+            for e in entries]
+    monitor = LevelMonitor({e.key: device_source(e) for e in entries}).start()
+    end = time.monotonic() + seconds if seconds else None
+    title = "Audio levels - 🎤 inputs (--input), 🔊 system audio (--output); * = default"
+    try:
+        with Live(levels_table(rows, monitor.snapshot(), title), console=console,
+                  refresh_per_second=10) as live:
+            while end is None or time.monotonic() < end:
+                live.update(levels_table(rows, monitor.snapshot(), title))
+                time.sleep(0.1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        monitor.stop()
+
+
+@app.command()
 def export(
     session: Annotated[Path, typer.Argument(help="Session folder or transcript.json.")],
     fmt: Annotated[str, typer.Option("--format", "-f", help="Exporter name.")] = "txt",
