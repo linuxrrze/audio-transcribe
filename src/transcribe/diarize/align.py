@@ -41,6 +41,24 @@ def assign_speakers(words: list[Word], turns: list[Turn], max_gap: float = 0.5) 
         )
         if nearest and min(abs(nearest.t0 - word.t1), abs(word.t0 - nearest.t1)) <= max_gap:
             word.speaker_id = nearest.speaker_id
+    _fill_from_neighbours(words, max_gap * 2)
+
+
+def _fill_from_neighbours(words: list[Word], max_gap: float) -> None:
+    """Words outside every turn (ASR timing drift) inherit the adjacent word's speaker."""
+    for i, word in enumerate(words):
+        if word.speaker_id is not None:
+            continue
+        prev = words[i - 1] if i > 0 else None
+        nxt = next((w for w in words[i + 1 :] if w.speaker_id is not None), None)
+        candidates: list[tuple[float, str]] = []
+        if prev is not None and prev.speaker_id is not None:
+            candidates.append((word.t0 - prev.t1, prev.speaker_id))
+        if nxt is not None and nxt.speaker_id is not None:
+            candidates.append((nxt.t0 - word.t1, nxt.speaker_id))
+        candidates = [c for c in candidates if c[0] <= max_gap]
+        if candidates:
+            word.speaker_id = min(candidates)[1]
 
 
 def words_to_segments(words: list[Word], max_pause: float = 1.5, max_duration: float = 30.0,

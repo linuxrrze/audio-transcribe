@@ -54,7 +54,7 @@ def relabel(refined: Transcript, reference: Transcript) -> Transcript:
     for old_id in refined.speakers:
         sid = mapping[old_id]
         ref = reference.speakers.get(sid)
-        speakers[sid] = Speaker(sid, ref.label if ref else f"Speaker {sid[1:]}",
-                                ref.person_id if ref else None)
+        speakers[sid] = (Speaker(sid, ref.label, ref.person_id, ref.confirmed) if ref
+                         else Speaker(sid, f"Speaker {sid[1:]}"))
     refined.speakers = dict(sorted(speakers.items(), key=lambda kv: int(kv[0][1:])))
     return refined

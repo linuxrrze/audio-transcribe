@@ -82,6 +82,7 @@ This is the investigation area the request asked for. Findings and design:
   - `person(id, display_name, created_at, notes, consent_at)`
   - `voiceprint(id, person_id, model_id, vector BLOB, quality, duration_s, source_session, channel_type, created_at)`
   - `enroll_clip(id, person_id, path, duration_s)` (optional)
+- *(M3 as implemented: scores are inflated by shared channel characteristics, so decisions use threshold 0.85 **and** a 0.10 margin over the best competitor, with one-to-one assignment per session; exemplars are ≥3 s pieces split at pauses, and a medoid consistency check (cosine ≥ 0.70, ≥75 % agreeing) blocks enrolling or confidently labelling speakers that diarization merged. Adaptive S-norm was evaluated and dropped: no EER gain on channel mismatch.)*
 - **Matching:** open-set identification. Score = cosine against the person's centroid plus the best-k exemplars. Decision thresholds: "known" ≥ τ_hi, "suggest?" between τ_lo and τ_hi (the GUI asks "Is this Alice?"), otherwise unknown. Thresholds are calibrated per model on a validation set, and a target false-accept rate is shown in the settings.
 - **Enrollment paths:**
   1. *Implicit:* after a session, the user renames "Speaker 2" → "Alice", and its clean, single-speaker segments are saved as voiceprints.

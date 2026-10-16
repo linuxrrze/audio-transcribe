@@ -38,10 +38,16 @@ class SpeakerConfig:
     embedding_model: str = "wespeaker-resnet34-lm"
     diarize_threshold: float = 0.5  # clustering distance; lower -> more speakers
     num_threads: int = 0  # 0 = half the CPU cores
-    identify_known: bool = True
-    store_voiceprints: bool = True
-    match_threshold_high: float = 0.65
-    match_threshold_low: float = 0.50
+    identify_known: bool = True  # label speakers that match stored voiceprints
+    store_voiceprints: bool = True  # False: never persist embeddings (sessions or DB)
+    encrypt_voiceprints: bool = False  # encrypt at rest (key in OS keyring); 'secure' extra
+    # Calibrated with `python -m transcribe.bench.calibrate --sweep` (WeSpeaker ResNet34-LM,
+    # synthetic VCTK voices): 0 wrong labels on same/other-mic/phone channels; a channel
+    # mismatch yields suggestions instead of confident labels.
+    match_threshold_high: float = 0.85  # auto-label at/above (and margin satisfied)
+    match_threshold_low: float = 0.60  # suggest ("Is this X?") at/above
+    match_margin: float = 0.10  # required lead over the best competing candidate
+    max_exemplars_per_person: int = 30
 
 
 @dataclass

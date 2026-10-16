@@ -49,6 +49,18 @@ class SpeakerDetected(Event):
 
 
 @dataclass(frozen=True)
+class SpeakerIdentified(Event):
+    """Voiceprint matching changed a speaker's identity (label or suggestion)."""
+
+    speaker_id: str
+    label: str
+    person_id: int | None
+    decision: str  # "known" | "suggest" | "unknown"
+    score: float
+    suggestion: str | None = None
+
+
+@dataclass(frozen=True)
 class AudioLevel(Event):
     channel_id: str
     rms_db: float

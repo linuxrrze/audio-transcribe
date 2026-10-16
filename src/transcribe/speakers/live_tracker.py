@@ -50,6 +50,12 @@ class LiveSpeakerTracker:
     def speakers(self) -> list[str]:
         return sorted({i.speaker for i in self._items}, key=lambda s: int(s[1:]))
 
+    def embeddings_by_speaker(self) -> dict[str, list[np.ndarray]]:
+        out: dict[str, list[np.ndarray]] = {}
+        for item in self._items:
+            out.setdefault(item.speaker, []).append(item.embedding)
+        return out
+
     def assign(self, key: str, embedding: np.ndarray | None,
                duration: float) -> tuple[str, dict[str, str]]:
         """Label utterance ``key``. Returns (speaker, {earlier_key: new_speaker} changes).

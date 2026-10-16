@@ -22,6 +22,7 @@ asr = [
 speakers = ["sherpa-onnx>=1.12", "sherpa-onnx-core>=1.12"]  # core listed explicitly: lock misses it
 audio = ["sounddevice>=0.4"]
 gui = ["PySide6>=6.7"]
+secure = ["cryptography>=42", "keyring>=25"]
 pyannote = ["pyannote.audio>=3.3"]
 
 [project.scripts]
@@ -72,5 +73,5 @@ markers = ["slow: needs downloaded models (run with TX_SLOW=1)"]
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["ctranslate2", "faster_whisper.*", "faster_whisper", "sherpa_onnx", "sounddevice", "soundfile", "soxr"]
+module = ["keyring", "keyring.*", "ctranslate2", "faster_whisper.*", "faster_whisper", "sherpa_onnx", "sounddevice", "soundfile", "soxr"]
 ignore_missing_imports = true

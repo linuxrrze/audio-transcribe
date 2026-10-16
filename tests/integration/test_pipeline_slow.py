@@ -3,7 +3,7 @@
 import pytest
 
 from transcribe.audio.file import load_audio
-from transcribe.bench.dialogue import synthesize
+from transcribe.bench.dialogue import SCRIPT, synthesize
 from transcribe.bench.metrics import evaluate
 from transcribe.core.config import Config
 from transcribe.core.offline import load_engines, transcribe_audio
@@ -58,3 +58,58 @@ def test_live_replay_dialogue(tmp_path):
         assert report.num_hyp_speakers == 2
         assert report.speaker_accuracy > 0.95
         assert max(report.wer_by_language.values()) < 0.15
+
+
+def test_cross_session_identification(tmp_path):
+    """Name speakers in session 1; session 2 recognises them, a new voice stays unknown."""
+    from transcribe.speakers.embedder import SherpaEmbedder
+    from transcribe.speakers.identity import name_speaker, process_session
+    from transcribe.speakers.voiceprint_db import VoiceprintDB
+
+    config = Config()
+    db = VoiceprintDB(tmp_path / "vp.sqlite")
+    asr, diarizer = load_engines(config, diarize=True)
+    embedder = SherpaEmbedder.from_config(config)
+
+    def session(name, script):
+        wav = tmp_path / f"{name}.wav"
+        ref = synthesize(wav, script=script)
+        audio = load_audio(wav)
+        transcript = transcribe_audio(audio, asr, diarizer, ["de", "en"])
+        sdir = tmp_path / name
+        sdir.mkdir()
+        process_session(sdir, audio, transcript, embedder, config, db)
+        transcript.save(sdir / "transcript.json")
+        return sdir, transcript, ref
+
+    s1, t1, _ = session("one", SCRIPT)
+    first: dict[str, str] = {}
+    for seg in t1.segments:
+        first.setdefault(seg.speaker_id, seg.text)
+    assert first["S1"].startswith("Guten Morgen") and first["S2"].startswith("Good morning")
+    assert name_speaker(s1, s1 / "transcript.json", "S1", "Thorsten", config, True, db=db)
+    assert name_speaker(s1, s1 / "transcript.json", "S2", "Amy", config, True, db=db)
+
+    _, t2, ref2 = session("two", [
+        ("kerstin", "Guten Tag zusammen, ich bin neu im Team und stelle mich kurz vor."),
+        ("amy", "Welcome to the team. We are happy to have you here with us this year."),
+        ("thorsten", "Willkommen! Ich zeige dir nachher gerne unser Büro und die Küche."),
+        ("kerstin", "Vielen Dank, das ist sehr nett. Ich freue mich auf die Zusammenarbeit."),
+        ("amy", "If you have any questions about the project, just send me a message."),
+    ])
+    # 1. Nothing lost: every reference turn has transcribed words (both languages).
+    for r in ref2:
+        assert any(r.t0 - 0.5 <= seg.t0 <= r.t1 for seg in t2.segments), r
+    # 2. Never a confident wrong name: a labelled segment's voice must match its label.
+    names = {"thorsten": "Thorsten", "amy": "Amy"}
+    for seg in t2.segments:
+        spk = t2.speakers[seg.speaker_id]
+        voice = next(r.speaker for r in ref2 if r.t0 - 0.5 <= seg.t0 <= r.t1)
+        if spk.label in names.values():
+            assert names.get(voice) == spk.label, (seg.text, voice, spk)
+    # 3. Thorsten (diarized cleanly here) is recognised: labelled or at least suggested.
+    thorsten = [t2.speakers[seg.speaker_id] for seg in t2.segments
+                if next(r.speaker for r in ref2 if r.t0 - 0.5 <= seg.t0 <= r.t1) == "thorsten"]
+    assert any("Thorsten" in (spk.label, spk.suggestion) for spk in thorsten)
+    # (Amy is not asserted: diarization merges the two female voices in this clip, and a
+    # merged speaker must not be labelled - covered by the consistency checks.)

@@ -14,6 +14,9 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap.
 - **M2** live transcription: `tx live` — microphone capture, streaming ASR
   (LocalAgreement-2), provisional live speaker labels, crash-safe recording, and a
   refinement pass (full offline pipeline) when the session stops.
+- **M3** voiceprints: people are recognised across sessions. Name a speaker once
+  (`tx speakers name`) or enroll from audio (`tx speakers enroll`); later sessions label
+  them automatically or ask "might be X?". Consent, no-storage mode, encryption at rest.
 
 ## Usage
 ```sh
@@ -64,12 +67,43 @@ the default finds only 2.
 - Linux needs the PortAudio library for microphone input (`apt install libportaudio2`);
   the Windows/macOS wheels bundle it.
 
+### Voiceprints (speaker identification across sessions)
+```sh
+uv run tx transcribe meeting.m4a                      # speakers S1, S2, ...
+uv run tx speakers name <session> S2 "Alice" --consent  # label + learn Alice's voice
+uv run tx speakers enroll "Bob" --file bob.wav --consent  # or --record 30
+uv run tx transcribe next_meeting.m4a                  # "S1 is Alice (score 0.91)"
+uv run tx speakers identify <session>                   # re-check after new enrollments
+uv run tx speakers list | consent NAME --revoke | delete NAME | export F | import F
+```
+- Each session stores a few **exemplar embeddings** per speaker (`exemplars.npz`, from
+  ≥3 s pieces of clean speech that never span a pause). Naming a speaker enrolls them.
+- **Decisions:** a speaker is labelled only when the score is ≥ 0.85 *and* leads the best
+  competitor by ≥ 0.10 (one person per session speaker); 0.60–0.85 gives a suggestion.
+  Calibrated with `python -m transcribe.bench.calibrate --sweep` on synthetic voices:
+  0 wrong labels with the same, a different, or a phone-like channel - a channel
+  mismatch yields suggestions instead of labels. Real recordings will differ; re-run the
+  bench with your own data before relying on it.
+- **Safety against diarization errors:** a speaker whose exemplars disagree (two voices
+  merged) is never enrolled and never labelled confidently. A speaker with mixed
+  languages is transcribed with per-turn language detection, so no speech is dropped.
+- **Privacy (GDPR Art. 9 - biometric data):** everything stays local; enrolling requires
+  `--consent` (recorded per person); `consent --revoke` deletes the person's voiceprints;
+  `[speakers] store_voiceprints = false` disables all storage;
+  `encrypt_voiceprints = true` (extra `secure`) encrypts DB vectors and session exemplars
+  with a key kept in the OS keyring (or `TRANSCRIBE_VOICEPRINT_KEY`). Exports are
+  unencrypted JSON - handle them as sensitive. Identification is for convenience only:
+  not authentication, no anti-spoofing.
+- Known limitation: diarization sometimes merges similar voices (e.g. two male voices);
+  those speakers then stay unlabelled until refined (`tx refine -n N`).
+
 ## Development
 ```sh
-uv sync --extra asr --extra speakers --extra audio
+uv sync --extra asr --extra speakers --extra audio --extra secure
 uv run pytest                 # fast unit tests
 TX_SLOW=1 uv run pytest       # + end-to-end tests (downloads ~650 MB of models)
 uv run python -m transcribe.bench.dialogue out.wav   # synthetic de/en test dialogue
 uv run python -m transcribe.bench.latency out.wav small  # real-time live latency
+uv run python -m transcribe.bench.calibrate --sweep      # voiceprint thresholds
 ```
 Optional extras: `asr`, `speakers`, `audio`, `gui`, `pyannote`.

@@ -67,6 +67,20 @@ ASSETS: dict[str, ModelAsset] = {
             "vits-piper-en_US-amy-low/en_US-amy-low.onnx",
             "Piper English voice (test fixtures only)",
         ),
+        ModelAsset(
+            "piper-de-kerstin", "tts",
+            f"{_SHERPA}/tts-models/vits-piper-de_DE-kerstin-low.tar.bz2",
+            "4bfe121d5f690a3b87acecd7ae1e70b48f4589ce6ae9f45a1809e6eb19fad97b",
+            "vits-piper-de_DE-kerstin-low/de_DE-kerstin-low.onnx",
+            "Piper German voice (test fixtures only)",
+        ),
+        ModelAsset(
+            "piper-en-vctk", "tts",
+            f"{_SHERPA}/tts-models/vits-piper-en_GB-vctk-medium.tar.bz2",
+            "abafd35bdab0a72a3c6b947228ae3cccdf3624db83313c77d1abb5cbc75e1f64",
+            "vits-piper-en_GB-vctk-medium/en_GB-vctk-medium.onnx",
+            "Piper English multi-speaker (109 VCTK voices; calibration only)",
+        ),
     ]
 }
 

@@ -11,7 +11,19 @@ import numpy as np
 from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core import models
 
-VOICES = {"thorsten": ("piper-de-thorsten", "de"), "amy": ("piper-en-amy", "en")}
+VOICES: dict[str, tuple[str, str, int]] = {  # name -> (asset, language, speaker id)
+    "thorsten": ("piper-de-thorsten", "de", 0),
+    "amy": ("piper-en-amy", "en", 0),
+    "kerstin": ("piper-de-kerstin", "de", 0),
+}
+VCTK_SPEAKERS = 109
+
+
+def voice(name: str) -> tuple[str, str, int]:
+    """Named voice, or ``vctk-<n>`` for speaker n of the VCTK multi-speaker model."""
+    if name.startswith("vctk-"):
+        return "piper-en-vctk", "en", int(name[5:]) % VCTK_SPEAKERS
+    return VOICES[name]
 
 SCRIPT: list[tuple[str, str]] = [
     ("thorsten", "Guten Morgen zusammen. Wir besprechen heute den Zeitplan für das neue "
@@ -36,33 +48,48 @@ class RefTurn:
     t1: float
 
 
-def _tts(voice: str):
+_ENGINES: dict[str, object] = {}
+
+
+def _tts(asset: str):
+    if asset in _ENGINES:
+        return _ENGINES[asset]
     import sherpa_onnx
 
-    model = models.ensure(VOICES[voice][0])
+    model = models.ensure(asset)
     d = model.parent
     cfg = sherpa_onnx.OfflineTtsConfig(model=sherpa_onnx.OfflineTtsModelConfig(
+        # noise scales 0: deterministic output, so fixtures are identical on every run
+        # (VITS sampling otherwise yields different audio each time -> flaky tests).
         vits=sherpa_onnx.OfflineTtsVitsModelConfig(
-            model=str(model), tokens=str(d / "tokens.txt"), data_dir=str(d / "espeak-ng-data")),
+            model=str(model), tokens=str(d / "tokens.txt"), data_dir=str(d / "espeak-ng-data"),
+            noise_scale=0.0, noise_scale_w=0.0),
         num_threads=2))
-    return sherpa_onnx.OfflineTts(cfg)
+    _ENGINES[asset] = sherpa_onnx.OfflineTts(cfg)
+    return _ENGINES[asset]
+
+
+def speak(name: str, text: str) -> np.ndarray:
+    """Synthesize ``text`` with voice ``name`` at 16 kHz (silence trimmed)."""
+    import soxr
+
+    asset, _, sid = voice(name)
+    gen = _tts(asset).generate(text, sid=sid, speed=1.0)  # type: ignore[attr-defined]
+    audio = soxr.resample(np.asarray(gen.samples, dtype=np.float32), gen.sample_rate,
+                          SAMPLE_RATE)
+    return _trim(audio)
 
 
 def synthesize(out_wav: Path, pause: float = 0.7,
                script: list[tuple[str, str]] = SCRIPT) -> list[RefTurn]:
     """Write ``out_wav`` (16 kHz) and ``<out_wav>.json`` with the reference turns."""
     import soundfile as sf
-    import soxr
 
-    engines = {v: _tts(v) for v in {s for s, _ in script}}
     gap = np.zeros(int(pause * SAMPLE_RATE), dtype=np.float32)
     parts, turns, t = [gap], [], pause
     for speaker, text in script:
-        gen = engines[speaker].generate(text, sid=0, speed=1.0)
-        audio = soxr.resample(np.asarray(gen.samples, dtype=np.float32), gen.sample_rate,
-                              SAMPLE_RATE)
-        audio = _trim(audio)
-        turns.append(RefTurn(speaker, VOICES[speaker][1], text, t, t + len(audio) / SAMPLE_RATE))
+        audio = speak(speaker, text)
+        turns.append(RefTurn(speaker, voice(speaker)[1], text, t, t + len(audio) / SAMPLE_RATE))
         parts += [audio, gap]
         t += len(audio) / SAMPLE_RATE + pause
     out_wav.parent.mkdir(parents=True, exist_ok=True)

@@ -39,6 +39,9 @@ class Speaker:
     id: str
     label: str
     person_id: int | None = None
+    confirmed: bool = False  # identity set by the user; automatic identification keeps it
+    suggestion: str | None = None  # "Is this <name>?" from voiceprint matching
+    score: float | None = None
 
 
 @dataclass

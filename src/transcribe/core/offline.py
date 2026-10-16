@@ -27,6 +27,7 @@ VadFn = Callable[[np.ndarray], list[tuple[float, float]]]
 
 LANG_PROBE_SECONDS = 30.0  # audio per speaker used for language detection
 MIN_REGION_FOR_LID = 2.0  # shorter VAD regions inherit a neighbour's language
+LANG_CONFIDENT = 0.95  # speaker language prior below this -> detect per turn
 
 
 @dataclass(frozen=True)
@@ -57,15 +58,16 @@ def speaker_probe(audio: np.ndarray, turns: list[Turn], seconds: float) -> np.nd
     return np.concatenate(parts) if parts else audio[: int(seconds * SAMPLE_RATE)]
 
 
-def plan_chunks(turns: list[Turn], speaker_lang: dict[str, str], duration: float) -> list[Chunk]:
-    """Split the timeline at language changes; boundaries fall in the gap between turns."""
-    turns = sorted(turns, key=lambda t: t.t0)
+def plan_chunks(turns: list[Turn], turn_langs: list[str], duration: float) -> list[Chunk]:
+    """Split the timeline at language changes; boundaries fall in the gap between turns.
+
+    ``turns`` must be sorted by start time; ``turn_langs`` gives each turn's language.
+    """
     if not turns:
         return [Chunk(0.0, duration, None)]
     chunks: list[Chunk] = []
-    start, lang, prev_end = 0.0, speaker_lang[turns[0].speaker_id], turns[0].t1
-    for t in turns[1:]:
-        tl = speaker_lang[t.speaker_id]
+    start, lang, prev_end = 0.0, turn_langs[0], turns[0].t1
+    for t, tl in zip(turns[1:], turn_langs[1:], strict=True):
         if tl != lang:
             cut = (prev_end + t.t0) / 2 if t.t0 > prev_end else t.t0
             chunks.append(Chunk(start, cut, lang))
@@ -113,8 +115,9 @@ def transcribe_audio(
     turns: list[Turn] = []
     if diarizer is not None:
         t = time.perf_counter()
-        turns = renumber_speakers(
-            diarizer.diarize(audio, num_speakers, lambda f: report("diarize", f)))
+        turns = sorted(renumber_speakers(
+            diarizer.diarize(audio, num_speakers, lambda f: report("diarize", f))),
+            key=lambda x: x.t0)
         timings["diarize_s"] = time.perf_counter() - t
     report("diarize", 1.0)
 
@@ -124,10 +127,11 @@ def transcribe_audio(
         by_speaker[turn.speaker_id].append(turn)
     speaker_lang: dict[str, str] = {}
     lang_probs: dict[str, dict[str, float]] = {}
+    per_turn: set[str] = set()
     chunks: list[Chunk]
     if len(languages) == 1:
         speaker_lang = dict.fromkeys(by_speaker, languages[0])
-        chunks = (plan_chunks(turns, speaker_lang, duration) if turns
+        chunks = (plan_chunks(turns, [languages[0]] * len(turns), duration) if turns
                   else [Chunk(0.0, duration, languages[0])])
     elif turns:
         for spk, spk_turns in by_speaker.items():
@@ -135,7 +139,18 @@ def transcribe_audio(
                                         languages)
             lang_probs[spk] = probs
             speaker_lang[spk] = max(probs, key=probs.__getitem__)
-        chunks = plan_chunks(turns, speaker_lang, duration)
+            if max(probs.values()) < LANG_CONFIDENT:
+                per_turn.add(spk)
+        turn_langs = [speaker_lang[x.speaker_id] for x in turns]
+        for i, turn in enumerate(turns):
+            # An undecided prior means the speaker mixes languages: code-switching, or a
+            # diarization error that merged two people. Pinning one language would make
+            # Whisper drop or translate the other, so decide per turn.
+            if turn.speaker_id in per_turn and turn.t1 - turn.t0 >= MIN_REGION_FOR_LID:
+                a, b = int(turn.t0 * SAMPLE_RATE), int(turn.t1 * SAMPLE_RATE)
+                probs = asr.detect_language(audio[a:b], languages)
+                turn_langs[i] = max(probs, key=probs.__getitem__)
+        chunks = plan_chunks(turns, turn_langs, duration)
     else:
         # No speakers to anchor a language prior: use VAD regions as language units.
         if vad is None:
@@ -145,8 +160,7 @@ def transcribe_audio(
         regions = vad(audio) or [(0.0, duration)]
         langs = region_languages(audio, regions, asr, languages)
         pseudo = [Turn(t0, t1, f"R{i}") for i, (t0, t1) in enumerate(regions)]
-        region_lang = {t.speaker_id: lang for t, lang in zip(pseudo, langs, strict=True)}
-        chunks = plan_chunks(pseudo, region_lang, duration)
+        chunks = plan_chunks(pseudo, langs, duration)
     timings["language_s"] = time.perf_counter() - t
     report("language", 1.0)
 
@@ -183,6 +197,7 @@ def transcribe_audio(
         "speaker_languages": speaker_lang,
         "speaker_language_probs": {s: {k: round(v, 4) for k, v in p.items()}
                                    for s, p in lang_probs.items()},
+        "per_turn_language": sorted(per_turn),
         "asr_engine": asr.name,
         "diarizer": diarizer.name if diarizer else None,
         "timings": {k: round(v, 2) for k, v in timings.items()},

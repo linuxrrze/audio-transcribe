@@ -31,3 +31,10 @@ def test_long_monologue_splits_at_sentence_end():
     segs = words_to_segments(words, max_duration=15.0)
     assert [len(s.words) for s in segs] == [20, 20]
     assert all(s.words[-1].text.endswith(".") for s in segs)
+
+
+def test_orphan_word_inherits_adjacent_speaker():
+    words = [Word(" a", 0.0, 1.0), Word(" orphan", 2.6, 2.9), Word(" b", 3.0, 4.0),
+             Word(" lonely", 20.0, 20.5)]
+    assign_speakers(words, [Turn(0.0, 1.0, "S1"), Turn(3.0, 4.0, "S2")])
+    assert [w.speaker_id for w in words] == ["S1", "S2", "S2", None]

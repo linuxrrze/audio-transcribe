@@ -26,7 +26,7 @@ class FakeAsr:
     def detect_language(self, audio, languages):
         self.detect_calls += 1
         de = float(np.mean(audio[audio > 0])) < 0.15
-        return {"de": 0.9, "en": 0.1} if de else {"de": 0.1, "en": 0.9}
+        return {"de": 0.99, "en": 0.01} if de else {"de": 0.01, "en": 0.99}
 
     def transcribe(self, audio, offset=0.0, language=None, prompt=None, progress=None):
         self.calls.append((round(offset, 2), round(offset + len(audio) / SAMPLE_RATE, 2),
@@ -58,8 +58,7 @@ def test_renumber_by_first_appearance():
 
 def test_plan_chunks_cuts_in_gaps_and_merges_same_language():
     turns = [Turn(0, 2, "S1"), Turn(3, 5, "S2"), Turn(5.5, 6, "S3"), Turn(7, 9, "S1")]
-    langs = {"S1": "de", "S2": "en", "S3": "en"}
-    assert plan_chunks(turns, langs, 10.0) == [
+    assert plan_chunks(turns, ["de", "en", "en", "de"], 10.0) == [
         Chunk(0.0, 2.5, "de"), Chunk(2.5, 6.5, "en"), Chunk(6.5, 10.0, "de")]
 
 
@@ -77,6 +76,27 @@ def test_mixed_language_pipeline():
     assert {k: v.label for k, v in tr.speakers.items()} == {"S1": "Speaker 1", "S2": "Speaker 2"}
     assert tr.meta["speaker_languages"] == {"S1": "de", "S2": "en"}
     assert {"diarize", "language", "transcribe"} <= set(stages)
+
+
+def test_mixed_language_speaker_gets_per_turn_detection():
+    # Diarization merged a German and an English voice into one speaker.
+    spans = [(0, 3, "de"), (4, 7, "en"), (8, 11, "de")]
+    audio = make_audio(spans, 12.0)
+    dia = FakeDiarizer([Turn(0, 3, "A"), Turn(4, 7, "A"), Turn(8, 11, "A")])
+
+    class UndecidedAsr(FakeAsr):
+        def detect_language(self, audio, languages):
+            voiced = audio[audio > 0]
+            if np.ptp(voiced) > 0.05:  # probe mixes both languages: prior undecided
+                self.detect_calls += 1
+                return {"de": 0.6, "en": 0.4}
+            return super().detect_language(audio, languages)
+
+    asr = UndecidedAsr()
+    tr = transcribe_audio(audio, asr, dia, ["de", "en"])
+    assert [c[2] for c in asr.calls] == ["de", "en", "de"]
+    assert tr.meta["per_turn_language"] == ["S1"]
+    assert {s.text.split()[0] for s in tr.segments if s.lang == "en"} == {"en"}
 
 
 def test_single_language_skips_detection():

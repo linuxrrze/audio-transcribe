@@ -25,14 +25,16 @@ from transcribe.core.events import (
     PartialText,
     SegmentRelabeled,
     SpeakerDetected,
+    SpeakerIdentified,
     StatusChanged,
 )
 from transcribe.diarize.refine import relabel
 from transcribe.live.streamer import ChannelStreamer, StreamerConfig, VadFn
 from transcribe.speakers.embedder import Embedder
+from transcribe.speakers.identity import SessionIdentity, apply_matches
 from transcribe.speakers.live_tracker import LiveSpeakerTracker
 from transcribe.storage import session_store
-from transcribe.storage.recorder import AudioRecorder
+from transcribe.storage.recorder import AudioRecorder, load_recording
 from transcribe.storage.transcript_model import Segment, Speaker, Transcript
 
 LIVE_TRANSCRIPT = "transcript.live.json"
@@ -54,9 +56,11 @@ class LiveSession:
         streamer_config: StreamerConfig | None = None,
         meta: dict[str, object] | None = None,
         save_interval: float = 5.0,
+        identity: SessionIdentity | None = None,
     ) -> None:
         self.source, self.session_dir = source, session_dir
         self.embedder, self.tracker, self.refine_fn = embedder, tracker, refine
+        self.identity = identity
         self.bus = EventBus()
         self.transcript = Transcript(meta=dict(meta or {}))
         self.final_transcript: Transcript | None = None
@@ -185,12 +189,22 @@ class LiveSession:
                 if old is not None:
                     self._set_speaker(old, new)
                     self.bus.publish(SegmentRelabeled(seg.t1, seg_id, new))
+            if self.identity is not None:
+                self._identify(seg.t1)
         with self._lock:
             self._segments[seg.id] = seg
             self.transcript.segments.append(seg)
         self.bus.publish(FinalSegment(seg.t1, seg))
         if time.monotonic() - self._last_save >= self._save_interval:
             self._save_live()
+
+    def _identify(self, t: float) -> None:
+        assert self.tracker is not None and self.identity is not None
+        matches = self.identity.live_matches(self.tracker.embeddings_by_speaker())
+        for sid in apply_matches(self.transcript, matches):
+            spk, m = self.transcript.speakers[sid], matches[sid]
+            self.bus.publish(SpeakerIdentified(t, sid, spk.label, spk.person_id,
+                                               m.decision.value, m.score, spk.suggestion))
 
     def _set_speaker(self, seg: Segment, speaker: str) -> None:
         seg.speaker_id = speaker
@@ -219,17 +233,21 @@ class LiveSession:
         self.transcript.meta["duration_s"] = round(duration, 3)
         self._save_live()
         final = self.transcript
+        audio: np.ndarray | None = None
         if refine and self.refine_fn is not None and duration > 0:
-            from transcribe.storage.recorder import load_recording
-
+            audio = load_recording(self.session_dir)
             self._emit_status("refining", progress=0.0)
 
             def progress(stage: str, frac: float) -> None:
                 self._emit_status("refining", stage, frac)
 
-            refined = self.refine_fn(load_recording(self.session_dir), progress)
+            refined = self.refine_fn(audio, progress)
             final = relabel(refined, self.transcript)
             final.meta = {**self.transcript.meta, **refined.meta, "refined": True}
+        if self.identity is not None and final.speakers and duration > 0:
+            audio = load_recording(self.session_dir) if audio is None else audio
+            self._emit_status("identifying")
+            self.identity.finalize(self.session_dir, audio, final)
         session_store.save_session(self.session_dir, final, {
             k: v for k, v in final.meta.items() if isinstance(v, str | int | float | bool)})
         self.final_transcript = final

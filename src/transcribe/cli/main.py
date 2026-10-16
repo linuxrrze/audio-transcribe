@@ -13,27 +13,19 @@ from rich.progress import BarColumn, Progress, TaskID, TextColumn, TimeElapsedCo
 from rich.table import Table
 
 from transcribe import __version__
+from transcribe.cli.speakers import speakers_app
 from transcribe.core import models, registry
-from transcribe.core.config import Config, data_dir
-from transcribe.speakers.voiceprint_db import VoiceprintDB
+from transcribe.core.config import Config
 from transcribe.storage import session_store
 from transcribe.storage.transcript_model import Transcript
 
 app = typer.Typer(help="Local live transcription with speaker identification.",
                   no_args_is_help=True)
-speakers_app = typer.Typer(help="Manage known speakers (voiceprints).", no_args_is_help=True)
 models_app = typer.Typer(help="List and download models.", no_args_is_help=True)
-app.add_typer(speakers_app, name="speakers")
 app.add_typer(models_app, name="models")
+app.add_typer(speakers_app, name="speakers")
 console = Console()
 err = Console(stderr=True)  # status/progress; keeps stdout clean for piping
-
-DbOption = Annotated[Path | None, typer.Option("--db", help="Voiceprint database path.")]
-
-
-def _db(path: Path | None) -> VoiceprintDB:
-    return VoiceprintDB(path or data_dir() / "voiceprints.sqlite")
-
 
 @app.command()
 def version() -> None:
@@ -126,8 +118,11 @@ def transcribe(
 
     transcript.meta.update(title=file.stem, source=str(file.resolve()),
                            asr_model=config.asr.model)
-    if save_session:
-        path = session_store.new_session_dir(config.resolved_sessions_dir(), file.stem)
+    path = (session_store.new_session_dir(config.resolved_sessions_dir(), file.stem)
+            if save_session else None)
+    if diarize and transcript.speakers:
+        _identify(config, path, audio, transcript)
+    if path is not None:
         session_store.save_session(path, transcript, {
             "source": str(file.resolve()), "asr_engine": config.asr.engine,
             "asr_model": config.asr.model, "languages": config.asr.languages,
@@ -233,8 +228,26 @@ def refine(
     final = relabel(refined, previous)
     final.meta = {**previous.meta, **refined.meta, "refined": True,
                   "asr_model": config.asr.model}
+    if final.speakers:
+        _identify(config, session, audio, final)
     final.save(path)
     err.print(f"Refined transcript saved to [bold]{path}[/]")
+
+
+def _identify(config: Config, session_dir: Path | None, audio, transcript: Transcript) -> None:
+    """Store exemplars and label speakers that match known voiceprints."""
+    from transcribe.speakers.embedder import SherpaEmbedder
+    from transcribe.speakers.identity import process_session
+
+    if not (config.speakers.identify_known or config.speakers.store_voiceprints):
+        return
+    with err.status("Identifying speakers..."):
+        matches = process_session(session_dir, audio, transcript,
+                                  SherpaEmbedder.from_config(config), config)
+    for sid, m in matches.items():
+        if m.decision.value != "unknown":
+            verb = "is" if m.decision.value == "known" else "might be"
+            err.print(f"{sid} {verb} [bold]{m.name}[/] (score {m.score:.2f})")
 
 
 @app.command()
@@ -303,66 +316,6 @@ def models_download(
 
             models.ensure(name, on_bytes)
         err.print(f"{name}: {models.ensure(name)}")
-
-
-@speakers_app.command("list")
-def speakers_list(db: DbOption = None) -> None:
-    """List known persons."""
-    store = _db(db)
-    table = Table("ID", "Name", "Consent", "Created")
-    for p in store.persons():
-        table.add_row(str(p.id), p.display_name, p.consent_at or "-", p.created_at)
-    console.print(table)
-
-
-@speakers_app.command("add")
-def speakers_add(
-    name: str,
-    consent: Annotated[bool, typer.Option(help="Person consented to voiceprint storage.")] = False,
-    db: DbOption = None,
-) -> None:
-    """Create a person entry (voiceprints are added via enrollment)."""
-    p = _db(db).add_person(name, consent=consent)
-    console.print(f"Added {p.display_name} (id {p.id})")
-
-
-@speakers_app.command("rename")
-def speakers_rename(old: str, new: str, db: DbOption = None) -> None:
-    store = _db(db)
-    p = _require(store, old)
-    store.rename_person(p.id, new)
-    console.print(f"Renamed {old} -> {new}")
-
-
-@speakers_app.command("merge")
-def speakers_merge(keep: str, drop: str, db: DbOption = None) -> None:
-    """Move all voiceprints of DROP to KEEP and delete DROP."""
-    store = _db(db)
-    store.merge_persons(_require(store, keep).id, _require(store, drop).id)
-    console.print(f"Merged {drop} into {keep}")
-
-
-@speakers_app.command("delete")
-def speakers_delete(
-    name: str,
-    yes: Annotated[bool, typer.Option("--yes", "-y")] = False,
-    db: DbOption = None,
-) -> None:
-    """Delete a person and all of their voiceprints."""
-    store = _db(db)
-    p = _require(store, name)
-    if not yes:
-        typer.confirm(f"Delete {name} and all voiceprints?", abort=True)
-    store.delete_person(p.id)
-    console.print(f"Deleted {name}")
-
-
-def _require(store: VoiceprintDB, name: str):
-    p = store.find_person(name)
-    if p is None:
-        console.print(f"[red]Unknown person: {name}[/]")
-        raise typer.Exit(1)
-    return p
 
 
 if __name__ == "__main__":

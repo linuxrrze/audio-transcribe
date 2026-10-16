@@ -58,6 +58,12 @@ def build_live_session(source: AudioSource, config: Config, session_dir: Path,
                 if with_options else asr)
     tracker = (LiveSpeakerTracker(sherpa_cluster(config.speakers.diarize_threshold),
                                   num_speakers) if diarize else None)
+    identity = None
+    if embedder is not None and (config.speakers.identify_known
+                                 or config.speakers.store_voiceprints):
+        from transcribe.speakers.identity import SessionIdentity
+
+        identity = SessionIdentity(config, embedder)
     lc = config.live
     return LiveSession(
         source, live_asr, session_dir, config.asr.languages,
@@ -68,4 +74,5 @@ def build_live_session(source: AudioSource, config: Config, session_dir: Path,
                                        max_buffer=lc.max_buffer),
         meta={"asr_engine": config.asr.engine, "asr_model": config.asr.model,
               "languages": config.asr.languages, **(meta or {})},
+        identity=identity,
     )
