@@ -9,8 +9,16 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
-from rich.progress import BarColumn, Progress, TaskID, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TaskID,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
+from rich.text import Text
 
 from transcribe import __version__
 from transcribe.cli.speakers import speakers_app
@@ -76,16 +84,48 @@ def _config(model: str | None = None, device: str | None = None, lang: str | Non
     return config
 
 
+class _PercentColumn(TaskProgressColumn):
+    """Percentage, or nothing while the total is unknown (pulsing bar)."""
+
+    def render(self, task):
+        return Text("") if task.total is None else super().render(task)
+
+
 @contextmanager
 def _stage_progress(stages: list[str]) -> Iterator[Callable[[str, float], None]]:
-    columns = (TextColumn("{task.description:<11}"), BarColumn(),
-               TextColumn("{task.percentage:>3.0f}%"), TimeElapsedColumn())
+    """One bar per stage; a stage's timer starts when it reports for the first time.
+
+    Diarization reports nothing while it searches for speech (minutes for long files),
+    so it starts as a pulsing bar ("finding speech…") until real progress arrives.
+    """
+    columns = (TextColumn("{task.description:<26}"), BarColumn(), _PercentColumn(),
+               TimeElapsedColumn())
     with Progress(*columns, console=err) as progress:
-        tasks = {name: progress.add_task(name, total=1.0) for name in stages}
+        tasks = {name: progress.add_task(name, total=1.0, start=False) for name in stages}
+        started: set[str] = set()
+
+        def start(stage: str) -> None:
+            if stage in started:
+                return
+            started.add(stage)
+            if stage.endswith("diarize"):
+                progress.update(tasks[stage], total=None,
+                                description=f"{stage} (finding speech…)")
+            progress.start_task(tasks[stage])
+
+        if stages:
+            start(stages[0])
 
         def report(stage: str, frac: float) -> None:
-            if stage in tasks:
-                progress.update(tasks[stage], completed=frac)
+            if stage not in tasks:
+                return
+            for earlier in stages[: stages.index(stage)]:  # previous stages are done
+                if earlier in started:
+                    progress.update(tasks[earlier], total=1.0, completed=1.0,
+                                    description=earlier)
+            start(stage)
+            if frac > 0:
+                progress.update(tasks[stage], total=1.0, completed=frac, description=stage)
 
         yield report
 
