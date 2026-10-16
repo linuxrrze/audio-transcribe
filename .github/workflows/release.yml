@@ -31,8 +31,7 @@ jobs:
         if: runner.os == 'macOS'
         run: helpers/macos-audiotap/build.sh
       - run: >-
-          uv sync --group packaging --extra asr --extra speakers --extra audio
-          --extra gui --extra secure --extra system
+          uv sync --group packaging --extra gui --extra secure --extra system
       - run: uv run python packaging/build.py
       - name: Sign and notarize (macOS, when credentials are configured)
         if: runner.os == 'macOS' && env.HAS_MACOS_CERT == 'true'

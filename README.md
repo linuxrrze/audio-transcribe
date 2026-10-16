@@ -26,15 +26,23 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap.
   microphone + system audio as separate channels (`--source both`) with echo suppression
   - the basis for recording Zoom/Teams/Jitsi calls.
 
+## Install
+```sh
+uv sync                      # in the repo: project .venv, then `uv run tx ...`
+pip install .                # or into any venv (also `uv pip install .`), then `tx ...`
+pip install ".[gui]"         # + desktop app; extras: gui, secure (encryption), system (Windows)
+```
+Linux also needs the PortAudio library for microphones (`apt install libportaudio2`).
+Note: `uv run` always uses the project's `.venv`, not an activated venv (`uv run --active`
+uses the active one).
+
 ## Usage
 ```sh
-uv sync --extra asr --extra speakers
 uv run tx transcribe meeting.m4a                 # de/en auto, speakers auto
 uv run tx transcribe talk.mp3 -n 2 -l de -f srt -o talk.srt
 uv run tx export <session-dir> -f md
 uv run tx models list
 
-uv sync --extra asr --extra speakers --extra audio
 uv run tx devices                                # list microphones
 uv run tx live -i "USB" -n 3                     # Ctrl+C stops, then refines
 uv run tx live --file meeting.wav                # replay a file in real time (testing)
@@ -77,7 +85,7 @@ the default finds only 2.
 
 ### Desktop app
 ```sh
-uv sync --extra asr --extra speakers --extra audio --extra gui
+uv sync --extra gui
 uv run tx gui
 ```
 ![Sessions tab](docs/screenshots/sessions.png)
@@ -164,18 +172,18 @@ Models are not bundled: the app offers to download them on first start (or run
   builds must be opened once via right-click → Open.
 - **Windows:** system audio uses WASAPI loopback (no extra drivers).
 
-Build a bundle yourself: `uv sync --group packaging --extra asr --extra speakers --extra
-audio --extra gui --extra secure --extra system && uv run python packaging/build.py`
+Build a bundle yourself: `uv sync --group packaging --extra gui --extra
+secure --extra system && uv run python packaging/build.py`
 (on macOS run `helpers/macos-audiotap/build.sh` first). The Linux bundle is ~335 MB
 (228 MB archived) and was verified here by transcribing with the frozen `tx`.
 
 ## Development
 ```sh
-uv sync --extra asr --extra speakers --extra audio --extra secure
+uv sync --extra secure
 uv run pytest                 # fast unit tests (+ system-audio test if PulseAudio runs)
 TX_SLOW=1 uv run pytest       # + end-to-end tests (downloads ~650 MB of models)
 uv run python -m transcribe.bench.dialogue out.wav   # synthetic de/en test dialogue
 uv run python -m transcribe.bench.latency out.wav small  # real-time live latency
 uv run python -m transcribe.bench.calibrate --sweep      # voiceprint thresholds
 ```
-Optional extras: `asr`, `speakers`, `audio`, `gui`, `pyannote`.
+

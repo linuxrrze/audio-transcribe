@@ -14,7 +14,7 @@ on:
         default: false
 
 env:
-  EXTRAS: --extra asr --extra speakers --extra audio --extra gui --extra secure --extra system
+  EXTRAS: --extra gui --extra secure --extra system
   QT_QPA_PLATFORM: offscreen
 
 jobs:
@@ -58,7 +58,7 @@ jobs:
         with:
           path: ~/.cache/transcribe/models
           key: models-${{ hashFiles('src/transcribe/core/models.py') }}
-      - run: uv sync --extra asr --extra speakers --extra secure
+      - run: uv sync --extra secure
       - run: uv run pytest -q tests/integration
         env:
           TX_SLOW: "1"

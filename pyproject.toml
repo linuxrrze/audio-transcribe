@@ -10,21 +10,26 @@ dependencies = [
     "typer>=0.12",
     "rich>=13.7",
     "tomli-w>=1.0",
-]
-
-[project.optional-dependencies]
-asr = [
+    # speech recognition
     "faster-whisper>=1.1",
     "av<19",  # faster-whisper 1.2 passes metadata_errors, removed in PyAV 19
     "soundfile>=0.12",
     "soxr>=0.4",
+    # diarization + voiceprints (core listed explicitly: the lock otherwise misses it)
+    "sherpa-onnx>=1.12",
+    "sherpa-onnx-core>=1.12",
+    # microphone (Linux additionally needs the PortAudio library: libportaudio2)
+    "sounddevice>=0.4",
 ]
-speakers = ["sherpa-onnx>=1.12", "sherpa-onnx-core>=1.12"]  # core listed explicitly: lock misses it
-audio = ["sounddevice>=0.4"]
+
+[project.optional-dependencies]
 gui = ["PySide6>=6.7"]
 secure = ["cryptography>=42", "keyring>=25"]
 system = ["soundcard>=0.4; sys_platform == 'win32'"]  # Linux: parec, macOS: Swift helper
-pyannote = ["pyannote.audio>=3.3"]
+# Former extras, now part of the base install; kept so old install commands still work.
+asr = []
+speakers = []
+audio = []
 
 [project.scripts]
 tx = "transcribe.cli.main:app"
