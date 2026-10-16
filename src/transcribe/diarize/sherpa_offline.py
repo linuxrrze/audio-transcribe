@@ -66,9 +66,14 @@ class SherpaDiarizer:
 
     def __init__(self, segmentation_model: str = "pyannote-segmentation-3.0",
                  embedding_model: str = "wespeaker-resnet34-lm", threshold: float = 0.5,
-                 num_threads: int = 0, isolated: bool = True) -> None:
+                 num_threads: int = 0, isolated: bool = True,
+                 resegment: bool = True, speaker_count: str = "estimate") -> None:
         self.segmentation_path = models.ensure(segmentation_model)
+        self.embedding_model = embedding_model
         self.embedding_path = models.ensure(embedding_model)
+        self.resegment = resegment
+        self.speaker_count = speaker_count  # how the second pass chooses k (resegment.py)
+        self._phrase_embedder = None
         self.threshold = threshold
         self.num_threads = num_threads or max(1, (os.cpu_count() or 2) // 2)
         self.isolated = isolated
@@ -76,7 +81,18 @@ class SherpaDiarizer:
     @classmethod
     def from_config(cls, config: Config) -> SherpaDiarizer:
         s = config.speakers
-        return cls(s.segmentation_model, s.embedding_model, s.diarize_threshold, s.num_threads)
+        return cls(s.segmentation_model, s.embedding_model, s.diarize_threshold, s.num_threads,
+                   resegment=s.resegment, speaker_count=s.speaker_count)
+
+    def phrase_embedder(self):
+        """Embedder for the second pass on transcript phrases, or None if disabled."""
+        if not self.resegment:
+            return None
+        if self._phrase_embedder is None:
+            from transcribe.speakers.embedder import SherpaEmbedder
+
+            self._phrase_embedder = SherpaEmbedder(self.embedding_model, self.num_threads)
+        return self._phrase_embedder
 
     def diarize(self, audio: np.ndarray, num_speakers: int | None = None,
                 progress: ProgressFn | None = None) -> list[Turn]:

@@ -134,7 +134,10 @@ def _offline_stages(config: Config, diarize: bool) -> list[str]:
     stages = ["diarize"] if diarize else []
     if len(config.asr.languages) > 1:
         stages.append("language")
-    return [*stages, "transcribe"]
+    stages.append("transcribe")
+    if diarize and config.speakers.resegment:
+        stages.append("speakers")
+    return stages
 
 
 @app.command()

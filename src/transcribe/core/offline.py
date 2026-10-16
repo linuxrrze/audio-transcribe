@@ -20,6 +20,7 @@ from transcribe.asr.base import AsrEngine
 from transcribe.audio.base import SAMPLE_RATE
 from transcribe.diarize.align import Turn, assign_speakers, words_to_segments
 from transcribe.diarize.base import Diarizer
+from transcribe.diarize.resegment import resegment, speaker_count, speech_per_speaker
 from transcribe.storage.transcript_model import Speaker, Transcript, Word
 
 StageProgress = Callable[[str, float], None]  # (stage, fraction 0..1)
@@ -182,27 +183,52 @@ def transcribe_audio(
 
     if turns:
         assign_speakers(words, turns)
+        make_embedder = getattr(diarizer, "phrase_embedder", None)
+        embedder = make_embedder() if callable(make_embedder) else None
+        if embedder is not None:  # second pass on transcript phrases (see resegment.py)
+            t = time.perf_counter()
+            report("speakers", 0.0)
+            k_max = speaker_count(speech_per_speaker([(x.t0, x.t1, x.speaker_id)
+                                                      for x in turns]))
+            timings["resegment_phrases_changed"] = resegment(
+                words, audio, embedder, num_speakers, max_speakers=k_max,
+                count=getattr(diarizer, "speaker_count", "estimate"))
+            timings["resegment_s"] = time.perf_counter() - t
+            report("speakers", 1.0)
+    rename = _first_appearance_ids(words)
+    for w in words:
+        if w.speaker_id:
+            w.speaker_id = rename[w.speaker_id]
     segments = []
     for t0, t1, lang in chunk_langs:
         in_chunk = [w for w in words if t0 <= w.t0 < t1]
         segments.extend(words_to_segments(in_chunk, lang=lang))
 
-    speakers = {
-        spk: Speaker(id=spk, label=f"Speaker {spk[1:]}")
-        for spk in sorted(by_speaker, key=lambda s: int(s[1:]))
-    }
+    speakers = {sid: Speaker(id=sid, label=f"Speaker {sid[1:]}")
+                for sid in sorted(set(rename.values()), key=lambda s: int(s[1:]))}
+    speaker_lang = {rename[s]: lang for s, lang in speaker_lang.items() if s in rename}
+    lang_probs = {rename[s]: p for s, p in lang_probs.items() if s in rename}
     meta: dict[str, object] = {
         "duration_s": round(duration, 3),
         "languages": languages,
         "speaker_languages": speaker_lang,
         "speaker_language_probs": {s: {k: round(v, 4) for k, v in p.items()}
                                    for s, p in lang_probs.items()},
-        "per_turn_language": sorted(per_turn),
+        "per_turn_language": sorted(rename.get(s, s) for s in per_turn),
         "asr_engine": asr.name,
         "diarizer": diarizer.name if diarizer else None,
         "timings": {k: round(v, 2) for k, v in timings.items()},
     }
     return Transcript(segments=segments, speakers=speakers, meta=meta)
+
+
+def _first_appearance_ids(words: list[Word]) -> dict[str, str]:
+    """Map speaker ids to S1, S2, ... in order of first appearance in the transcript."""
+    mapping: dict[str, str] = {}
+    for w in sorted(words, key=lambda w: w.t0):
+        if w.speaker_id and w.speaker_id not in mapping:
+            mapping[w.speaker_id] = f"S{len(mapping) + 1}"
+    return mapping
 
 
 def load_engines(config, diarize: bool) -> tuple[AsrEngine, Diarizer | None]:

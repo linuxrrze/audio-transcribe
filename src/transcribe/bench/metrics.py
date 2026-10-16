@@ -44,6 +44,15 @@ def _words_in(words: list[Word], t0: float, t1: float, pad: float = 0.35) -> lis
     return [w for w in words if t0 - pad <= (w.t0 + w.t1) / 2 <= t1 + pad]
 
 
+def true_speaker(word: Word, ref: list[RefTurn]) -> str:
+    mid = (word.t0 + word.t1) / 2
+
+    def distance(turn: RefTurn) -> float:
+        return 0.0 if turn.t0 <= mid <= turn.t1 else min(abs(mid - turn.t0), abs(mid - turn.t1))
+
+    return min(ref, key=distance).speaker
+
+
 def evaluate(transcript: Transcript, ref: list[RefTurn]) -> Report:
     words = [w for s in transcript.segments for w in s.words]
     per_lang: dict[str, tuple[list[str], list[str]]] = {}
@@ -55,8 +64,10 @@ def evaluate(transcript: Transcript, ref: list[RefTurn]) -> Report:
     all_ref = " ".join(t.text for t in ref)
     total_wer = wer(all_ref, "".join(w.text for w in words))
 
-    pairs = [(turn.speaker, w.speaker_id) for turn in ref
-             for w in _words_in(words, turn.t0, turn.t1)]
+    # Each word belongs to exactly one reference turn (the one containing its midpoint,
+    # else the nearest). Padding turns would count words near a speaker change twice -
+    # once right, once wrong - which understates accuracy for fast dialogue.
+    pairs = [(true_speaker(w, ref), w.speaker_id) for w in words]
     ref_spk = sorted({t.speaker for t in ref})
     hyp_spk = sorted({h for _, h in pairs if h is not None})
     best = 0

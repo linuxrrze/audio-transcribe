@@ -59,11 +59,30 @@ transcribes runs of same-language turns with the language pinned. Without diariz
 VAD regions serve as the language units. Limitation: one speaker switching language
 mid-recording is transcribed in their dominant language.
 
-### Diarization accuracy
-Pass `--speakers N` when you know the count — it is the most reliable setting. Otherwise
-the clustering threshold (`--diarize-threshold`, default 0.5; lower → more speakers)
-decides; it has not been tuned on a real benchmark yet, and on a real 4-speaker sample
-the default finds only 2.
+### Speaker accuracy
+Speakers are found in two passes: the diarizer (pyannote segmentation + WeSpeaker), then
+a second pass that cuts the transcript into phrases (sentence ends, pauses ≥ 0.5 s),
+embeds each phrase and clusters them again. This fixes the diarizer's typical errors:
+merged turns in fast dialogue, mixed clusters, and far too many speakers.
+
+| Word speaker accuracy | diarizer only | + second pass (default) |
+|---|---|---|
+| AMI meeting ES2004a (4 people) | 45.5 % (55 speakers) | 82.1 % (15) |
+| AMI meeting IS1009a (4 people) | 62.5 % (15) | 83.2 % (10) |
+| synthetic radio play (6 voices) | 71.2 % (6) | 98.8 % (6) |
+
+On a 50-minute radio play (no reference): 21 → 13 speakers, segments starting
+mid-sentence 22 % → 2 %.
+
+- **Pass `--speakers N` when you know the count** - the most reliable setting.
+- Without it the default may **over-split** (one person → two labels); merge them in the
+  app or with `tx speakers` - merged voices could not be separated again.
+- `[speakers] speaker_count = "silhouette"` picks the count from the voices themselves:
+  best for meetings with distinct voices (ES2004a: 97.3 %, exactly 4 speakers), but it
+  merged a radio play's similar young voices into 3 speakers.
+- Similar voices (e.g. several teenage boys in one studio) stay the hardest case.
+- Numbers come from three recordings; reproduce with the scripts described in
+  `src/transcribe/diarize/resegment.py`.
 
 ### Live mode
 - Partial text appears as you speak (dim = may still change); an utterance is finalized

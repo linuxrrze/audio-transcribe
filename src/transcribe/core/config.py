@@ -37,6 +37,10 @@ class SpeakerConfig:
     segmentation_model: str = "pyannote-segmentation-3.0"
     embedding_model: str = "wespeaker-resnet34-lm"
     diarize_threshold: float = 0.5  # clustering distance; lower -> more speakers
+    resegment: bool = True  # second pass: re-cluster transcript phrases (fast dialogue)
+    # Without --speakers: "estimate" (never merges voices; may over-split - merge in the
+    # app) or "silhouette" (best for meetings with distinct voices; can merge similar ones)
+    speaker_count: str = "estimate"
     num_threads: int = 0  # 0 = half the CPU cores
     identify_known: bool = True  # label speakers that match stored voiceprints
     store_voiceprints: bool = True  # False: never persist embeddings (sessions or DB)
