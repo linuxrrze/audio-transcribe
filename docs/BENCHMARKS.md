@@ -124,8 +124,11 @@ Reproduce: `python -m transcribe.bench.diarization` and `python -m transcribe.be
 
 ## whisper.cpp: CPU vs AMD iGPU (Vulkan)
 
-Measured by the user on a machine with an AMD Radeon iGPU (Vulkan, RADV), whisper.cpp
-v1.9.5, `whisper-bench`, model `small`:
+Measured by the user on a second machine with an **AMD Radeon 780M** iGPU (RDNA3,
+"RADV PHOENIX", flash attention and cooperative-matrix cores in use), whisper.cpp v1.9.5,
+CPU build vs Vulkan build on the same machine.
+
+**Micro-benchmark** (`whisper-bench`, model `small`):
 
 | Stage | CPU | iGPU (Vulkan) | Speedup |
 |---|---|---|---|
@@ -135,31 +138,36 @@ v1.9.5, `whisper-bench`, model `small`:
 | Decoder, batched (beam search) | 2.17 ms | 1.66 ms | 1.3× |
 | Total | 9.1 s | 3.2 s | **2.8×** |
 
-The GPU accelerates the encoder; token-by-token decoding barely benefits. Expected
-effect: roughly 2-3× for whole files (decoding is a large share in dense speech), more
-for `large-v3-turbo` (large encoder, small decoder), and most for live mode, which runs
-the encoder once per step. faster-whisper (CTranslate2) supports only NVIDIA GPUs, so
-using an AMD/Intel iGPU requires a whisper.cpp engine plugin (not built yet).
+The GPU accelerates the encoder; token-by-token decoding barely benefits.
+
+**Real meetings**, `large-v3-turbo` (`python -m transcribe.bench.whispercpp`):
+
+| Meeting | Build | VAD | WER | repeated lines | time | RTF |
+|---|---|---|---|---|---|---|
+| ES2004a (17 min) | CPU | - | 29.2 % | 62 | 597 s | 0.56 |
+| | Vulkan | - | **58.2 %** | **138** | 129 s | 0.12 |
+| | CPU | ✓ | 22.4 % | 17 | 344 s | 0.33 |
+| | **Vulkan** | ✓ | **20.9 %** | 7 | **85 s** | **0.079** |
+| IS1009a (14 min) | CPU | - | 22.4 % | 9 | 345 s | 0.40 |
+| | Vulkan | - | 23.7 % | 6 | 74 s | 0.086 |
+| | CPU | ✓ | 22.6 % | 4 | 260 s | 0.31 |
+| | **Vulkan** | ✓ | **21.5 %** | 5 | **68 s** | **0.080** |
+
+- **The iGPU is 3.8-4.7× faster** than the CPU of the same machine with
+  `large-v3-turbo` - more than for `small` (2.8×), because turbo's large encoder
+  dominates. At ~0.08× real time, turbo would even be usable for live mode.
+- **VAD is mandatory.** Without it, Whisper hallucinated in non-speech stretches of
+  ES2004a: the Vulkan run wrote "We're going to be able to do that." 88 times in a row
+  (WER 58 %), the CPU run "I'll go first." 27 times. The GPU's different arithmetic
+  (fp16) made the loop worse, but it is a Whisper behaviour, not a Vulkan bug. With
+  whisper.cpp's Silero VAD: no loops, and both builds at 21-23 % WER. The main
+  pipeline always uses faster-whisper's VAD filter; a whisper.cpp engine must too.
+- VAD also saves time (silence is skipped): CPU 0.56 → 0.33, iGPU 0.12 → 0.08 RTF.
+- Accuracy with VAD matches faster-whisper with the same model (21-23 %, see above).
+- faster-whisper (CTranslate2) supports only NVIDIA GPUs. Using AMD/Intel iGPUs (and
+  Apple Metal) requires a whisper.cpp engine plugin - the measurements say it is worth
+  it: with Vulkan, the most accurate model runs ~5× faster than `large-v3-turbo` on the
+  CPU and ~2× faster than `small` does today.
 
 Reproduce: `scripts/build_whispercpp.sh`, then
-`python -m transcribe.bench.whispercpp --binary cpu=... --binary vulkan=... --models large-v3-turbo`.
-
-**Real meetings** (same machine, whisper.cpp v1.9.5, `large-v3-turbo`, no VAD,
-`python -m transcribe.bench.whispercpp`):
-
-| Meeting | CPU build: time / RTF / WER | Vulkan build (iGPU): time / RTF / WER | Speedup |
-|---|---|---|---|
-| ES2004a (17 min) | 592 s / 0.56 / 29.2 % | 131 s / **0.12** / **58.2 %** ⚠ | **4.5×** |
-| IS1009a (14 min) | 348 s / 0.40 / 22.4 % | 74 s / **0.09** / 23.7 % | **4.7×** |
-
-- With `large-v3-turbo` the iGPU is **4.5-4.7× faster** - more than `whisper-bench`
-  suggested for `small` (2.8×), because turbo's large encoder dominates. ~0.1× real
-  time would make turbo usable for live mode.
-- ⚠ **Open:** the Vulkan build doubled the WER on ES2004a while IS1009a is unchanged -
-  a local failure (e.g. a decoding loop or a skipped stretch), not a general accuracy
-  loss. Under investigation: re-run with `--out-dir` (keeps transcripts, counts
-  repeated lines) and `--vad`.
-- whisper.cpp without VAD (29.2 % on ES2004a) is behind faster-whisper with its VAD
-  filter (21-23 %); `--vad` makes the comparison fair.
-- The first run's "backend" column was wrong (`-np` suppressed whisper-cli's log);
-  fixed - the timings show the GPU was used.
+`python -m transcribe.bench.whispercpp --binary cpu=... --binary vulkan=... --models large-v3-turbo [--vad] --out-dir runs/`.
