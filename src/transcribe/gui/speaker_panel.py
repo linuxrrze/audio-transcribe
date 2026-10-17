@@ -34,6 +34,7 @@ class SpeakerPanel(QWidget):
     merge_requested = Signal(str, str)  # keep, drop
     accept_requested = Signal(str)  # take the suggestion as the name
     decline_requested = Signal(str)
+    link_activated = Signal(str)  # a link in the note (see set_note)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -45,6 +46,11 @@ class SpeakerPanel(QWidget):
         self.decline_btn = QPushButton("No")
         self.hint = QLabel()
         self.hint.setWordWrap(True)
+        self.note = QLabel()
+        self.note.setWordWrap(True)
+        self.note.setVisible(False)
+        self.note.linkActivated.connect(self.link_activated)
+        self._actions = {"rename": True, "merge": True, "suggestions": True}
         self.rename_btn.clicked.connect(lambda: self._emit(self.rename_requested))
         self.merge_btn.clicked.connect(self._ask_merge)
         self.accept_btn.clicked.connect(lambda: self._emit(self.accept_requested))
@@ -61,6 +67,7 @@ class SpeakerPanel(QWidget):
         layout.addWidget(self.list, 1)
         layout.addLayout(suggest)
         layout.addLayout(buttons)
+        layout.addWidget(self.note)
         self._speakers: dict[str, Speaker] = {}
         self._update_buttons()
 
@@ -78,6 +85,19 @@ class SpeakerPanel(QWidget):
             if sid == current:
                 self.list.setCurrentItem(item)
         self._update_buttons()
+
+    def set_actions(self, rename: bool = True, merge: bool = True,
+                    suggestions: bool = True) -> None:
+        """Show only the actions the owner can carry out in its current state."""
+        self._actions = {"rename": rename, "merge": merge, "suggestions": suggestions}
+        self.rename_btn.setVisible(rename)
+        self.merge_btn.setVisible(merge)
+        self._update_buttons()
+
+    def set_note(self, html: str) -> None:
+        """A short note under the list (e.g. where to edit instead); "" hides it."""
+        self.note.setText(html)
+        self.note.setVisible(bool(html))
 
     def update_speaker(self, speaker: Speaker) -> None:
         self._speakers[speaker.id] = speaker
@@ -114,7 +134,8 @@ class SpeakerPanel(QWidget):
         spk = self._speakers.get(sid) if sid else None
         self.rename_btn.setEnabled(spk is not None)
         self.merge_btn.setEnabled(spk is not None and len(self._speakers) > 1)
-        has_suggestion = bool(spk and spk.suggestion)
-        self.hint.setText(f"Is this <b>{spk.suggestion}</b>?" if spk and spk.suggestion else "")
+        has_suggestion = bool(spk and spk.suggestion) and self._actions["suggestions"]
+        self.hint.setText(f"Is this <b>{spk.suggestion}</b>?" if has_suggestion and spk
+                          else "")
         for b in (self.accept_btn, self.decline_btn):
             b.setVisible(has_suggestion)

@@ -4,7 +4,6 @@ from cryptography.fernet import Fernet
 
 from tests.unit.fakes import FakeEmbedder, ScriptedWorld, fake_vad, utterance
 from tests.unit.test_live_session import ArraySource
-from tests.unit.test_live_tracker import threshold_cluster
 from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core.config import Config
 from transcribe.core.events import SpeakerIdentified
@@ -208,7 +207,7 @@ def test_live_session_identifies_enrolled_speaker(tmp_path, db, monkeypatch):
     world = ScriptedWorld(words)
     session = LiveSession(
         ArraySource(world.audio(5.5)), world, tmp_path, ["de", "en"], fake_vad,
-        embedder=FakeEmbedder(), tracker=LiveSpeakerTracker(threshold_cluster),
+        embedder=FakeEmbedder(), tracker=LiveSpeakerTracker(),
         streamer_config=StreamerConfig(step=0.5),
         identity=SessionIdentity(Config(), FakeEmbedder(), db))
     events = []

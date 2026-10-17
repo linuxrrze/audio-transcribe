@@ -20,7 +20,7 @@ class Embedder(Protocol):
 
 
 class SherpaEmbedder:
-    def __init__(self, model: str = "wespeaker-resnet34-lm", num_threads: int = 0) -> None:
+    def __init__(self, model: str = "nemo-titanet-small", num_threads: int = 0) -> None:
         import sherpa_onnx
 
         self.model_id = model

@@ -44,8 +44,14 @@ class AsrConfig:
 class SpeakerConfig:
     diarizer: str = "sherpa-onnx"
     segmentation_model: str = "pyannote-segmentation-3.0"
-    embedding_model: str = "wespeaker-resnet34-lm"
-    diarize_threshold: float = 0.5  # clustering distance; lower -> more speakers
+    # TitaNet-small: half the speaker confusions of WeSpeaker ResNet34 on AMI, 2x faster
+    # (docs/BENCHMARKS.md); voiceprints are only comparable within one model
+    embedding_model: str = "nemo-titanet-small"
+    # Clustering distance; lower -> more speakers. 0.5 for TitaNet: best purity with the
+    # second pass on AMI and the synthetic radio play; 0.6 scored higher there but merged
+    # two clearly different voices in a short dialogue (docs/BENCHMARKS.md)
+    diarize_threshold: float = 0.5
+    live_threshold: float = 0.4  # live labels: similarity to join a speaker; higher -> more
     resegment: bool = True  # second pass: re-cluster transcript phrases (fast dialogue)
     # Without --speakers: "estimate" (never merges voices; may over-split - merge in the
     # app) or "silhouette" (best for meetings with distinct voices; can merge similar ones)
@@ -54,10 +60,10 @@ class SpeakerConfig:
     identify_known: bool = True  # label speakers that match stored voiceprints
     store_voiceprints: bool = True  # False: never persist embeddings (sessions or DB)
     encrypt_voiceprints: bool = False  # encrypt at rest (key in OS keyring); 'secure' extra
-    # Calibrated with `python -m transcribe.bench.calibrate --sweep` (WeSpeaker ResNet34-LM,
-    # synthetic VCTK voices): 0 wrong labels on same/other-mic/phone channels; a channel
-    # mismatch yields suggestions instead of confident labels.
-    match_threshold_high: float = 0.85  # auto-label at/above (and margin satisfied)
+    # Calibrated with `python -m transcribe.bench.calibrate --sweep` (TitaNet-small,
+    # synthetic VCTK voices): 0 wrong labels on same/other-mic/phone channels (strangers
+    # score <= 0.66); a phone-like channel mostly yields suggestions instead of labels.
+    match_threshold_high: float = 0.75  # auto-label at/above (and margin satisfied)
     match_threshold_low: float = 0.60  # suggest ("Is this X?") at/above
     match_margin: float = 0.10  # required lead over the best competing candidate
     max_exemplars_per_person: int = 30

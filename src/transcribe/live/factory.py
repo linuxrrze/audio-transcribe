@@ -15,7 +15,7 @@ from transcribe.core import registry
 from transcribe.core.config import Config, vocabulary
 from transcribe.live.session import LiveSession, StageProgress
 from transcribe.live.streamer import StreamerConfig
-from transcribe.speakers.live_tracker import LiveSpeakerTracker, sherpa_cluster
+from transcribe.speakers.live_tracker import LiveSpeakerTracker
 from transcribe.storage.transcript_model import Transcript
 
 
@@ -56,8 +56,8 @@ def build_live_session(source: AudioSource, config: Config, session_dir: Path,
     with_options = getattr(asr, "with_options", None)
     live_asr = (with_options(config.live.beam_size, temperature_fallback=False)
                 if with_options else asr)
-    tracker = (LiveSpeakerTracker(sherpa_cluster(config.speakers.diarize_threshold),
-                                  num_speakers) if diarize else None)
+    tracker = (LiveSpeakerTracker(config.speakers.live_threshold, num_speakers)
+               if diarize else None)
     identity = None
     if embedder is not None and (config.speakers.identify_known
                                  or config.speakers.store_voiceprints):

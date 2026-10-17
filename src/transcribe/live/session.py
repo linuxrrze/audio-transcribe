@@ -34,6 +34,7 @@ from transcribe.core.events import (
     StatusChanged,
 )
 from transcribe.core.vocabulary import Vocabulary
+from transcribe.diarize.align import is_sentence_end
 from transcribe.diarize.refine import relabel
 from transcribe.live.echo import echo_of, suppress_echo
 from transcribe.live.streamer import ChannelStreamer, StreamerConfig, VadFn
@@ -47,6 +48,33 @@ from transcribe.storage.transcript_model import Segment, Speaker, Transcript
 LIVE_TRANSCRIPT = "transcript.live.json"
 StageProgress = Callable[[str, float], None]
 RefineFn = Callable[[np.ndarray, StageProgress], Transcript]
+
+
+MIN_EMBED_S = 0.3  # shorter pieces get no embedding (the tracker keeps the speaker)
+
+
+def sentence_pieces(seg: Segment, audio: np.ndarray) -> list[tuple[Segment, np.ndarray]]:
+    """Split a finished segment at sentence ends; ``audio`` covers [seg.t0, seg.t1].
+
+    Cuts lie halfway between a sentence's last word and the next word. The first piece
+    keeps the segment id, later ones get "<id>.1", "<id>.2", ...
+    """
+    groups: list[list] = [[]]
+    for w in seg.words:
+        if groups[-1] and is_sentence_end(groups[-1][-1].text):
+            groups.append([])
+        groups[-1].append(w)
+    if len(groups) < 2:
+        return [(seg, audio)]
+    out = []
+    for k, words in enumerate(groups):
+        t0 = seg.t0 if k == 0 else (groups[k - 1][-1].t1 + words[0].t0) / 2
+        t1 = seg.t1 if k == len(groups) - 1 else (words[-1].t1 + groups[k + 1][0].t0) / 2
+        piece = Segment(t0, t1, words, seg.speaker_id, seg.lang, seg.channel_id,
+                        seg.id if k == 0 else f"{seg.id}.{k}")
+        a, b = (max(0, int((x - seg.t0) * SAMPLE_RATE)) for x in (t0, t1))
+        out.append((piece, audio[a:b]))
+    return out
 
 
 class LiveSession:
@@ -213,8 +241,19 @@ class LiveSession:
             seg.words = self.vocabulary.correct(seg.words)
         if self.multi and self._drop_echo(seg):
             return
+        # In dialogue, people answer each other without the pause that ends an utterance:
+        # label each sentence on its own (live speaker accuracy on a radio play 29 -> 91 %,
+        # see speakers/live_tracker.py).
+        pieces = sentence_pieces(seg, audio) if self.tracker is not None else [(seg, audio)]
+        for piece, piece_audio in pieces:
+            self._final_piece(piece, piece_audio)
+        if time.monotonic() - self._last_save >= self._save_interval:
+            self._save_live()
+
+    def _final_piece(self, seg: Segment, audio: np.ndarray) -> None:
         if self.tracker is not None:
-            emb = self.embedder.embed(audio) if self.embedder and len(audio) else None
+            emb = (self.embedder.embed(audio)
+                   if self.embedder and len(audio) >= MIN_EMBED_S * SAMPLE_RATE else None)
             speaker, changes = self.tracker.assign(seg.id, emb, seg.t1 - seg.t0)
             self._set_speaker(seg, speaker)
             for seg_id, new in changes.items():
@@ -228,8 +267,6 @@ class LiveSession:
             self._segments[seg.id] = seg
             self.transcript.segments.append(seg)
         self.bus.publish(FinalSegment(seg.t1, seg))
-        if time.monotonic() - self._last_save >= self._save_interval:
-            self._save_live()
 
     def _drop_echo(self, seg: Segment) -> bool:
         """Drop ``seg`` if it is mic echo; withdraw earlier mic segments it duplicates."""

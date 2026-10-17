@@ -55,6 +55,13 @@ ASSETS: dict[str, ModelAsset] = {
             "WeSpeaker ResNet34-LM, VoxCeleb (256-dim)",
         ),
         ModelAsset(
+            "nemo-titanet-small", "embedding",
+            f"{_SHERPA}/speaker-recongition-models/nemo_en_titanet_small.onnx",
+            "ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e",
+            "nemo_en_titanet_small.onnx",
+            "NVIDIA NeMo TitaNet-small (CC-BY-4.0, 192-dim); default",
+        ),
+        ModelAsset(
             "piper-de-thorsten", "tts",
             f"{_SHERPA}/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
             "50487d9c95fdf2191f31d2588569381063ba1591dcd4c7d4bdd30f12b2191714",

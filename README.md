@@ -98,16 +98,21 @@ Mr Fan Fress -> Mr. Fentriss  # multi-word, keeps the timestamps
   `--vocab-file` add to them for one run.
 
 ### Speaker accuracy
-Speakers are found in two passes: the diarizer (pyannote segmentation + WeSpeaker), then
+Speakers are found in two passes: the diarizer (pyannote segmentation + NeMo TitaNet-small
+voice embeddings), then
 a second pass that cuts the transcript into phrases (sentence ends, pauses ≥ 0.5 s),
 embeds each phrase and clusters them again. This fixes the diarizer's typical errors:
 merged turns in fast dialogue, mixed clusters, and far too many speakers.
 
-| Word speaker accuracy | diarizer only | + second pass (default) |
+| Word speaker accuracy (purity) | diarizer only | + second pass (default) |
 |---|---|---|
-| AMI meeting ES2004a (4 people) | 45.5 % (55 speakers) | 82.1 % (15) |
-| AMI meeting IS1009a (4 people) | 62.5 % (15) | 83.2 % (10) |
-| synthetic radio play (6 voices) | 71.2 % (6) | 98.8 % (6) |
+| AMI meeting ES2004a (4 people) | 54.8 % (52 speakers) | 79.5 % / 99.2 % (15) |
+| AMI meeting IS1009a (4 people) | 33.3 % (52) | 81.1 % / 97.2 % (15) |
+| synthetic radio play (6 voices) | 62.1 % (8) | 96.7 % / 99.2 % (7) |
+
+Purity = share of words whose label holds only that person's voice (extra labels are
+fixed by merging, mixed voices are not). With the previous voice model (ResNet34) the
+second pass reached 69.0 / 83.1 / 88.5 % at a purity of 98.5 / 90.1 / 92.6 %.
 
 On a 50-minute radio play (no reference): 21 → 13 speakers, segments starting
 mid-sentence 22 % → 2 %.
@@ -116,8 +121,9 @@ mid-sentence 22 % → 2 %.
 - Without it the default may **over-split** (one person → two labels); merge them in the
   app or with `tx speakers` - merged voices could not be separated again.
 - `[speakers] speaker_count = "silhouette"` picks the count from the voices themselves:
-  best for meetings with distinct voices (ES2004a: 97.3 %, exactly 4 speakers), but it
-  merged a radio play's similar young voices into 3 speakers.
+  best for meetings with distinct voices (ES2004a: 99.2 %, exactly 4 speakers), but it
+  can merge similar voices (IS1009a: 3 speakers for 4 people; a radio play's young
+  voices into 3).
 - Similar voices (e.g. several teenage boys in one studio) stay the hardest case.
 - Numbers come from three recordings. Reproduce the AMI rows with
   `python -m transcribe.bench.diarization` (downloads ~60 MB; ~10 min on CPU).
@@ -131,10 +137,14 @@ mid-sentence 22 % → 2 %.
 - With several languages allowed, an utterance is only decoded once its language is
   known (≥1.5 s of speech): Whisper pinned to the wrong language translates instead of
   transcribing.
-- Live speaker labels are **provisional** (all utterance embeddings are re-clustered
-  after each new one; earlier lines may be relabelled). A speaker change without a pause
-  stays in one utterance. The refinement pass on stop is authoritative; `--no-refine`
-  keeps the live result. Both are saved (`transcript.live.json`, `transcript.json`).
+- Live speaker labels: every **sentence** gets its own label (people often answer
+  without the pause that ends an utterance), assigned to the most similar voice heard so
+  far or to a new speaker; a label never changes once shown. In replayed recordings
+  81-91 % of the speech is labelled correctly live (previously 29-73 %; see
+  [benchmarks](docs/BENCHMARKS.md#live-speaker-labels)). `[speakers] live_threshold`
+  (default 0.4) trades merged voices against extra labels. The refinement pass on stop
+  is authoritative; `--no-refine` keeps the live result. Both are saved
+  (`transcript.live.json`, `transcript.json`).
 - Audio is recorded as 30 s FLAC parts while running, so a crash loses at most 30 s;
   `tx refine` works on an interrupted session.
 - Linux needs the PortAudio library for microphone input (`apt install libportaudio2`);
@@ -273,12 +283,15 @@ uv run tx speakers list | consent NAME --revoke | delete NAME | export F | impor
 ```
 - Each session stores a few **exemplar embeddings** per speaker (`exemplars.npz`, from
   ≥3 s pieces of clean speech that never span a pause). Naming a speaker enrolls them.
-- **Decisions:** a speaker is labelled only when the score is ≥ 0.85 *and* leads the best
-  competitor by ≥ 0.10 (one person per session speaker); 0.60–0.85 gives a suggestion.
-  Calibrated with `python -m transcribe.bench.calibrate --sweep` on synthetic voices:
-  0 wrong labels with the same, a different, or a phone-like channel - a channel
-  mismatch yields suggestions instead of labels. Real recordings will differ; re-run the
-  bench with your own data before relying on it.
+- **Decisions:** a speaker is labelled only when the score is ≥ 0.75 *and* leads the best
+  competitor by ≥ 0.10 (one person per session speaker); 0.60–0.75 gives a suggestion.
+  Calibrated for TitaNet-small with `python -m transcribe.bench.calibrate --sweep` on
+  synthetic voices: 0 wrong labels with the same, a different, or a phone-like channel
+  (strangers scored ≤ 0.66) - a phone-like channel mostly yields suggestions. Real
+  recordings will differ; re-run the bench with your own data before relying on it.
+- **Voiceprints belong to one voice model.** Since TitaNet-small replaced WeSpeaker
+  ResNet34 as default, older voiceprints are not used (File → Voiceprints says how many);
+  enroll those people again.
 - **Safety against diarization errors:** a speaker whose exemplars disagree (two voices
   merged) is never enrolled and never labelled confidently. A speaker with mixed
   languages is transcribed with per-turn language detection, so no speech is dropped.

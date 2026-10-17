@@ -61,6 +61,26 @@ def _fill_from_neighbours(words: list[Word], max_gap: float) -> None:
             word.speaker_id = min(candidates)[1]
 
 
+# Titles and abbreviations whose full stop does not end a sentence (case-insensitive)
+_ABBREVIATIONS = {
+    "mr", "mrs", "ms", "dr", "prof", "st", "jr", "sr", "vs", "etc", "e.g", "i.e", "no",
+    "hr", "fr", "frl", "nr", "z.b", "bzw", "ca", "usw", "evtl", "ggf", "inkl", "sog",
+    "vgl", "d.h", "u.a", "o.k",
+}
+
+
+def is_sentence_end(text: str) -> bool:
+    """Does a word end a sentence? "?" and "!" always; "." unless the word is a title or
+    abbreviation ("Mr.", "Dr.", "z.B."), a single letter ("J.") or a number ("3.")."""
+    t = text.strip()
+    if t.endswith(("?", "!", "?\"", "!\"", "?\u201c", "!\u201c")):
+        return True
+    if not t.endswith(".") or t.endswith(".."):  # "..." trails off mid-sentence
+        return t.endswith("...")
+    stem = t.rstrip(".").lstrip("\"'(\u201e\u201c").casefold()
+    return not (stem in _ABBREVIATIONS or len(stem) == 1 or stem.isdigit())
+
+
 def words_to_segments(words: list[Word], max_pause: float = 1.5, max_duration: float = 30.0,
                       lang: str | None = None, channel_id: str = "default") -> list[Segment]:
     """Group consecutive words into segments.
@@ -84,5 +104,5 @@ def _should_split(cur: Segment, word: Word, max_pause: float, max_duration: floa
     if cur.speaker_id != word.speaker_id or word.t0 - cur.t1 > max_pause:
         return True
     length = word.t1 - cur.t0
-    sentence_end = cur.words[-1].text.rstrip().endswith((".", "?", "!"))
+    sentence_end = is_sentence_end(cur.words[-1].text)
     return length > 2 * max_duration or (length > max_duration and sentence_end)

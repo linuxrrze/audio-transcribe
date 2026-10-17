@@ -150,11 +150,15 @@ def main() -> None:
                for ch in args.channels}
     for ch, trials in results.items():
         o = decide(trials, cfg.match_threshold_high, cfg.match_threshold_low, cfg.match_margin)
+        gen = [s for t in trials for p, s in t.scores if p == t.speaker]
+        imp = [s for t in trials for p, s in t.scores if p != t.speaker]
         print(f"{ch:5}: EER {eer(trials):5.1%} | correct {o.correct:2} suggest {o.suggested:2}"
-              f" unknown {o.unknown:2} WRONG {o.wrong}")
+              f" unknown {o.unknown:2} WRONG {o.wrong} | genuine min {min(gen):.2f} median "
+              f"{np.median(gen):.2f} | impostor max {max(imp):.2f} p99 "
+              f"{np.percentile(imp, 99):.2f}")
     if args.sweep:
         print("high  margin | " + " | ".join(f"{ch}: ok/sug/WRONG" for ch in results))
-        for high in (0.75, 0.80, 0.85, 0.90):
+        for high in (0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90):
             for margin in (0.05, 0.10, 0.15):
                 cells = []
                 for trials in results.values():

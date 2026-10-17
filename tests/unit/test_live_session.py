@@ -1,9 +1,9 @@
 import json
 
+import numpy as np
 import pytest
 
 from tests.unit.fakes import FakeEmbedder, ScriptedWorld, fake_vad, utterance
-from tests.unit.test_live_tracker import threshold_cluster
 from transcribe.audio.base import SAMPLE_RATE, AudioFrame, SourceInfo
 from transcribe.core.events import FinalSegment, SpeakerDetected, StatusChanged
 from transcribe.live.session import LIVE_TRANSCRIPT, LiveSession
@@ -42,7 +42,7 @@ def make_session(tmp_path, refine=None):
     world = ScriptedWorld(WORDS)
     session = LiveSession(ArraySource(world.audio(7.5)), world, tmp_path, ["de", "en"],
                           fake_vad, embedder=FakeEmbedder(),
-                          tracker=LiveSpeakerTracker(threshold_cluster), refine=refine,
+                          tracker=LiveSpeakerTracker(), refine=refine,
                           streamer_config=StreamerConfig(step=0.5))
     events = []
     session.bus.subscribe(events.append)
@@ -108,3 +108,21 @@ def test_processing_error_surfaces_on_stop(tmp_path):
     session.wait(timeout=30)
     with pytest.raises(RuntimeError, match="live processing failed"):
         session.stop()
+
+
+def test_sentence_pieces_split_at_sentence_ends():
+    from transcribe.live.session import sentence_pieces
+    from transcribe.storage.transcript_model import Segment, Word
+
+    ws = [Word(" Hallo,", 0.0, 0.4), Word(" Peter.", 0.5, 0.9), Word(" Was?", 1.3, 1.6),
+          Word(" Mr.", 2.0, 2.2), Word(" Fentriss", 2.3, 2.8), Word(" kommt.", 2.9, 3.2)]
+    seg = Segment(0.0, 3.5, ws, "S1", "de", "mic", "mic-7")
+    audio = np.arange(int(3.5 * 16000), dtype=np.float32)
+    pieces = sentence_pieces(seg, audio)
+    assert [p.text for p, _ in pieces] == ["Hallo, Peter.", "Was?", "Mr. Fentriss kommt."]
+    assert [p.id for p, _ in pieces] == ["mic-7", "mic-7.1", "mic-7.2"]
+    assert [(p.t0, p.t1) for p, _ in pieces] == [(0.0, 1.1), (1.1, 1.8), (1.8, 3.5)]
+    assert pieces[1][1][0] == int(1.1 * 16000)  # audio cut at the same times
+    assert sum(len(a) for _, a in pieces) == len(audio)
+    single = Segment(0.0, 1.0, ws[:1], id="x")
+    assert sentence_pieces(single, audio[:16000])[0][0] is single

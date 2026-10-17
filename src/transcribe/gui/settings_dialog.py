@@ -236,11 +236,15 @@ class SettingsDialog(QDialog):
         self.speaker_count.addItem("Silhouette (distinct voices, e.g. meetings)", "silhouette")
         self.speaker_count.setCurrentIndex(max(0, self.speaker_count.findData(s.speaker_count)))
         self.num_threads = _int_spin(s.num_threads, 0, 64, "auto")
+        self.live_threshold = _spin(s.live_threshold, 0.1, 0.9, 0.05)
+        self.live_threshold.setToolTip("Live labels: similarity at which a sentence joins a "
+                                       "known speaker; higher finds more speakers")
         form = QFormLayout()
         form.addRow("Speaker threshold:", self.threshold)
         form.addRow(self.resegment)
         form.addRow("Number of speakers:", self.speaker_count)
         form.addRow("Threads:", self.num_threads)
+        form.addRow("Live speaker threshold:", self.live_threshold)
         note = QLabel("If you know how many people speak, give the number when transcribing "
                       "(Sessions tab: Refine with a speaker count) - the most reliable setting.")
         note.setWordWrap(True)
@@ -369,6 +373,7 @@ class SettingsDialog(QDialog):
         s.resegment = self.resegment.isChecked()
         s.speaker_count = self.speaker_count.currentData()
         s.num_threads = self.num_threads.value()
+        s.live_threshold = self.live_threshold.value()
         s.identify_known = self.identify.isChecked()
         s.store_voiceprints = self.store.isChecked()
         s.encrypt_voiceprints = self.encrypt.isChecked()

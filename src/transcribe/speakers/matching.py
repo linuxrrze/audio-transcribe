@@ -39,7 +39,7 @@ class SpeakerMatcher:
     absolute threshold and a ``margin`` over the best competing candidate.
     """
 
-    def __init__(self, db: VoiceprintDB, model_id: str, high: float = 0.85, low: float = 0.60,
+    def __init__(self, db: VoiceprintDB, model_id: str, high: float = 0.75, low: float = 0.60,
                  margin: float = 0.10, top_k: int = 3, channel_type: str | None = None) -> None:
         if low > high:
             raise ValueError("low threshold must not exceed high threshold")

@@ -105,6 +105,12 @@ class VoiceprintsDialog(QDialog):
             + f" - current model: {s.embedding_model}"
             + ("" if s.store_voiceprints else
                " - <b>storing new voiceprints is disabled in the settings</b>"))
+        stale = (sum(self.db.voiceprint_counts().values())
+                 - sum(self.db.voiceprint_counts(s.embedding_model).values()))
+        if stale:  # e.g. enrolled with WeSpeaker ResNet34 before TitaNet became the default
+            info.setText(info.text() + f"<br><b>{stale} voiceprint(s) were made with another "
+                         "voice model and are not used</b> - enroll these people again "
+                         "(Voiceprints… shows the model of each).")
         info.setWordWrap(True)
         info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.table = _table(["Name", "Voiceprints", "Speech", "Consent since", "Sources",

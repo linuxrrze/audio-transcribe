@@ -48,6 +48,7 @@ SOURCES = [("Microphone", "mic"), ("System audio (what the computer plays)", "sy
 
 class LiveTab(QWidget):
     session_finished = Signal(object)  # session dir (Path)
+    open_session_requested = Signal(object)  # session dir: show it in the Sessions tab
     status_message = Signal(str)
 
     def __init__(self, config: Config, parent=None,
@@ -103,10 +104,8 @@ class LiveTab(QWidget):
         self.panel.rename_requested.connect(self._rename)
         self.panel.accept_requested.connect(self._accept)
         self.panel.decline_requested.connect(self._decline)
-        self.panel.merge_requested.connect(
-            lambda *_: QMessageBox.information(self, "Merge speakers",
-                                               "Merging is available once the session has "
-                                               "stopped (Sessions tab)."))
+        self.panel.link_activated.connect(self._open_in_sessions)
+        self._live_panel()
 
         def with_meter(combo: QComboBox, meter: LevelMeter) -> QHBoxLayout:
             row = QHBoxLayout()
@@ -253,6 +252,7 @@ class LiveTab(QWidget):
         num = self.speakers.value() or None
         self.view.clear_all()
         self.panel.set_speakers({})
+        self._live_panel()
         self.pending_names.clear()
         self.start_btn.setEnabled(False)
         self._set_status("Loading models (first run downloads them)…")
@@ -290,6 +290,10 @@ class LiveTab(QWidget):
         self.session = None
         self.view.set_transcript(transcript)
         self.panel.set_speakers(transcript.speakers)
+        # the session is closed: speakers are edited in the Sessions tab
+        self.panel.set_actions(rename=False, merge=False, suggestions=False)
+        self.panel.set_note('Session saved. <a href="sessions">Name, merge or correct '
+                            'speakers in the Sessions tab</a>.')
         self.start_btn.setText("Start")
         self.start_btn.setEnabled(True)
         self._update_controls()
@@ -376,6 +380,16 @@ class LiveTab(QWidget):
         self.panel.update_speaker(speaker)
 
     # --- speaker actions (live: applied in memory, voiceprints learned after stop) -------
+    def _live_panel(self) -> None:
+        """While recording, speakers can be named (and suggestions answered); merging
+        needs the finished transcript."""
+        self.panel.set_actions(rename=True, merge=False, suggestions=True)
+        self.panel.set_note("")
+
+    def _open_in_sessions(self, _link: str = "") -> None:
+        if self.session_dir is not None:
+            self.open_session_requested.emit(self.session_dir)
+
     def _speaker(self, sid: str) -> Speaker | None:
         if self.session is not None:
             return self.session.transcript.speakers.get(sid)

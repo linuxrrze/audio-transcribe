@@ -15,7 +15,6 @@ except ImportError as e:  # missing extra or libGL & co.
 
 from tests.unit.fakes import FakeEmbedder, ScriptedWorld, fake_vad, utterance  # noqa: E402
 from tests.unit.test_live_session import ArraySource  # noqa: E402
-from tests.unit.test_live_tracker import threshold_cluster  # noqa: E402
 from transcribe.core.config import Config  # noqa: E402
 from transcribe.live.session import LiveSession  # noqa: E402
 from transcribe.live.streamer import StreamerConfig  # noqa: E402
@@ -134,7 +133,7 @@ def test_live_tab_start_stop(app, config, tmp_path):
     def session_factory(source, cfg, session_dir, num, diarize, meta):
         return LiveSession(source, world, session_dir, ["de", "en"], fake_vad,
                            embedder=FakeEmbedder(),
-                           tracker=LiveSpeakerTracker(threshold_cluster),
+                           tracker=LiveSpeakerTracker(),
                            streamer_config=StreamerConfig(step=0.5), meta=meta)
 
     tab = LiveTab(config, source_factory=source_factory, session_factory=session_factory,
@@ -144,12 +143,21 @@ def test_live_tab_start_stop(app, config, tmp_path):
     tab.start()
     assert pump(app, lambda: tab.running and tab.view.segment_count() == 2)
     assert tab.panel.list.count() == 2
+    # while recording: naming works, merging needs the finished transcript
+    assert not tab.panel.rename_btn.isHidden() and tab.panel.merge_btn.isHidden()
     assert tab.mic_meter.status != "no data"  # session levels drive the meter
     tab._name_live("S2", "Fiona", enroll=False)  # user names a speaker while recording
     tab.stop()
     assert pump(app, lambda: finished)
     assert not tab.running and tab.start_btn.text() == "Start"
     assert (finished[0] / "transcript.json").exists()
+    # stopped: no dead buttons, a link to the Sessions tab instead
+    assert tab.panel.rename_btn.isHidden() and tab.panel.merge_btn.isHidden()
+    assert not tab.panel.note.isHidden() and "Sessions tab" in tab.panel.note.text()
+    opened = []
+    tab.open_session_requested.connect(opened.append)
+    tab.panel.link_activated.emit("sessions")
+    assert opened == [finished[0]]
     from transcribe.sessions import load
 
     assert pump(app, lambda: load(finished[0]).speakers["S2"].label == "Fiona")
@@ -299,6 +307,8 @@ def test_voiceprints_dialog(app, config, tmp_path, monkeypatch):
                         lambda *a, **k: QMessageBox.StandardButton.Yes)
     dlg = vd.VoiceprintsDialog(config, db=db)
     assert dlg.table.rowCount() == 2
+    info = dlg.findChildren(vd.QLabel)[0].text()
+    assert "2 voiceprint(s) were made with another voice model" in info  # m1 != titanet
     assert [dlg.table.item(0, c).text() for c in range(4)] == ["Anna", "2", "0.2 min",
                                                                dlg.table.item(0, 3).text()]
     assert dlg.table.item(1, 3).text() == "no consent"

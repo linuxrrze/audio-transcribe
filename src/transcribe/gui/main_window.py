@@ -26,6 +26,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.sessions, "Sessions")
         self.setCentralWidget(self.tabs)
         self.live.session_finished.connect(self.sessions.reload)
+        self.live.open_session_requested.connect(self._show_session)
         self.live.status_message.connect(self.statusBar().showMessage)
         self.sessions.status_message.connect(self.statusBar().showMessage)
 
@@ -40,6 +41,10 @@ class MainWindow(QMainWindow):
             self, "Transcribe", f"Transcribe {__version__}\nLocal transcription with speaker "
             "identification. Audio and voiceprints never leave this computer."))
         self.menuBar().addMenu("&Help").addAction(about)
+
+    def _show_session(self, session_dir) -> None:
+        self.sessions.reload(session_dir)
+        self.tabs.setCurrentWidget(self.sessions)
 
     def _settings(self) -> None:
         if self.live.running:

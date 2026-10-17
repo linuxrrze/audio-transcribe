@@ -99,6 +99,9 @@ speaker). Two views:
   the user merges split speakers in the app). Only *mixing* voices is penalised, which
   cannot be repaired afterwards.
 
+(Measured with the previous voice model, WeSpeaker ResNet34; see "Voice model" below for
+TitaNet-small.)
+
 | | speakers found | 1:1 accuracy | purity |
 |---|---|---|---|
 | ES2004a, diarizer only | 55 | 45 % | 99 % |
@@ -121,6 +124,82 @@ speaker). Two views:
   speakers on ES2004a, but merged the radio play's similar voices into 3 speakers.
 
 Reproduce: `python -m transcribe.bench.diarization` and `python -m transcribe.bench.models`.
+
+## Live speaker labels
+
+`python -m transcribe.bench.live_speakers` replays a recording through live labelling:
+utterances cut as in live mode (an utterance ends at a 0.4 s pause), Whisper `small`
+words, then the live code labels piece by piece. Share of speech (10 ms frames with one
+reference speaker) labelled correctly under the best one-to-one mapping of labels to
+people; in brackets the number of labels. "Ceiling" = every piece labelled with its true
+majority speaker.
+
+| Live labelling | Radio play (6 voices) | AMI IS1009a | AMI ES2004a |
+|---|---|---|---|
+| Before: whole utterances, ResNet34, all re-clustered after each utterance | 29 % (1) | 73 % (5) | 51 % (33) |
+| Whole utterances, TitaNet, centroids | 29 % (1) | 75 % (5) | 76 % (8) |
+| **Sentences, TitaNet, centroids (default)** | **91 %** (5) | **84 %** (9) | **79 %** (12) |
+| Sentences, ResNet34, centroids | 29 % (1) | 62 % (1) | 75 % (5) |
+| Ceiling: whole utterances / sentences | 41 % / 98 % | 83 % / 91 % | 77 % / 81 % |
+
+(Centroid threshold 0.4. "Before" was measured on the same recordings with the previous
+tracker in an experiment script; it is no longer part of the code.)
+
+What made the difference, in order of impact:
+
+1. **Labels per sentence.** In a radio play nobody waits 0.4 s before answering: 40
+   lines became 9 utterances, so per-utterance labels could at best be 41 % right. Cutting
+   finished utterances at sentence ends (Whisper's punctuation, not at "Mr."/"Dr."/"z.B.")
+   raises the ceiling to 98 %. pyannote's segmentation model as change detector inside
+   utterances reached 72 % on the play and added nothing on top of sentences.
+2. **Voice model.** Ten models compared on single-speaker pieces (nearest neighbour from
+   the same speaker / equal error rate, IS1009a): WeSpeaker ResNet34 88 % / 28.5 %,
+   **NeMo TitaNet-small 98 % / 13.3 %** at half the time (21 vs 41 ms per piece);
+   TitaNet-large and 3D-Speaker CAM++ were similar, ERes2Net and larger ResNets slower
+   and not better. TitaNet-small is now the model everywhere (diarization, second pass,
+   voiceprints).
+3. **Stable assignment.** Each piece joins the most similar speaker centroid if the
+   cosine similarity is ≥ 0.4, else starts a new speaker; pieces under 1 s never start
+   one. Re-clustering everything after each utterance relabelled earlier lines and
+   over-split ES2004a into 33 labels. Threshold 0.3 merged voices in the play, 0.5
+   over-split the meetings (18-24 labels).
+
+On the user's radio play (first 6 minutes, no reference, checked by reading): before,
+three labels with whole exchanges of Justus, Peter and Mr. Fentriss under one; after,
+Justus, Peter, the fake Mr. Fentriss and the narrator each consistently under their own
+label, errors left at short interjections.
+
+## Voice model: TitaNet-small replaces ResNet34
+
+Speaker embeddings are used by the diarizer, the second pass, live labels and
+voiceprints. NeMo TitaNet-small (CC-BY-4.0, 192-dim) is the default since it halved the
+speaker confusions of WeSpeaker ResNet34 on single-speaker pieces of IS1009a (see
+"Live speaker labels") at twice the speed. Full offline pipeline, word speaker accuracy /
+purity, `python -m transcribe.bench.diarization [--embedding-model ...]` (radio play: same
+pipeline, experiment script):
+
+| Second pass (default) | ResNet34 (thr 0.5) | **TitaNet-small (thr 0.5)** |
+|---|---|---|
+| ES2004a | 69.0 % / 98.5 % (15 labels) | **79.5 % / 99.2 %** (15) |
+| IS1009a | 83.1 % / 90.1 % (9) | 81.1 % / **97.2 %** (15) |
+| Radio play | 88.5 % / 92.6 % (6) | **96.7 % / 99.2 %** (7) |
+| ES2004a, `speaker_count = "silhouette"` | 98.5 % (4) | **99.2 %** (4) |
+| IS1009a, `speaker_count = "silhouette"` | 86.9 % / 89.6 % (5) | 92.7 % / 92.7 % (3) |
+
+TitaNet mixes far fewer voices (purity); on IS1009a it splits people into more labels,
+which merging fixes. The diarizer's clustering threshold was swept from 0.3 to 0.8: 0.6
+scored highest on these three recordings (IS1009a 94.9 %, play 99.2 %), but merged a
+female English and a female German voice in the short cross-session test dialogue
+(`tests/integration`), so the default stays at 0.5.
+
+**Voiceprint thresholds** recalibrated for TitaNet (`python -m transcribe.bench.calibrate
+--sweep`, 20 enrolled synthetic voices + 5 strangers): genuine scores ≥ 0.92 on the same
+channel, ≥ 0.80 through another microphone, ≥ 0.66 through a phone-like channel;
+strangers ≤ 0.66. Auto-label at ≥ 0.75 (was 0.85 for ResNet34): 0 wrong names on all
+channels; 20/20 recognised on the same and on another microphone, 8 recognised + 12
+suggested on the phone channel. The consistency check before enrolling (exemplars
+within 0.70 of their medoid, ≥ 75 % agreeing) holds for TitaNet: genuine AMI speakers
+87-95 % consistent, different people's pieces ≤ 0.60 similar.
 
 ## whisper.cpp: CPU vs AMD iGPU (Vulkan)
 

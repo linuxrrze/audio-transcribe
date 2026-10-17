@@ -1,112 +1,85 @@
-"""Live (provisional) speaker labels.
+"""Live speaker labels: online assignment of speech pieces to speaker centroids.
 
-Every finalized utterance is embedded; all embeddings so far are re-clustered after each
-new one, and the new clustering is mapped onto the previous labels so that ids stay
-stable. When re-clustering moves earlier utterances to another speaker, the tracker
-reports them so frontends can relabel. Labels are provisional: the end-of-session
-refinement pass (full offline diarization) is authoritative.
+Each finished piece (a sentence of an utterance, see live/session.py) is embedded and
+assigned to the most similar speaker if the cosine similarity to that speaker's centroid
+reaches ``threshold``; otherwise it starts a new speaker. Pieces shorter than
+``min_new`` seconds never start a speaker - their embeddings are unreliable - they join
+the most similar one (or the previous speaker). Labels are final when shown: unlike
+re-clustering everything after each piece, nothing is relabelled later.
+
+Measured with ``python -m transcribe.bench.live_speakers`` (docs/BENCHMARKS.md): with
+TitaNet-small embeddings and sentence pieces, 81-91 % of speech labelled correctly vs
+29-73 % for per-utterance re-clustering. The end-of-session refinement pass (full offline
+diarization) remains authoritative.
 """
 
 from __future__ import annotations
 
-from collections import Counter
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
-
 import numpy as np
 
-ClusterFn = Callable[[np.ndarray, int | None], Sequence[int]]
-
-
-def sherpa_cluster(threshold: float) -> ClusterFn:
-    import sherpa_onnx
-
-    def cluster(features: np.ndarray, num_clusters: int | None) -> Sequence[int]:
-        cfg = sherpa_onnx.FastClusteringConfig(num_clusters=num_clusters or -1,
-                                               threshold=threshold)
-        return sherpa_onnx.FastClustering(cfg)(np.ascontiguousarray(features, np.float32))
-
-    return cluster
-
-
-@dataclass
-class _Item:
-    key: str
-    embedding: np.ndarray
-    speaker: str
+DEFAULT_THRESHOLD = 0.4  # cosine similarity; tuned on AMI + synthetic radio play
+MAX_WEIGHT_S = 3.0  # one piece counts at most this many seconds in a centroid
 
 
 class LiveSpeakerTracker:
-    def __init__(self, cluster: ClusterFn, num_speakers: int | None = None,
-                 min_duration: float = 1.0) -> None:
-        self._cluster = cluster
+    def __init__(self, threshold: float = DEFAULT_THRESHOLD, num_speakers: int | None = None,
+                 min_new: float = 1.0) -> None:
+        self.threshold = threshold
         self.num_speakers = num_speakers
-        self.min_duration = min_duration
-        self._items: list[_Item] = []
-        self._next_id = 1
+        self.min_new = min_new
+        # duration-weighted sums of unit vectors; None until a speaker's first embedding
+        self._centroids: dict[str, np.ndarray | None] = {}
+        self._embeddings: dict[str, list[np.ndarray]] = {}
         self.last_speaker: str | None = None
 
     @property
     def speakers(self) -> list[str]:
-        return sorted({i.speaker for i in self._items}, key=lambda s: int(s[1:]))
+        return list(self._centroids)
 
     def embeddings_by_speaker(self) -> dict[str, list[np.ndarray]]:
-        out: dict[str, list[np.ndarray]] = {}
-        for item in self._items:
-            out.setdefault(item.speaker, []).append(item.embedding)
-        return out
+        return {sid: list(v) for sid, v in self._embeddings.items()}
 
     def assign(self, key: str, embedding: np.ndarray | None,
                duration: float) -> tuple[str, dict[str, str]]:
-        """Label utterance ``key``. Returns (speaker, {earlier_key: new_speaker} changes).
-
-        Utterances shorter than ``min_duration`` (or without embedding) inherit the
-        previous speaker; their embeddings are too unreliable to cluster.
-        """
-        if embedding is None or duration < self.min_duration:
-            if self.last_speaker is None:
-                self.last_speaker = self._new_id()
-            return self.last_speaker, {}
+        """Label piece ``key``. Returns (speaker, {}) - earlier labels never change (the
+        second value keeps the interface of relabelling trackers)."""
+        if embedding is None or not len(embedding):
+            return self._previous(), {}
         v = embedding / (np.linalg.norm(embedding) or 1.0)
-        self._items.append(_Item(key, v, ""))
-        changes = self._recluster()
-        speaker = self._items[-1].speaker
-        changes.pop(key, None)
+        best, sim = self._nearest(v)
+        full = self.num_speakers is not None and len(self._centroids) >= self.num_speakers
+        if best is not None and (sim >= self.threshold or duration < self.min_new or full):
+            speaker = best
+        elif best is None:  # first voice: a speaker without embedding yet takes it
+            speaker = next((k for k, c in self._centroids.items() if c is None), None) \
+                or self._new_id()
+        else:
+            speaker = self._new_id()
+        weight = min(duration, MAX_WEIGHT_S)
+        old = self._centroids.get(speaker)
+        self._centroids[speaker] = weight * v if old is None else old + weight * v
+        self._embeddings.setdefault(speaker, []).append(v)
         self.last_speaker = speaker
-        return speaker, changes
+        return speaker, {}
 
-    def _recluster(self) -> dict[str, str]:
-        if len(self._items) == 1:
-            self._items[0].speaker = self.last_speaker or self._new_id()
-            return {}
-        k = min(self.num_speakers, len(self._items)) if self.num_speakers else None
-        labels = list(self._cluster(np.stack([i.embedding for i in self._items]), k))
-        mapping = self._stable_mapping(labels)
-        changes = {}
-        for item, label in zip(self._items, labels, strict=True):
-            new = mapping[label]
-            if item.speaker and item.speaker != new:
-                changes[item.key] = new
-            item.speaker = new
-        return changes
+    def _nearest(self, v: np.ndarray) -> tuple[str | None, float]:
+        best, sim = None, -1.0
+        for sid, c in self._centroids.items():
+            if c is None:
+                continue
+            s = float(c @ v) / (float(np.linalg.norm(c)) or 1.0)
+            if s > sim:
+                best, sim = sid, s
+        return best, sim
 
-    def _stable_mapping(self, labels: list[int]) -> dict[int, str]:
-        """Map cluster labels to existing speaker ids by maximum overlap (greedy)."""
-        overlap = Counter((lab, item.speaker) for lab, item in zip(labels, self._items,
-                                                                    strict=True)
-                          if item.speaker)
-        mapping: dict[int, str] = {}
-        used: set[str] = set()
-        for (lab, spk), _ in overlap.most_common():
-            if lab not in mapping and spk not in used:
-                mapping[lab] = spk
-                used.add(spk)
-        for lab in sorted(set(labels)):
-            if lab not in mapping:
-                mapping[lab] = self._new_id()
-        return mapping
+    def _previous(self) -> str:
+        if self.last_speaker is None:
+            self.last_speaker = self._new_id()
+            self._centroids[self.last_speaker] = None
+        return self.last_speaker
 
     def _new_id(self) -> str:
-        sid = f"S{self._next_id}"
-        self._next_id += 1
-        return sid
+        n = 1
+        while f"S{n}" in self._centroids:
+            n += 1
+        return f"S{n}"

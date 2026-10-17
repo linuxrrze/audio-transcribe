@@ -38,3 +38,12 @@ def test_orphan_word_inherits_adjacent_speaker():
              Word(" lonely", 20.0, 20.5)]
     assign_speakers(words, [Turn(0.0, 1.0, "S1"), Turn(3.0, 4.0, "S2")])
     assert [w.speaker_id for w in words] == ["S1", "S2", "S2", None]
+
+
+def test_is_sentence_end_skips_titles_and_abbreviations():
+    from transcribe.diarize.align import is_sentence_end
+
+    for text in ("gehört.", " Was?", "Hilfe!", "eine...", 'gut!"', "Fentriss."):
+        assert is_sentence_end(text), text
+    for text in (" Mr.", "Dr.", "z.B.", "bzw.", "J.", "3.", "Hallo,", "und"):
+        assert not is_sentence_end(text), text

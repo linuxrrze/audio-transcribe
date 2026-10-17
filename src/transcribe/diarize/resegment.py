@@ -30,6 +30,7 @@ from collections.abc import Callable, Sequence
 import numpy as np
 
 from transcribe.audio.base import SAMPLE_RATE
+from transcribe.diarize.align import is_sentence_end
 from transcribe.speakers.embedder import Embedder
 from transcribe.storage.transcript_model import Word
 
@@ -92,8 +93,7 @@ def phrases(words: list[Word], gap: float = PHRASE_GAP) -> list[list[Word]]:
     out: list[list[Word]] = []
     cur: list[Word] = []
     for w in words:
-        if cur and (w.t0 - cur[-1].t1 >= gap
-                    or cur[-1].text.rstrip().endswith((".", "?", "!"))):
+        if cur and (w.t0 - cur[-1].t1 >= gap or is_sentence_end(cur[-1].text)):
             out.append(cur)
             cur = []
         cur.append(w)

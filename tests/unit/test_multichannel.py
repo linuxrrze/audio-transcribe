@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from tests.unit.fakes import FakeEmbedder, ScriptedWorld, W, fake_vad, utterance
-from tests.unit.test_live_tracker import threshold_cluster
 from transcribe.audio.base import SAMPLE_RATE, AudioFrame, SourceInfo
 from transcribe.audio.command import CommandSource
 from transcribe.audio.mixer import MixDownSource, MixerSource
@@ -127,7 +126,7 @@ def test_two_channel_session_suppresses_echo(tmp_path):
     asr = RoutedAsr({"mic": mic_world, "system": system_world})
     session = LiveSession(source, asr, tmp_path, ["de", "en"], fake_vad,
                           embedder=FakeEmbedder(),
-                          tracker=LiveSpeakerTracker(threshold_cluster),
+                          tracker=LiveSpeakerTracker(),
                           streamer_config=StreamerConfig(step=0.5))
     for ch, st in session.streamers.items():  # route decodes to the channel's world
         original = st.asr

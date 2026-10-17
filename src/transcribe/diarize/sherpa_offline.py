@@ -65,7 +65,7 @@ class SherpaDiarizer:
     name = "sherpa-onnx"
 
     def __init__(self, segmentation_model: str = "pyannote-segmentation-3.0",
-                 embedding_model: str = "wespeaker-resnet34-lm", threshold: float = 0.5,
+                 embedding_model: str = "nemo-titanet-small", threshold: float = 0.5,
                  num_threads: int = 0, isolated: bool = True,
                  resegment: bool = True, speaker_count: str = "estimate") -> None:
         self.segmentation_path = models.ensure(segmentation_model)
