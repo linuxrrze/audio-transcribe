@@ -350,9 +350,11 @@ def refine_channels(audio: dict[str, np.ndarray], refine_fn: RefineFn, reference
         segments, dropped = suppress_echo(segments)
     segments.sort(key=lambda s: s.t0)
     used = {s.speaker_id for s in segments}
-    return Transcript(
+    transcript = Transcript(
         segments=segments,
         speakers={k: v for k, v in sorted(speakers.items(), key=lambda kv: int(kv[0][1:]))
                   if k in used},
         meta={**reference.meta, **meta, "refined": True,
               **({"echo_segments_dropped": len(dropped)} if multi else {})})
+    transcript.number_segments(force=True)  # channels were numbered separately
+    return transcript

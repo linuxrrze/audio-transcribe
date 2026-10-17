@@ -188,11 +188,42 @@ uv run tx gui
   the voice is learned (with the consent checkbox ticked) when the session stops.
 - **Sessions:** click a timestamp to play from there; the playing line is highlighted.
   Fix diarization by merging speakers, accept or decline suggestions, refine (optionally
-  with a known speaker count), export.
+  with a known speaker count), export. Correct single lines - see below.
 - **File → Known people:** see and delete stored voiceprints.
 - The GUI is a thin layer over the same core as the CLI (`transcribe.sessions`,
   `transcribe.live.factory`); core events reach the Qt thread through a signal bridge,
   model loading and refinement run in background threads.
+
+### Correcting a transcript (speakers and text)
+Speaker detection mixes up similar voices; fix it by hand, in the app or on the command
+line. Changes are saved in the session's `transcript.json`; export afterwards.
+
+**App (Sessions tab):**
+- **Right-click a line → Speaker of this line**: pick a speaker or **New speaker…**.
+  Select several lines first (drag over them) to reassign them in one go.
+- **Double-click a line** (or right-click → Edit text…) to correct the text. Put a line
+  break where the speaker changes to split the line, then assign the parts. Delete all
+  text to remove a line.
+- **Speakers panel:** *Name…* renames, *Merge into…* joins two labels of one person.
+
+**Command line** (`SESSION` = folder, its name in the sessions directory, or `latest`):
+```sh
+tx sessions list                                   # stored sessions
+tx sessions speakers latest                        # ids, names, lines, speaking time
+tx sessions merge latest S7 S6                     # S6 is the same person as S7
+tx sessions rename latest S7 Justus
+tx sessions assign latest 20:22-24:27 Carlos --from Justus   # new speaker if unknown
+tx sessions assign latest 13:09 "Miss Wegner"      # the line(s) starting at 13:09
+tx sessions edit latest 3:35 "Ihr seid also hier, weil ihr den Papagei sucht."   # fix text
+tx sessions edit latest 1:17 "Hinter dir ein Mann!|Was?"   # split: then assign the parts
+```
+Times are line starts as shown in the transcript (`mm:ss`, `hh:mm:ss`, or seconds); a
+range covers all lines starting in it. In `edit`, `|` splits the line; word timings are
+kept where words are unchanged, so playback and subtitles stay in sync.
+
+Stored voice samples follow the corrections (a line moved to another speaker takes its
+samples along). When you later enroll a speaker (*Name…* with "learn this voice", or
+`tx speakers name`), the corrected lines are used.
 
 ### System audio / calls (`--source system|both`)
 ```sh

@@ -21,6 +21,7 @@ from transcribe.speakers.crypto import Cipher, NullCipher, make_cipher
 from transcribe.speakers.embedder import Embedder
 from transcribe.speakers.matching import Decision, Match, SpeakerMatcher
 from transcribe.speakers.voiceprint_db import VoiceprintDB
+from transcribe.storage.editing import EditResult
 from transcribe.storage.transcript_model import Speaker, Transcript
 
 EXEMPLARS = "exemplars.npz"
@@ -157,6 +158,58 @@ def load_exemplars(session_dir: Path, cipher: Cipher | None = None
         for i, m in enumerate(meta["items"])]
 
 
+def reextract_exemplars(session_dir: Path, transcript: Transcript,
+                        config: Config) -> tuple[str, list[Exemplar]]:
+    """Embed the speakers of the (corrected) transcript from the session's audio and save
+    the exemplars. Returns (model_id, exemplars); none if the audio is gone."""
+    from transcribe.audio.file import load_audio
+    from transcribe.sessions import playback_audio
+    from transcribe.speakers.embedder import SherpaEmbedder
+    from transcribe.storage.recorder import load_recording, recorded_channels
+
+    channels = {ch: load_recording(session_dir, ch) for ch in recorded_channels(session_dir)}
+    audio: Audio
+    if channels:
+        audio = channels if len(channels) > 1 else next(iter(channels.values()))
+    elif (source := playback_audio(session_dir)) is not None:
+        audio = load_audio(source)  # a transcribed file: its source
+    else:
+        return "", []
+    embedder = SherpaEmbedder.from_config(config)
+    exemplars = extract_exemplars(audio, transcript, embedder)
+    if config.speakers.store_voiceprints:
+        save_exemplars(session_dir, exemplars, embedder.model_id,
+                       make_cipher(config.speakers.encrypt_voiceprints))
+    return embedder.model_id, exemplars
+
+
+def update_exemplars(session_dir: Path, edit: EditResult, affected: set[str],
+                     cipher: Cipher | None = None) -> None:
+    """Keep a session's exemplars in step with a manual edit of its transcript.
+
+    Exemplars of moved segments follow them to the new speaker, a merged speaker's go to
+    the one kept. Exemplars that can no longer be attributed are dropped: those of
+    deleted or split segments, and concatenations of short segments (no segment id) of
+    ``affected`` speakers - they may contain speech that now belongs to someone else.
+    """
+    if not any((session_dir / n).exists() for n in (EXEMPLARS, EXEMPLARS_ENC)):
+        return
+    model_id, exemplars = load_exemplars(session_dir, cipher)
+    out = []
+    for e in exemplars:
+        sid = edit.renamed_speakers.get(e.speaker_id, e.speaker_id)
+        if e.segment_id in edit.changed_audio:
+            continue
+        if e.segment_id in edit.moved:
+            sid = edit.moved[e.segment_id]
+        elif not e.segment_id and e.speaker_id in affected:
+            continue
+        out.append(Exemplar(sid, e.vector, e.duration, e.segment_id))
+    if len(out) != len(exemplars) or any(a.speaker_id != b.speaker_id
+                                         for a, b in zip(out, exemplars, strict=False)):
+        save_exemplars(session_dir, out, model_id, cipher)
+
+
 def weak_speakers(exemplars: list[Exemplar]) -> set[str]:
     """Speakers represented only by a concatenation of short segments."""
     solid = {e.speaker_id for e in exemplars if e.segment_id}
@@ -273,9 +326,15 @@ def name_speaker(session_dir: Path, transcript_path: Path, speaker_id: str, name
         raise KeyError(f"No speaker {speaker_id} in {transcript_path}")
     added, person_id = 0, None
     if enroll:
-        model_id, exemplars = load_exemplars(session_dir,
-                                             make_cipher(config.speakers.encrypt_voiceprints))
+        cipher = make_cipher(config.speakers.encrypt_voiceprints)
+        try:
+            model_id, exemplars = load_exemplars(session_dir, cipher)
+        except FileNotFoundError:
+            model_id, exemplars = "", []
         mine = [e for e in exemplars if e.speaker_id == speaker_id]
+        if not mine:  # e.g. dropped by a manual edit: embed the corrected transcript anew
+            model_id, exemplars = reextract_exemplars(session_dir, transcript, config)
+            mine = [e for e in exemplars if e.speaker_id == speaker_id]
         if not mine:
             raise ValueError(f"{speaker_id} has no clean speech of >= 3 s to enroll")
         keep, fraction = consistent_subset([e.vector for e in mine])

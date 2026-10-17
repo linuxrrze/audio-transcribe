@@ -13,7 +13,7 @@ import numpy as np
 from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core.config import Config, vocabulary
 from transcribe.live.session import LIVE_TRANSCRIPT, refine_channels
-from transcribe.storage import session_store
+from transcribe.storage import editing, session_store
 from transcribe.storage.recorder import MERGED, load_recording, recorded_channels
 from transcribe.storage.transcript_model import Speaker, Transcript
 
@@ -110,19 +110,71 @@ def decline_suggestion(session_dir: Path, speaker_id: str) -> None:
     t.save(path)
 
 
-def merge_speakers(session_dir: Path, keep: str, drop: str) -> None:
+def merge_speakers(session_dir: Path, keep: str, drop: str,
+                   config: Config | None = None) -> None:
     """Assign all of ``drop``'s speech to ``keep`` (fixes a diarization split)."""
+    _edit(session_dir, config, lambda t: editing.merge(t, keep, drop))
+
+
+def assign_segments(session_dir: Path, seg_ids: list[str], speaker: str,
+                    new_label: str | None = None, config: Config | None = None) -> str:
+    """Attribute whole lines to ``speaker`` (an id), or to a new speaker ``new_label``.
+
+    Returns the speaker id."""
+    target = speaker
+
+    def apply(t: Transcript) -> editing.EditResult:
+        nonlocal target
+        if new_label:
+            target = editing.add_speaker(t, new_label)
+        return editing.assign(t, seg_ids, target)
+
+    _edit(session_dir, config, apply)
+    return target
+
+
+def edit_text(session_dir: Path, seg_id: str, text: str,
+              config: Config | None = None) -> list[str]:
+    """Replace a line's text (word times kept where words are unchanged). Each line of
+    ``text`` becomes its own segment; empty text deletes it. Returns the segment ids."""
+    out: list[str] = []
+
+    def apply(t: Transcript) -> editing.EditResult:
+        result = editing.set_text(t, seg_id, text)
+        if seg_id not in result.changed_audio or result.new_segments:
+            out.extend([seg_id, *result.new_segments])
+        return result
+
+    _edit(session_dir, config, apply)
+    return out
+
+
+def load_numbered(session_dir: Path) -> Transcript:
+    """The session's transcript with segment ids (assigned and saved if missing)."""
     path = transcript_path(session_dir)
     t = Transcript.load(path)
-    if keep not in t.speakers or drop not in t.speakers:
-        raise KeyError(f"Unknown speaker {keep if keep not in t.speakers else drop}")
-    for seg in t.segments:
-        if seg.speaker_id == drop:
-            seg.speaker_id = keep
-        for w in seg.words:
-            if w.speaker_id == drop:
-                w.speaker_id = keep
-    del t.speakers[drop]
+    ids = [s.id for s in t.segments]
+    t.number_segments()
+    if [s.id for s in t.segments] != ids:
+        t.save(path)
+    return t
+
+
+def _edit(session_dir: Path, config: Config | None,
+          apply: Callable[[Transcript], editing.EditResult]) -> None:
+    from transcribe.speakers.crypto import make_cipher
+    from transcribe.speakers.identity import update_exemplars
+
+    path = transcript_path(session_dir)
+    t = load_numbered(session_dir)
+    before = {s.id: s.speaker_id for s in t.segments}
+    result = apply(t)
+    # speakers that lost speech: a concatenated exemplar of theirs may contain it
+    affected = {before[i] for i in (*result.moved, *result.changed_audio)
+                if before.get(i) and before[i] != result.moved.get(i)}
+    config = config or Config.load()
+    update_exemplars(session_dir, result, {a for a in affected if a},
+                     make_cipher(config.speakers.encrypt_voiceprints))
     t.save(path)
 
 

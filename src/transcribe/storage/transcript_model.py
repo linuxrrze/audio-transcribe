@@ -50,6 +50,15 @@ class Transcript:
     speakers: dict[str, Speaker] = field(default_factory=dict)
     meta: dict[str, object] = field(default_factory=dict)
 
+    def number_segments(self, force: bool = False) -> None:
+        """Give every segment a unique id ("seg-<index>"), as edits and voiceprint
+        exemplars refer to segments by id. Keeps existing ids unless some are missing or
+        duplicated (or ``force``)."""
+        ids = [s.id for s in self.segments]
+        if force or "" in ids or len(set(ids)) != len(ids):
+            for i, seg in enumerate(self.segments):
+                seg.id = f"seg-{i}"
+
     def speaker_label(self, speaker_id: str | None) -> str:
         if speaker_id is None:
             return "Unknown"

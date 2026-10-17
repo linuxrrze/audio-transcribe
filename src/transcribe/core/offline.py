@@ -223,7 +223,9 @@ def transcribe_audio(
         "diarizer": diarizer.name if diarizer else None,
         "timings": {k: round(v, 2) for k, v in timings.items()},
     }
-    return Transcript(segments=segments, speakers=speakers, meta=meta)
+    transcript = Transcript(segments=segments, speakers=speakers, meta=meta)
+    transcript.number_segments(force=True)
+    return transcript
 
 
 def _first_appearance_ids(words: list[Word]) -> dict[str, str]:

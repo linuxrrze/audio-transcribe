@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListWidget,
     QListWidgetItem,
@@ -49,6 +50,11 @@ class SessionsTab(QWidget):
         refresh = QPushButton("Refresh")
         refresh.clicked.connect(self.reload)
         self.view = TranscriptView()
+        self.view.editable = True
+        self.view.setToolTip("Right-click a line (or selected lines) to change the speaker; "
+                             "double-click to edit the text.")
+        self.view.assign_requested.connect(self._assign)
+        self.view.edit_requested.connect(self._edit_text)
         self.panel = SpeakerPanel()
         self.panel.rename_requested.connect(self._rename)
         self.panel.merge_requested.connect(self._merge)
@@ -128,10 +134,10 @@ class SessionsTab(QWidget):
         if item is not None:
             self.open(Path(item.data(Qt.ItemDataRole.UserRole)))
 
-    def open(self, path: Path) -> None:
+    def open(self, path: Path, keep_position: bool = False) -> None:
         self.current = path
-        self.transcript = sessions.load(path)
-        self.view.set_transcript(self.transcript)
+        self.transcript = sessions.load_numbered(path)
+        self.view.set_transcript(self.transcript, keep_position)
         self.panel.set_speakers(self.transcript.speakers)
         audio = sessions.playback_audio(path)
         self.play_btn.setEnabled(audio is not None and self.player is not None)
@@ -177,7 +183,37 @@ class SessionsTab(QWidget):
     # --- speakers -----------------------------------------------------------------------
     def _after_edit(self) -> None:
         if self.current:
-            self.open(self.current)
+            self.open(self.current, keep_position=True)
+
+    def _assign(self, seg_ids: list[str], sid: str) -> None:
+        if self.current is None:
+            return
+        name = None
+        if not sid:
+            name, ok = QInputDialog.getText(self, "New speaker", "Name of the new speaker:")
+            if not ok or not name.strip():
+                return
+            name = name.strip()
+        self._apply(lambda: sessions.assign_segments(self.current, seg_ids, sid, name,
+                                                     self.config))
+
+    def _edit_text(self, seg_id: str) -> None:
+        if self.current is None:
+            return
+        text, ok = QInputDialog.getMultiLineText(
+            self, "Edit line",
+            "Each line becomes a line of its own (split where the speaker changes);\n"
+            "delete all text to remove the line.", self.view.segment_text(seg_id))
+        if ok and text != self.view.segment_text(seg_id):
+            self._apply(lambda: sessions.edit_text(self.current, seg_id, text, self.config))
+
+    def _apply(self, edit) -> None:
+        try:
+            edit()
+        except (KeyError, ValueError, RuntimeError) as e:
+            QMessageBox.warning(self, "Edit failed", str(e))
+            return
+        self._after_edit()
 
     def _rename(self, sid: str) -> None:
         if self.current is None or self.transcript is None:
@@ -222,8 +258,7 @@ class SessionsTab(QWidget):
 
     def _merge(self, keep: str, drop: str) -> None:
         if self.current:
-            sessions.merge_speakers(self.current, keep, drop)
-            self._after_edit()
+            self._apply(lambda: sessions.merge_speakers(self.current, keep, drop, self.config))
 
     # --- export / refine ----------------------------------------------------------------
     def _export(self) -> None:

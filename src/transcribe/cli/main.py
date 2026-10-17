@@ -21,6 +21,7 @@ from rich.table import Table
 from rich.text import Text
 
 from transcribe import __version__
+from transcribe.cli.sessions import sessions_app
 from transcribe.cli.speakers import speakers_app
 from transcribe.core import models, registry
 from transcribe.core.config import Config, vocabulary
@@ -32,6 +33,7 @@ app = typer.Typer(help="Local live transcription with speaker identification.",
 models_app = typer.Typer(help="List and download models.", no_args_is_help=True)
 app.add_typer(models_app, name="models")
 app.add_typer(speakers_app, name="speakers")
+app.add_typer(sessions_app, name="sessions")
 console = Console()
 err = Console(stderr=True)  # status/progress; keeps stdout clean for piping
 

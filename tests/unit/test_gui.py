@@ -254,3 +254,35 @@ def test_settings_vocabulary_roundtrip(app, config):
     c = dlg.apply()
     assert c.asr.vocabulary == ["Justus", "DSGVO", "FAU"]
     assert c.asr.corrections == {"Hitschcock": "Hitchcock"}
+
+
+def test_sessions_tab_line_corrections(app, config, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QInputDialog
+
+    from transcribe.gui.sessions_tab import SessionsTab
+    from transcribe.sessions import load
+
+    d = make_session(tmp_path / "sessions")
+    tab = SessionsTab(config)
+    tab.list.setCurrentRow(0)
+    view = tab.view
+    assert view.editable and len(view._order) == len(load(d).segments)
+    first, second = view._order[0], view._order[1]
+    # the block under a point maps to its segment
+    view.resize(600, 400)
+    rect = view.cursorRect(view.textCursor())
+    assert view.segments_at(rect.center()) == [first]
+
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Carlos", True))
+    view.assign_requested.emit([first, second], "")
+    t = load(d)
+    carlos = next(sid for sid, s in t.speakers.items() if s.label == "Carlos")
+    assert [s.speaker_id for s in t.segments[:2]] == [carlos, carlos]
+    assert tab.panel.list.count() == len(t.speakers)
+
+    monkeypatch.setattr(QInputDialog, "getMultiLineText",
+                        lambda *a, **k: ("Erste Zeile\nzweite Zeile", True))
+    view.edit_requested.emit(first)
+    t = load(d)
+    assert [s.text for s in t.segments[:2]] == ["Erste Zeile", "zweite Zeile"]
+    assert len(view._order) == len(t.segments)
