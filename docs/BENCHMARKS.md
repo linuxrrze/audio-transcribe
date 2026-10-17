@@ -221,10 +221,40 @@ Making whisper.cpp match took four fixes, each found on these meetings:
 and whisper.cpp's CPU encoder without flash attention is slower. On a CPU, use
 faster-whisper live; whisper.cpp is meant for the GPU, where the encoder is 7× faster.
 
+**On the GPU** (AMD Radeon 780M iGPU, Vulkan build, measured by the user; same
+benchmark):
+
+| Model | Device | WER ES2004a / IS1009a | word start error | purity | RTF | live latency median (max) |
+|---|---|---|---|---|---|---|
+| `small` | 780M | 22.8 % / 23.9 % | 0.05 / 0.06 s | 98.1 % / 90.6 % | 0.073-0.077 | **1.8 s** (2.0 s) |
+| `large-v3-turbo` | 780M | 23.1 % / 23.2 % | 0.05 / 0.05 s | 97.3 % / 88.8 % | **0.092-0.096** | **4.0 s** (5.3 s) |
+| `large-v3-turbo` | same machine's CPU | 23.0 % / 23.7 % | 0.04 / 0.05 s | 97.7 % / 94.2 % | 0.37-0.39 | - |
+
+- **Live mode with the most accurate model.** `large-v3-turbo` reaches 4.0 s median
+  latency - as fast as faster-whisper `small` on the CPU (4.0 s), where turbo took 50 s.
+  `small` on the iGPU gives the snappiest live view (1.8 s).
+- **Files: 4× faster than the CPU, same accuracy.** Turbo transcribes the 17 min meeting
+  in 1.7 min instead of 6.7 min; WER and word timing are unchanged.
+- **On the GPU, `small` is barely faster than turbo** (0.075 vs 0.094): the encoder is no
+  longer the bottleneck, token-by-token decoding is (the GPU speeds it up only 1.07×,
+  see `whisper-bench` above), and turbo's decoder has 4 layers to `small`'s 12. With a
+  GPU, turbo is the right model for files and the refinement pass.
+- **DTW costs ~15 % speed:** `whisper-cli` with flash attention reached RTF 0.08, the
+  engine with DTW (flash attention off) 0.09-0.10. Worth it - without DTW speaker purity
+  was ~4 points lower (CPU runs above).
+- Purity on IS1009a with turbo differs between GPU (88.8 %) and CPU (94.2 %) at equal WER
+  and timing: fp16 on the GPU produces slightly different text and phrase boundaries,
+  which the speaker pass groups differently. faster-whisper turbo was at 88 % as well -
+  the usual spread on this meeting, not a GPU defect.
+
+Recommended setup with such a GPU: `engine = "whisper.cpp"`, `model = "small"` for the
+live view and `[live] refine_model = "large-v3-turbo"` for the final transcript (or turbo
+for both, if 4 s live latency is fine; files: `tx transcribe -m large-v3-turbo`).
+
 To measure on a machine with a GPU (Vulkan / Metal build from
 `scripts/build_whispercpp.sh`):
 
 ```sh
-python -m transcribe.bench.models --engine whisper.cpp --models small large-v3-turbo --latency
-python -m transcribe.bench.models --engine whisper.cpp --device cpu --models large-v3-turbo
+uv run python -m transcribe.bench.models --engine whisper.cpp --models small large-v3-turbo --latency
+uv run python -m transcribe.bench.models --engine whisper.cpp --device cpu --models large-v3-turbo
 ```

@@ -55,6 +55,15 @@ Any format ffmpeg reads works (decoded via PyAV). Models download on first use t
 user cache dir (override with `TRANSCRIBE_MODELS_DIR`); sessions are stored under the user
 data dir (`sessions_dir` in `config.toml`).
 
+**Settings** live in `config.toml`, which the app's **Settings** dialog writes; you can also
+edit it by hand (only the keys you set, the rest uses defaults; CLI flags override it):
+
+| OS | `config.toml` |
+|---|---|
+| Linux | `~/.config/transcribe/config.toml` |
+| macOS | `~/Library/Application Support/transcribe/config.toml` |
+| Windows | `%LOCALAPPDATA%\transcribe\transcribe\config.toml` |
+
 ### Mixed German/English
 Whisper detects one language per call and can't be limited to a subset, so the pipeline
 detects a language **per speaker** (restricted to `--lang`, default `de,en`), then
@@ -131,22 +140,31 @@ mid-sentence 22 % → 2 %.
 ### GPU acceleration on AMD, Intel and Apple (whisper.cpp engine)
 faster-whisper uses the CPU or an NVIDIA GPU. For other GPUs, the `whisper.cpp` engine
 runs Whisper through [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (Vulkan,
-Metal, CUDA or CPU). On a Radeon 780M iGPU, `large-v3-turbo` ran ~4-5x faster than on the
-CPU of the same machine (see [benchmarks](docs/BENCHMARKS.md#whispercpp-engine)).
+Metal, CUDA or CPU). On a Radeon 780M iGPU, `large-v3-turbo` ran 4× faster than on the
+CPU of the same machine and fast enough for live mode (4 s latency; see
+[benchmarks](docs/BENCHMARKS.md#whispercpp-engine)).
 ```sh
 scripts/build_whispercpp.sh            # whisper-server: CPU + Vulkan (macOS: Metal)
 uv run tx transcribe talk.mp3 --engine whisper.cpp -m large-v3-turbo
 uv run tx live --engine whisper.cpp --device gpu
 ```
-or permanently in `config.toml`:
+or permanently in `config.toml` (see [Usage](#usage) for its location), e.g. for a
+Radeon 780M iGPU - `small` live (1.8 s latency), `large-v3-turbo` for the final
+transcript (0.1× real time):
 ```toml
 [asr]
 engine = "whisper.cpp"
-model = "large-v3-turbo"
+model = "small"
 device = "auto"                 # auto (GPU build if present) | gpu | cpu
 whispercpp_server = ""          # path to any whisper-server; "" = own build, then PATH
 whispercpp_dtw = true           # accurate word times (speaker attribution)
+
+[live]
+refine_model = "large-v3-turbo" # used when a live session stops
 ```
+`refine_model` applies to the pass after a live session; `tx transcribe` and `tx refine`
+use `model` - add `-m large-v3-turbo` for files, or set `model = "large-v3-turbo"` and
+accept 4 s live latency.
 - The engine starts `whisper-server` as a child process (the model stays loaded, also
   for live mode) and talks to it on `127.0.0.1`. ggml models download on first use
   (`tx models download` fetches the configured ones as `ggml:<model>`).
