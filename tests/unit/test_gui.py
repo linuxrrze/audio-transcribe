@@ -430,12 +430,13 @@ def test_transcript_view_follows_new_lines_until_scrolled_up(app):
 
 
 def test_german_ui_with_qt_standard_buttons(app, config):
-    from PySide6.QtCore import QTranslator
+    from PySide6.QtCore import QLocale, QTranslator
     from PySide6.QtWidgets import QDialogButtonBox
 
     from transcribe import i18n
     from transcribe.gui.app import install_qt_translations
     from transcribe.gui.settings_dialog import SettingsDialog
+    from transcribe.gui.voiceprints_dialog import _decimal
 
     i18n.set_language("de")
     try:
@@ -444,9 +445,11 @@ def test_german_ui_with_qt_standard_buttons(app, config):
         assert dlg.windowTitle() == "Einstellungen"
         save = dlg.findChild(QDialogButtonBox).button(QDialogButtonBox.StandardButton.Save)
         assert save.text().replace("&", "") == "Speichern"  # Qt's own translation
+        assert _decimal(0.2) == "0,2" and _decimal(12) == "12,0"
     finally:
         for t in app.findChildren(QTranslator):
             app.removeTranslator(t)
+        QLocale.setDefault(QLocale(QLocale.Language.English))
         i18n.set_language("en")
 
 

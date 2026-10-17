@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QLocale, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -35,6 +35,11 @@ def _table(headers: list[str]) -> QTableWidget:
     t.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
     t.verticalHeader().setVisible(False)
     return t
+
+
+def _decimal(value: float) -> str:
+    """One decimal in the UI language's format ("0,2" in German; see app.py)."""
+    return QLocale().toString(float(value), "f", 1)
 
 
 def _date(iso: str | None) -> str:
@@ -69,7 +74,7 @@ class VoiceprintDetailsDialog(QDialog):
         self.table.setRowCount(len(infos))
         for r, vp in enumerate(infos):
             values = [vp.created_at.replace("T", " ")[:16], vp.source_session or "-",
-                      f"{vp.duration_s:.1f} s", vp.channel_type, vp.model_id]
+                      f"{_decimal(vp.duration_s)} s", vp.channel_type, vp.model_id]
             for c, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 item.setData(Qt.ItemDataRole.UserRole, vp.id)
@@ -177,7 +182,7 @@ class VoiceprintsDialog(QDialog):
             st = stats.get(p.id)
             sources = st.sources if st else []
             values = [p.display_name, str(st.voiceprints if st else 0),
-                      _("{minutes:.1f} min").format(minutes=st.seconds / 60) if st else "-",
+                      _("{minutes} min").format(minutes=_decimal(st.seconds / 60)) if st else "-",
                       _date(p.consent_at) if p.consent_at else _("no consent"),
                       ", ".join(sources[:3]) + (f" (+{len(sources) - 3})"
                                                 if len(sources) > 3 else ""),
