@@ -6,3 +6,16 @@ dist/
 .ruff_cache/
 .mypy_cache/
 build/
+
+# local test recordings, transcripts and benchmark output
+*.m4b
+*.m4a
+*.mp3
+*.wav
+*.flac
+*.ogg
+*.opus
+*.log
+/*.txt
+/*.json
+whispercpp-runs/
