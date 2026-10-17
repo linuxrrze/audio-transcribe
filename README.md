@@ -67,6 +67,24 @@ edit it by hand (only the keys you set, the rest uses defaults; CLI flags overri
 | macOS | `~/Library/Application Support/transcribe/config.toml` |
 | Windows | `%LOCALAPPDATA%\transcribe\transcribe\config.toml` |
 
+### Language of the app (English, Deutsch)
+The CLI and the desktop app speak English and German. By default they follow the system
+language; choose explicitly in **File → Settings → General → Language** (applies after
+a restart), with `[ui] language = "de"` in `config.toml`, or for one run:
+```sh
+TRANSCRIBE_LANG=de uv run tx gui
+TRANSCRIBE_LANG=en uv run tx transcribe talk.mp3
+```
+Default speaker names follow the language too ("Sprecher 1"), also in exports; names you
+give stay as they are. Transcription languages are a separate setting (`--lang`).
+
+**Translations** are gettext `.po` files in `src/transcribe/locale/` (edit with Poedit,
+Weblate or any text editor). After changing UI text in the code, run
+`python scripts/i18n.py` to collect new strings into the catalogs; `uv run pytest` fails
+while a string is untranslated or a translation loses a placeholder. A new language:
+copy `de.po` to `<code>.po`, translate, and add the code to `LANGUAGES` in
+`src/transcribe/i18n.py`.
+
 ### Mixed German/English
 Whisper detects one language per call and can't be limited to a subset, so the pipeline
 detects a language **per speaker** (restricted to `--lang`, default `de,en`), then

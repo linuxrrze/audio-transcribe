@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from transcribe.gui.colors import speaker_color
+from transcribe.i18n import _, display_label
 from transcribe.storage.transcript_model import Speaker
 
 
@@ -40,10 +41,10 @@ class SpeakerPanel(QWidget):
         super().__init__(parent)
         self.list = QListWidget()
         self.list.currentItemChanged.connect(self._update_buttons)
-        self.rename_btn = QPushButton("Name…")
-        self.merge_btn = QPushButton("Merge into…")
-        self.accept_btn = QPushButton("Yes")
-        self.decline_btn = QPushButton("No")
+        self.rename_btn = QPushButton(_("Name…"))
+        self.merge_btn = QPushButton(_("Merge into…"))
+        self.accept_btn = QPushButton(_("Yes"))
+        self.decline_btn = QPushButton(_("No"))
         self.hint = QLabel()
         self.hint.setWordWrap(True)
         self.note = QLabel()
@@ -63,7 +64,7 @@ class SpeakerPanel(QWidget):
         suggest.addWidget(self.accept_btn)
         suggest.addWidget(self.decline_btn)
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("<b>Speakers</b>"))
+        layout.addWidget(QLabel(f"<b>{_('Speakers')}</b>"))
         layout.addWidget(self.list, 1)
         layout.addLayout(suggest)
         layout.addLayout(buttons)
@@ -77,10 +78,12 @@ class SpeakerPanel(QWidget):
         self.list.clear()
         for sid, spk in sorted(speakers.items(),
                                key=lambda kv: int(kv[0][1:]) if kv[0][1:].isdigit() else 0):
-            text = spk.label + (f"  — {spk.suggestion}?" if spk.suggestion else "")
+            text = display_label(spk.label) + (f"  — {spk.suggestion}?" if spk.suggestion
+                                                else "")
             item = QListWidgetItem(_swatch(speaker_color(sid)), text)
             item.setData(Qt.ItemDataRole.UserRole, sid)
-            item.setToolTip(f"{sid}" + (f", score {spk.score:.2f}" if spk.score else ""))
+            item.setToolTip(sid + (_(", score {score}").format(score=f"{spk.score:.2f}")
+                                   if spk.score else ""))
             self.list.addItem(item)
             if sid == current:
                 self.list.setCurrentItem(item)
@@ -120,22 +123,24 @@ class SpeakerPanel(QWidget):
         drop = self.selected()
         if drop is None:
             return
-        others = [f"{s.label} ({sid})" for sid, s in self._speakers.items() if sid != drop]
+        others = [f"{display_label(s.label)} ({sid})" for sid, s in self._speakers.items()
+                  if sid != drop]
         if not others:
             return
-        choice, ok = QInputDialog.getItem(self, "Merge speaker",
-                                          f"Merge {self._speakers[drop].label} into:",
-                                          others, 0, False)
+        choice, ok = QInputDialog.getItem(
+            self, _("Merge speaker"),
+            _("Merge {speaker} into:").format(speaker=display_label(self._speakers[drop].label)),
+            others, 0, False)
         if ok:
             self.merge_requested.emit(choice.rsplit("(", 1)[1].rstrip(")"), drop)
 
-    def _update_buttons(self, *_) -> None:
+    def _update_buttons(self, *_args) -> None:
         sid = self.selected()
         spk = self._speakers.get(sid) if sid else None
         self.rename_btn.setEnabled(spk is not None)
         self.merge_btn.setEnabled(spk is not None and len(self._speakers) > 1)
         has_suggestion = bool(spk and spk.suggestion) and self._actions["suggestions"]
-        self.hint.setText(f"Is this <b>{spk.suggestion}</b>?" if has_suggestion and spk
-                          else "")
+        self.hint.setText(_("Is this <b>{name}</b>?").format(name=spk.suggestion)
+                          if has_suggestion and spk else "")
         for b in (self.accept_btn, self.decline_btn):
             b.setVisible(has_suggestion)

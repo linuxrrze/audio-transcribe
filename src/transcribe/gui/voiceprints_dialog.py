@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from transcribe.core.config import Config, data_dir
 from transcribe.gui.bridge import Job, run_job
+from transcribe.i18n import _
 from transcribe.speakers.voiceprint_db import Person, VoiceprintDB
 
 
@@ -46,13 +47,13 @@ class VoiceprintDetailsDialog(QDialog):
     def __init__(self, db: VoiceprintDB, person: Person, parent=None) -> None:
         super().__init__(parent)
         self.db, self.person = db, person
-        self.setWindowTitle(f"Voiceprints of {person.display_name}")
+        self.setWindowTitle(_("Voiceprints of {name}").format(name=person.display_name))
         self.resize(640, 360)
-        self.table = _table(["Added", "Source", "Speech", "Channel", "Model"])
+        self.table = _table([_("Added"), _("Source"), _("Speech"), _("Channel"), _("Model")])
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        delete = QPushButton("Delete selected")
+        delete = QPushButton(_("Delete selected"))
         delete.clicked.connect(self._delete)
-        close = QPushButton("Close")
+        close = QPushButton(_("Close"))
         close.clicked.connect(self.accept)
         row = QHBoxLayout()
         row.addWidget(delete)
@@ -78,8 +79,9 @@ class VoiceprintDetailsDialog(QDialog):
         ids = sorted({i.siblingAtColumn(0).data(Qt.ItemDataRole.UserRole)
                       for i in self.table.selectedIndexes()})
         if ids and QMessageBox.question(
-                self, "Delete voiceprints",
-                f"Delete {len(ids)} voiceprint(s) of {self.person.display_name}?"
+                self, _("Delete voiceprints"),
+                _("Delete {n} voiceprint(s) of {name}?").format(
+                    n=len(ids), name=self.person.display_name)
         ) == QMessageBox.StandardButton.Yes:
             for vp_id in ids:
                 self.db.delete_voiceprint(vp_id)
@@ -94,27 +96,29 @@ class VoiceprintsDialog(QDialog):
         from transcribe.speakers.identity import open_db
 
         self.config = config
-        self.setWindowTitle("Voiceprints")
+        self.setWindowTitle(_("Voiceprints"))
         self.resize(900, 460)
         self.db = db or open_db(config)
         self._job: Job | None = None
         s = config.speakers
-        info = QLabel(
-            f"Database: {data_dir() / 'voiceprints.sqlite'} - "
-            + ("encrypted" if self.db.cipher.encrypted else "not encrypted")
-            + f" - current model: {s.embedding_model}"
-            + ("" if s.store_voiceprints else
-               " - <b>storing new voiceprints is disabled in the settings</b>"))
+        text = _("Database: {path} - {state} - current model: {model}").format(
+            path=data_dir() / "voiceprints.sqlite",
+            state=_("encrypted") if self.db.cipher.encrypted else _("not encrypted"),
+            model=s.embedding_model)
+        if not s.store_voiceprints:
+            text += " - <b>" + _("storing new voiceprints is disabled in the settings") \
+                + "</b>"
         stale = (sum(self.db.voiceprint_counts().values())
                  - sum(self.db.voiceprint_counts(s.embedding_model).values()))
         if stale:  # e.g. enrolled with WeSpeaker ResNet34 before TitaNet became the default
-            info.setText(info.text() + f"<br><b>{stale} voiceprint(s) were made with another "
-                         "voice model and are not used</b> - enroll these people again "
-                         "(Voiceprints… shows the model of each).")
+            text += "<br><b>" + _("{n} voiceprint(s) were made with another voice model and "
+                                  "are not used").format(n=stale) + "</b> - " \
+                + _("enroll these people again (Voiceprints… shows the model of each).")
+        info = QLabel(text)
         info.setWordWrap(True)
         info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.table = _table(["Name", "Voiceprints", "Speech", "Consent since", "Sources",
-                             "Notes"])
+        self.table = _table([_("Name"), _("Voiceprints"), _("Speech"), _("Consent since"),
+                             _("Sources"), _("Notes")])
         header = self.table.horizontalHeader()
         for col in (4, 5):  # long free text: share the remaining width
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
@@ -124,15 +128,18 @@ class VoiceprintsDialog(QDialog):
         side = QVBoxLayout()
         self.buttons: dict[str, QPushButton] = {}
         for key, text, slot, tip in [
-            ("add", "Add person…", self._add, "Create an entry (voiceprints come later)"),
-            ("enroll", "Enroll from file…", self._enroll,
-             "Learn a voice from a recording of this person speaking alone"),
-            ("details", "Voiceprints…", self._details, "List and delete single voiceprints"),
-            ("rename", "Rename…", self._rename, ""),
-            ("merge", "Merge into…", self._merge, "Two entries are the same person"),
-            ("consent", "Consent…", self._consent, "Record or withdraw consent"),
-            ("notes", "Notes…", self._notes, ""),
-            ("delete", "Delete…", self._delete, "Delete the person and all voiceprints"),
+            ("add", _("Add person…"), self._add,
+             _("Create an entry (voiceprints come later)")),
+            ("enroll", _("Enroll from file…"), self._enroll,
+             _("Learn a voice from a recording of this person speaking alone")),
+            ("details", _("Voiceprints…"), self._details,
+             _("List and delete single voiceprints")),
+            ("rename", _("Rename…"), self._rename, ""),
+            ("merge", _("Merge into…"), self._merge, _("Two entries are the same person")),
+            ("consent", _("Consent…"), self._consent, _("Record or withdraw consent")),
+            ("notes", _("Notes…"), self._notes, ""),
+            ("delete", _("Delete…"), self._delete,
+             _("Delete the person and all voiceprints")),
         ]:
             b = QPushButton(text)
             b.setToolTip(tip)
@@ -143,12 +150,12 @@ class VoiceprintsDialog(QDialog):
         body = QHBoxLayout()
         body.addWidget(self.table, 1)
         body.addLayout(side)
-        import_btn = QPushButton("Import…")
+        import_btn = QPushButton(_("Import…"))
         import_btn.clicked.connect(self._import)
-        export_btn = QPushButton("Export…")
-        export_btn.setToolTip("Selected people, or everyone if none is selected")
+        export_btn = QPushButton(_("Export…"))
+        export_btn.setToolTip(_("Selected people, or everyone if none is selected"))
         export_btn.clicked.connect(self._export)
-        close = QPushButton("Close")
+        close = QPushButton(_("Close"))
         close.clicked.connect(self.accept)
         bottom = QHBoxLayout()
         bottom.addWidget(import_btn)
@@ -170,8 +177,8 @@ class VoiceprintsDialog(QDialog):
             st = stats.get(p.id)
             sources = st.sources if st else []
             values = [p.display_name, str(st.voiceprints if st else 0),
-                      f"{st.seconds / 60:.1f} min" if st else "-",
-                      _date(p.consent_at) if p.consent_at else "no consent",
+                      _("{minutes:.1f} min").format(minutes=st.seconds / 60) if st else "-",
+                      _date(p.consent_at) if p.consent_at else _("no consent"),
                       ", ".join(sources[:3]) + (f" (+{len(sources) - 3})"
                                                 if len(sources) > 3 else ""),
                       p.notes]
@@ -204,19 +211,22 @@ class VoiceprintsDialog(QDialog):
 
     def _ask_consent(self, name: str) -> bool:
         return QMessageBox.question(
-            self, "Consent",
-            f"Has {name} agreed to storing their voiceprint on this computer?\n\n"
-            "Voiceprints are biometric data (GDPR Art. 9); store them only with consent."
+            self, _("Consent"),
+            _("Has {name} agreed to storing their voiceprint on this computer?").format(
+                name=name) + "\n\n"
+            + _("Voiceprints are biometric data (GDPR Art. 9); store them only with "
+                "consent.")
         ) == QMessageBox.StandardButton.Yes
 
     # --- actions ------------------------------------------------------------------------
     def _add(self) -> None:
-        name, ok = QInputDialog.getText(self, "Add person", "Name:")
+        name, ok = QInputDialog.getText(self, _("Add person"), _("Name:"))
         name = name.strip()
         if not ok or not name:
             return
         if self.db.find_person(name):
-            QMessageBox.information(self, "Add person", f"{name} already exists.")
+            QMessageBox.information(self, _("Add person"),
+                                    _("{name} already exists.").format(name=name))
             return
         self.db.add_person(name, consent=self._ask_consent(name))
         self.reload(name)
@@ -225,13 +235,15 @@ class VoiceprintsDialog(QDialog):
         person = self._one()
         name = person.display_name if person else ""
         if not name:
-            name, ok = QInputDialog.getText(self, "Enroll", "Name of the person speaking:")
+            name, ok = QInputDialog.getText(self, _("Enroll"),
+                                            _("Name of the person speaking:"))
             name = name.strip()
             if not ok or not name:
                 return
-        path, _ = QFileDialog.getOpenFileName(
-            self, f"Recording of {name} speaking alone", str(Path.home()),
-            "Audio (*.wav *.mp3 *.m4a *.m4b *.flac *.ogg *.opus);;All files (*)")
+        path, _filter = QFileDialog.getOpenFileName(
+            self, _("Recording of {name} speaking alone").format(name=name), str(Path.home()),
+            _("Audio") + " (*.wav *.mp3 *.m4a *.m4b *.flac *.ogg *.opus);;"
+            + _("All files") + " (*)")
         if not path:
             return
         existing = self.db.find_person(name)
@@ -254,17 +266,19 @@ class VoiceprintsDialog(QDialog):
 
         def done(result: tuple[int, int]) -> None:
             self._job = None
-            self.status.setText(f"{name}: {result[1]} voiceprint(s) added from "
-                                f"{result[0]} piece(s) of speech.")
+            self.status.setText(_("{name}: {added} voiceprint(s) added from {pieces} "
+                                  "piece(s) of speech.").format(
+                name=name, added=result[1], pieces=result[0]))
             self.reload(name)
 
         def failed(message: str) -> None:
             self._job = None
             self.status.setText("")
             self._update_buttons()
-            QMessageBox.warning(self, "Enroll", message)
+            QMessageBox.warning(self, _("Enroll"), message)
 
-        self.status.setText(f"Learning {name}'s voice from {Path(path).name}…")
+        self.status.setText(_("Learning {name}'s voice from {file}…").format(
+            name=name, file=Path(path).name))
         self._job = run_job(work, done, failed, self)
         self._update_buttons()
 
@@ -277,13 +291,15 @@ class VoiceprintsDialog(QDialog):
         person = self._one()
         if person is None:
             return
-        name, ok = QInputDialog.getText(self, "Rename", "New name:", text=person.display_name)
+        name, ok = QInputDialog.getText(self, _("Rename"), _("New name:"),
+                                        text=person.display_name)
         name = name.strip()
         if not ok or not name or name == person.display_name:
             return
         if self.db.find_person(name):
-            QMessageBox.information(self, "Rename",
-                                    f"{name} already exists - use Merge into… instead.")
+            QMessageBox.information(self, _("Rename"),
+                                    _("{name} already exists - use Merge into… "
+                                      "instead.").format(name=name))
             return
         self.db.rename_person(person.id, name)
         self.reload(name)
@@ -294,7 +310,8 @@ class VoiceprintsDialog(QDialog):
             return
         others = [p.display_name for p in self.db.persons() if p.id != person.id]
         target, ok = QInputDialog.getItem(
-            self, "Merge", f"{person.display_name} is the same person as:", others, 0, False)
+            self, _("Merge"), _("{name} is the same person as:").format(
+                name=person.display_name), others, 0, False)
         if ok and (keep := self.db.find_person(target)):
             self.db.merge_persons(keep.id, person.id)
             self.reload(target)
@@ -306,9 +323,10 @@ class VoiceprintsDialog(QDialog):
         if person.consent_at:
             n = len(self.db.voiceprint_info(person.id))
             if QMessageBox.question(
-                    self, "Withdraw consent",
-                    f"Withdraw {person.display_name}'s consent? This deletes all {n} "
-                    "voiceprint(s); the person is no longer recognised.") \
+                    self, _("Withdraw consent"),
+                    _("Withdraw {name}'s consent? This deletes all {n} voiceprint(s); the "
+                      "person is no longer recognised.").format(
+                        name=person.display_name, n=n)) \
                     == QMessageBox.StandardButton.Yes:
                 self.db.delete_voiceprints_of(person.id)
                 self.db.set_consent(person.id, False)
@@ -320,7 +338,7 @@ class VoiceprintsDialog(QDialog):
         person = self._one()
         if person is None:
             return
-        notes, ok = QInputDialog.getMultiLineText(self, "Notes", person.display_name,
+        notes, ok = QInputDialog.getMultiLineText(self, _("Notes"), person.display_name,
                                                   person.notes)
         if ok:
             self.db.set_notes(person.id, notes.strip())
@@ -331,45 +349,50 @@ class VoiceprintsDialog(QDialog):
         if not persons:
             return
         names = ", ".join(p.display_name for p in persons)
-        if QMessageBox.question(self, "Delete", f"Delete {names} and all their voiceprints?"
-                                ) == QMessageBox.StandardButton.Yes:
+        if QMessageBox.question(
+                self, _("Delete"),
+                _("Delete {names} and all their voiceprints?").format(names=names)
+        ) == QMessageBox.StandardButton.Yes:
             for p in persons:
                 self.db.delete_person(p.id)
             self.reload()
 
     def _export(self) -> None:
         persons = self.selected()
-        path, _ = QFileDialog.getSaveFileName(self, "Export voiceprints",
-                                              str(Path.home() / "voiceprints.json"),
-                                              "JSON (*.json)")
+        path, _filter = QFileDialog.getSaveFileName(self, _("Export voiceprints"),
+                                                    str(Path.home() / "voiceprints.json"),
+                                                    "JSON (*.json)")
         if not path:
             return
         try:
             n = self.db.export_json(Path(path),
                                     [p.display_name for p in persons] if persons else None)
         except RuntimeError as e:
-            QMessageBox.warning(self, "Export", str(e))
+            QMessageBox.warning(self, _("Export"), str(e))
             return
-        self.status.setText(f"Exported {n} voiceprint(s) to {path} - the file is not "
-                            "encrypted, keep it safe.")
+        self.status.setText(_("Exported {n} voiceprint(s) to {path} - the file is not "
+                              "encrypted, keep it safe.").format(n=n, path=path))
 
     def _import(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Import voiceprints", str(Path.home()),
-                                              "JSON (*.json);;All files (*)")
+        path, _filter = QFileDialog.getOpenFileName(
+            self, _("Import voiceprints"), str(Path.home()),
+            "JSON (*.json);;" + _("All files") + " (*)")
         if not path:
             return
         try:
             persons, vps = self.db.import_json(Path(path))
         except (ValueError, KeyError, OSError) as e:
-            QMessageBox.warning(self, "Import", f"Cannot import {path}: {e}")
+            QMessageBox.warning(self, _("Import"), _("Cannot import {path}: {error}").format(
+                path=path, error=e))
             return
-        self.status.setText(f"Imported {vps} voiceprint(s) of {persons} person(s).")
+        self.status.setText(_("Imported {n} voiceprint(s) of {persons} person(s).").format(
+            n=vps, persons=persons))
         self.reload()
 
     def done(self, result: int) -> None:
         if self._job is not None:
-            QMessageBox.information(self, "Voiceprints", "Please wait until enrollment is "
-                                    "finished.")
+            QMessageBox.information(self, _("Voiceprints"),
+                                    _("Please wait until enrollment is finished."))
             return
         self.db.close()
         super().done(result)

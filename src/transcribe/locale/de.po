@@ -1,0 +1,1714 @@
+# Transcribe - de translation. Update with: python scripts/i18n.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/transcribe/cli/levels.py:13
+msgid "signal"
+msgstr "Signal"
+
+#: src/transcribe/cli/levels.py:13
+#: src/transcribe/gui/level_meter.py:35
+msgid "silent"
+msgstr "still"
+
+#: src/transcribe/cli/levels.py:13
+#: src/transcribe/gui/level_meter.py:35
+msgid "no data"
+msgstr "keine Daten"
+
+#: src/transcribe/cli/levels.py:14
+#: src/transcribe/cli/live_view.py:29
+#: src/transcribe/gui/level_meter.py:36
+msgid "error"
+msgstr "Fehler"
+
+#: src/transcribe/cli/levels.py:38
+msgid "Device"
+msgstr "Gerät"
+
+#: src/transcribe/cli/levels.py:39
+msgid "Level"
+msgstr "Pegel"
+
+#: src/transcribe/cli/levels.py:41
+msgid "max"
+msgstr "max"
+
+#: src/transcribe/cli/levels.py:42
+msgid "Status"
+msgstr "Status"
+
+#: src/transcribe/cli/levels.py:37
+msgid "Audio levels"
+msgstr "Audiopegel"
+
+#: src/transcribe/cli/live_view.py:27
+msgid "starting"
+msgstr "startet"
+
+#: src/transcribe/cli/live_view.py:27
+msgid "running"
+msgstr "läuft"
+
+#: src/transcribe/cli/live_view.py:28
+msgid "identifying"
+msgstr "erkennt Sprecher"
+
+#: src/transcribe/cli/live_view.py:28
+msgid "refining"
+msgstr "verfeinert"
+
+#: src/transcribe/cli/live_view.py:29
+msgid "stopped"
+msgstr "beendet"
+
+#: src/transcribe/cli/live_view.py:30
+msgid "diarize"
+msgstr "Sprechererkennung"
+
+#: src/transcribe/cli/live_view.py:30
+msgid "language"
+msgstr "Sprachbestimmung"
+
+#: src/transcribe/cli/live_view.py:31
+msgid "transcribe"
+msgstr "Transkription"
+
+#: src/transcribe/cli/live_view.py:31
+#: src/transcribe/gui/live_tab.py:53
+msgid "speakers"
+msgstr "Sprecher"
+
+#: src/transcribe/cli/live_view.py:123
+msgid "Ctrl+C to stop"
+msgstr "Strg+C zum Beenden"
+
+#: src/transcribe/cli/main.py:36
+msgid "Arguments"
+msgstr "Argumente"
+
+#: src/transcribe/cli/main.py:37
+msgid "Options"
+msgstr "Optionen"
+
+#: src/transcribe/cli/main.py:38
+msgid "Commands"
+msgstr "Befehle"
+
+#: src/transcribe/cli/main.py:39
+msgid "[required]"
+msgstr "[erforderlich]"
+
+#: src/transcribe/cli/main.py:40
+msgid "[default: {}]"
+msgstr "[Standard: {}]"
+
+#: src/transcribe/cli/main.py:41
+msgid "[env var: {}]"
+msgstr "[Umgebungsvariable: {}]"
+
+#: src/transcribe/cli/main.py:418
+msgid "Audio levels - 🎤 inputs (--input), 🔊 system audio (--output); * = default"
+msgstr "Audiopegel - 🎤 Eingänge (--input), 🔊 Systemton (--output); * = Standard"
+
+#: src/transcribe/cli/main.py:43
+msgid "Local live transcription with speaker identification."
+msgstr "Lokale Live-Transkription mit Sprechererkennung."
+
+#: src/transcribe/cli/main.py:45
+msgid "List and download models."
+msgstr "Modelle anzeigen und herunterladen."
+
+#: src/transcribe/cli/main.py:52
+msgid "Print the version."
+msgstr "Version anzeigen."
+
+#: src/transcribe/cli/main.py:57
+msgid "Open the desktop app."
+msgstr "Desktop-App öffnen."
+
+#: src/transcribe/cli/main.py:64
+msgid "List installed plugins per group."
+msgstr "Installierte Plugins je Gruppe anzeigen."
+
+#: src/transcribe/cli/main.py:178
+msgid "Transcribe an audio file with speaker diarization."
+msgstr "Audiodatei mit Sprechererkennung transkribieren."
+
+#: src/transcribe/cli/main.py:225
+msgid "Transcribe live from the microphone; Ctrl+C stops (and refines)."
+msgstr "Live vom Mikrofon transkribieren; Strg+C beendet (und verfeinert)."
+
+#: src/transcribe/cli/main.py:299
+msgid "Re-run full diarization + transcription on a session's recording."
+msgstr "Sprechererkennung und Transkription für die Aufnahme einer Sitzung neu ausführen."
+
+#: src/transcribe/cli/main.py:357
+msgid "Index"
+msgstr "Index"
+
+#: src/transcribe/cli/main.py:357
+msgid "Microphone / input"
+msgstr "Mikrofon / Eingang"
+
+#: src/transcribe/cli/main.py:357
+msgid "Channels"
+msgstr "Kanäle"
+
+#: src/transcribe/cli/main.py:357
+msgid "Rate"
+msgstr "Rate"
+
+#: src/transcribe/cli/main.py:358
+msgid "Host API"
+msgstr "Host-API"
+
+#: src/transcribe/cli/main.py:358
+#: src/transcribe/cli/main.py:363
+msgid "Default"
+msgstr "Standard"
+
+#: src/transcribe/cli/main.py:363
+#: src/transcribe/cli/speakers.py:60
+msgid "ID"
+msgstr "ID"
+
+#: src/transcribe/cli/main.py:363
+msgid "System audio source"
+msgstr "Systemton-Quelle"
+
+#: src/transcribe/cli/main.py:347
+msgid "List microphones and system-audio (output) devices."
+msgstr "Mikrofone und Systemton-Geräte (Ausgänge) anzeigen."
+
+#: src/transcribe/cli/main.py:370
+msgid "Show live signal levels of microphones and system-audio devices.\n\nSpeak, and play something in the meeting app: the devices that move are the ones to pass to `tx live --input ... --output ...`."
+msgstr "Live-Pegel von Mikrofonen und Systemton-Geräten anzeigen.\n\nSprechen Sie und spielen Sie etwas in der Meeting-App ab: Die Geräte, deren Pegel sich bewegt, geben Sie an `tx live --input ... --output ...` weiter."
+
+#: src/transcribe/cli/main.py:431
+msgid "Export a transcript to another format."
+msgstr "Transkript in ein anderes Format exportieren."
+
+#: src/transcribe/cli/main.py:453
+#: src/transcribe/cli/sessions.py:125
+#: src/transcribe/cli/speakers.py:60
+msgid "Name"
+msgstr "Name"
+
+#: src/transcribe/cli/main.py:453
+msgid "Kind"
+msgstr "Art"
+
+#: src/transcribe/cli/main.py:453
+msgid "Cached"
+msgstr "Vorhanden"
+
+#: src/transcribe/cli/main.py:453
+msgid "Description"
+msgstr "Beschreibung"
+
+#: src/transcribe/cli/main.py:451
+msgid "List downloadable models and whether they are cached."
+msgstr "Herunterladbare Modelle anzeigen und ob sie bereits vorhanden sind."
+
+#: src/transcribe/cli/main.py:470
+msgid "Download models (default: the configured Whisper and diarization models)."
+msgstr "Modelle herunterladen (Standard: die konfigurierten Whisper- und Sprechererkennungsmodelle)."
+
+#: src/transcribe/cli/main.py:201
+#: src/transcribe/cli/main.py:274
+msgid "Loading models (first run downloads them)..."
+msgstr "Modelle werden geladen (beim ersten Start heruntergeladen)..."
+
+#: src/transcribe/cli/main.py:336
+msgid "Identifying speakers..."
+msgstr "Sprecher werden erkannt..."
+
+#: src/transcribe/cli/main.py:358
+msgid "Inputs (--input)"
+msgstr "Eingänge (--input)"
+
+#: src/transcribe/cli/main.py:364
+msgid "System audio (--output)"
+msgstr "Systemton (--output)"
+
+#: src/transcribe/cli/main.py:462
+#: src/transcribe/cli/main.py:455
+msgid "yes"
+msgstr "ja"
+
+#: src/transcribe/cli/main.py:71
+msgid "Whisper model."
+msgstr "Whisper-Modell."
+
+#: src/transcribe/cli/main.py:73
+msgid "Allowed languages, comma-separated (e.g. de,en or de)."
+msgstr "Erlaubte Sprachen, durch Kommas getrennt (z. B. de,en oder de)."
+
+#: src/transcribe/cli/main.py:75
+msgid "Number of speakers, if known (most reliable)."
+msgstr "Anzahl der Sprecher, falls bekannt (am zuverlässigsten)."
+
+#: src/transcribe/cli/main.py:76
+msgid "Identify speakers."
+msgstr "Sprecher erkennen."
+
+#: src/transcribe/cli/main.py:78
+msgid "Clustering threshold; lower finds more speakers."
+msgstr "Clustering-Schwelle; niedriger findet mehr Sprecher."
+
+#: src/transcribe/cli/main.py:83
+msgid "ASR engine: faster-whisper | whisper.cpp (AMD/Intel/Apple GPUs)."
+msgstr "Spracherkennung: faster-whisper | whisper.cpp (AMD-/Intel-/Apple-GPUs)."
+
+#: src/transcribe/cli/main.py:84
+msgid "Output format."
+msgstr "Ausgabeformat."
+
+#: src/transcribe/cli/main.py:85
+#: src/transcribe/cli/main.py:435
+msgid "Write output here."
+msgstr "Ausgabe in diese Datei schreiben."
+
+#: src/transcribe/cli/main.py:88
+msgid "Names/acronyms to recognise, comma-separated (adds to the config)."
+msgstr "Zu erkennende Namen/Abkürzungen, durch Kommas getrennt (ergänzt die Konfiguration)."
+
+#: src/transcribe/cli/main.py:91
+msgid "Vocabulary file: one term per line, 'wrong -> right' for corrections."
+msgstr "Vokabular-Datei: ein Begriff pro Zeile, 'falsch -> richtig' für Korrekturen."
+
+#: src/transcribe/cli/main.py:295
+#: src/transcribe/cli/main.py:221
+msgid "Session saved to {path}"
+msgstr "Sitzung gespeichert unter {path}"
+
+#: src/transcribe/cli/main.py:320
+msgid "Loading models..."
+msgstr "Modelle werden geladen..."
+
+#: src/transcribe/cli/main.py:325
+msgid "Refined transcript saved to {path}"
+msgstr "Verfeinertes Transkript gespeichert unter {path}"
+
+#: src/transcribe/cli/main.py:341
+msgid "{speaker} is {name} (score {score})"
+msgstr "{speaker} ist {name} (Wert {score})"
+
+#: src/transcribe/cli/main.py:342
+msgid "{speaker} might be {name} (score {score})"
+msgstr "{speaker} könnte {name} sein (Wert {score})"
+
+#: src/transcribe/cli/main.py:465
+msgid "Cache: {path}"
+msgstr "Cache: {path}"
+
+#: src/transcribe/cli/main.py:483
+msgid "All configured models are present."
+msgstr "Alle konfigurierten Modelle sind vorhanden."
+
+#: src/transcribe/cli/main.py:412
+msgid "No audio devices found."
+msgstr "Keine Audiogeräte gefunden."
+
+#: src/transcribe/cli/main.py:448
+msgid "Wrote {path}"
+msgstr "Geschrieben: {path}"
+
+#: src/transcribe/cli/main.py:463
+msgid "{model}  cached: {state}"
+msgstr "{model}  vorhanden: {state}"
+
+#: src/transcribe/cli/main.py:181
+msgid "Audio/video file."
+msgstr "Audio-/Videodatei."
+
+#: src/transcribe/cli/main.py:194
+msgid "Store a session folder."
+msgstr "Sitzungsordner speichern."
+
+#: src/transcribe/cli/main.py:229
+msgid "Replay a file instead of the microphone (for testing)."
+msgstr "Datei statt Mikrofon abspielen (zum Testen)."
+
+#: src/transcribe/cli/main.py:230
+msgid "Replay --file as fast as possible."
+msgstr "--file so schnell wie möglich abspielen."
+
+#: src/transcribe/cli/main.py:232
+msgid "mic | system (what the computer plays) | both"
+msgstr "mic | system (was der Computer abspielt) | both"
+
+#: src/transcribe/cli/main.py:234
+msgid "Input device index or name (see `tx devices`)."
+msgstr "Index oder Name des Eingangsgeräts (siehe `tx devices`)."
+
+#: src/transcribe/cli/main.py:237
+msgid "System audio device (see `tx devices`); default: default output."
+msgstr "Systemton-Gerät (siehe `tx devices`); Standard: Standardausgang."
+
+#: src/transcribe/cli/main.py:240
+msgid "With --source both: sum mic+system into one stream (cheaper, no echo suppression or channel separation)."
+msgstr "Mit --source both: Mikrofon und Systemton zu einem Strom mischen (sparsamer, ohne Echounterdrückung und Kanaltrennung)."
+
+#: src/transcribe/cli/main.py:242
+msgid "Session name."
+msgstr "Name der Sitzung."
+
+#: src/transcribe/cli/main.py:253
+msgid "Re-run the full pipeline on the recording when stopped."
+msgstr "Nach dem Beenden die vollständige Verarbeitung auf der Aufnahme erneut ausführen."
+
+#: src/transcribe/cli/main.py:302
+#: src/transcribe/cli/speakers.py:28
+msgid "Session folder."
+msgstr "Sitzungsordner."
+
+#: src/transcribe/cli/main.py:376
+msgid "Only these inputs (index or name); repeatable."
+msgstr "Nur diese Eingänge (Index oder Name); mehrfach angebbar."
+
+#: src/transcribe/cli/main.py:379
+msgid "Only these system-audio devices (see `tx devices`); repeatable."
+msgstr "Nur diese Systemton-Geräte (siehe `tx devices`); mehrfach angebbar."
+
+#: src/transcribe/cli/main.py:382
+msgid "Stop after this many seconds (default: until Ctrl+C)."
+msgstr "Nach so vielen Sekunden beenden (Standard: bis Strg+C)."
+
+#: src/transcribe/cli/main.py:433
+msgid "Session folder or transcript.json."
+msgstr "Sitzungsordner oder transcript.json."
+
+#: src/transcribe/cli/main.py:434
+msgid "Exporter name."
+msgstr "Name des Exportformats."
+
+#: src/transcribe/cli/main.py:473
+msgid "Asset names, whisper:<model> or ggml:<model>; default: everything the config needs."
+msgstr "Modellnamen, whisper:<Modell> oder ggml:<Modell>; Standard: alles, was die Konfiguration benötigt."
+
+#: src/transcribe/cli/main.py:293
+msgid "Refinement aborted; live transcript kept."
+msgstr "Verfeinerung abgebrochen; Live-Transkript wurde behalten."
+
+#: src/transcribe/cli/main.py:146
+msgid "{stage} (finding speech…)"
+msgstr "{stage} (sucht Sprachabschnitte…)"
+
+#: src/transcribe/cli/main.py:487
+msgid "Unknown model {name}"
+msgstr "Unbekanntes Modell {name}"
+
+#: src/transcribe/cli/sessions.py:20
+msgid "List sessions and correct their transcripts."
+msgstr "Sitzungen anzeigen und ihre Transkripte korrigieren."
+
+#: src/transcribe/cli/sessions.py:112
+msgid "Session"
+msgstr "Sitzung"
+
+#: src/transcribe/cli/sessions.py:112
+#: src/transcribe/cli/speakers.py:60
+msgid "Created"
+msgstr "Erstellt"
+
+#: src/transcribe/cli/sessions.py:112
+msgid "Duration"
+msgstr "Dauer"
+
+#: src/transcribe/cli/sessions.py:112
+#: src/transcribe/gui/settings_dialog.py:152
+#: src/transcribe/gui/speaker_panel.py:67
+msgid "Speakers"
+msgstr "Sprecher"
+
+#: src/transcribe/cli/sessions.py:110
+msgid "List stored sessions, newest first."
+msgstr "Gespeicherte Sitzungen anzeigen, neueste zuerst."
+
+#: src/transcribe/cli/sessions.py:125
+msgid "Id"
+msgstr "ID"
+
+#: src/transcribe/cli/sessions.py:125
+msgid "Lines"
+msgstr "Zeilen"
+
+#: src/transcribe/cli/sessions.py:125
+msgid "Words"
+msgstr "Wörter"
+
+#: src/transcribe/cli/sessions.py:125
+msgid "Time"
+msgstr "Zeit"
+
+#: src/transcribe/cli/sessions.py:125
+msgid "First line"
+msgstr "Erste Zeile"
+
+#: src/transcribe/cli/sessions.py:122
+msgid "A session's speakers: id, name, lines, speaking time and first line."
+msgstr "Sprecher einer Sitzung: ID, Name, Zeilen, Sprechzeit und erste Zeile."
+
+#: src/transcribe/cli/sessions.py:138
+msgid "Rename a speaker (no voiceprint; see `tx speakers name` to also learn the voice)."
+msgstr "Sprecher umbenennen (ohne Stimmprofil; mit `tx speakers name` wird auch die Stimme gelernt)."
+
+#: src/transcribe/cli/sessions.py:150
+msgid "Merge speakers that are the same person (a split by the speaker detection)."
+msgstr "Sprecher zusammenführen, die dieselbe Person sind (von der Sprechererkennung aufgeteilt)."
+
+#: src/transcribe/cli/sessions.py:168
+msgid "Attribute lines to another (or a new) speaker.\n\nExample: tx sessions assign latest 20:22-24:27 Carlos --from Justus"
+msgstr "Zeilen einem anderen (oder neuen) Sprecher zuordnen.\n\nBeispiel: tx sessions assign latest 20:22-24:27 Carlos --from Justus"
+
+#: src/transcribe/cli/sessions.py:190
+msgid "Correct a line's text (word timings are kept where the words are unchanged)."
+msgstr "Text einer Zeile korrigieren (die Wortzeiten unveränderter Wörter bleiben erhalten)."
+
+#: src/transcribe/cli/sessions.py:216
+msgid "Line deleted."
+msgstr "Zeile gelöscht."
+
+#: src/transcribe/cli/sessions.py:26
+msgid "Session folder, its name in the sessions directory, or 'latest'."
+msgstr "Sitzungsordner, sein Name im Sitzungsverzeichnis oder 'latest'."
+
+#: src/transcribe/cli/sessions.py:28
+msgid "Line start as shown in the transcript (24:10, 00:24:10, 1450.5) or a range (20:22-24:27)."
+msgstr "Zeilenbeginn wie im Transkript angezeigt (24:10, 00:24:10, 1450.5) oder ein Bereich (20:22-24:27)."
+
+#: src/transcribe/cli/sessions.py:52
+msgid "No session {name} in {path}"
+msgstr "Keine Sitzung {name} in {path}"
+
+#: src/transcribe/cli/sessions.py:114
+msgid "refined"
+msgstr "verfeinert"
+
+#: src/transcribe/cli/sessions.py:115
+msgid "live"
+msgstr "live"
+
+#: src/transcribe/cli/sessions.py:147
+msgid "{speaker} is now {name}"
+msgstr "{speaker} heißt jetzt {name}"
+
+#: src/transcribe/cli/sessions.py:49
+msgid "No session {name} (ambiguous: {n} match)"
+msgid_plural "No session {name} (ambiguous: {n} matches)"
+msgstr[0] "Keine Sitzung {name} (mehrdeutig: {n} Treffer)"
+msgstr[1] "Keine Sitzung {name} (mehrdeutig: {n} Treffer)"
+
+#: src/transcribe/cli/sessions.py:90
+msgid "No speaker {name}; speakers: {speakers}"
+msgstr "Kein Sprecher {name}; Sprecher: {speakers}"
+
+#: src/transcribe/cli/sessions.py:164
+msgid "{speaker} merged into {keep} ({name})"
+msgstr "{speaker} zusammengeführt mit {keep} ({name})"
+
+#: src/transcribe/cli/sessions.py:186
+msgid "New speaker {id}: {name}"
+msgstr "Neuer Sprecher {id}: {name}"
+
+#: src/transcribe/cli/sessions.py:210
+msgid "{n} lines start at {time}; pick one by its exact start in seconds: {options}"
+msgstr "{n} Zeilen beginnen bei {time}; wählen Sie eine über ihren genauen Beginn in Sekunden: {options}"
+
+#: src/transcribe/cli/sessions.py:40
+msgid "No sessions in {path}"
+msgstr "Keine Sitzungen in {path}"
+
+#: src/transcribe/cli/sessions.py:61
+msgid "Not a time: {text}"
+msgstr "Keine Zeitangabe: {text}"
+
+#: src/transcribe/cli/sessions.py:82
+msgid "No line at {time} spoken by {speaker}"
+msgstr "Keine Zeile von {speaker} bei {time}"
+
+#: src/transcribe/cli/sessions.py:83
+msgid "No line at {time}"
+msgstr "Keine Zeile bei {time}"
+
+#: src/transcribe/cli/sessions.py:142
+msgid "Id (S3) or current name."
+msgstr "ID (S3) oder aktueller Name."
+
+#: src/transcribe/cli/sessions.py:143
+msgid "New name."
+msgstr "Neuer Name."
+
+#: src/transcribe/cli/sessions.py:154
+msgid "Speaker to keep (id or name)."
+msgstr "Sprecher, der bleibt (ID oder Name)."
+
+#: src/transcribe/cli/sessions.py:156
+msgid "Speaker(s) merged into KEEP and removed."
+msgstr "Sprecher, die mit KEEP zusammengeführt und entfernt werden."
+
+#: src/transcribe/cli/sessions.py:175
+msgid "Speaker id or name; an unknown name creates a new speaker."
+msgstr "Sprecher-ID oder Name; ein unbekannter Name legt einen neuen Sprecher an."
+
+#: src/transcribe/cli/sessions.py:177
+msgid "Only lines currently attributed to this speaker."
+msgstr "Nur Zeilen, die derzeit diesem Sprecher zugeordnet sind."
+
+#: src/transcribe/cli/sessions.py:195
+msgid "Line start (24:10); must select one line."
+msgstr "Zeilenbeginn (24:10); muss genau eine Zeile auswählen."
+
+#: src/transcribe/cli/sessions.py:197
+msgid "New text. '|' splits the line into several (then assign the parts); empty text deletes the line."
+msgstr "Neuer Text. '|' teilt die Zeile in mehrere (danach die Teile zuordnen); leerer Text löscht die Zeile."
+
+#: src/transcribe/cli/speakers.py:19
+msgid "Manage known speakers (voiceprints)."
+msgstr "Bekannte Sprecher (Stimmprofile) verwalten."
+
+#: src/transcribe/cli/speakers.py:60
+#: src/transcribe/gui/live_tab.py:337
+#: src/transcribe/gui/main_window.py:62
+msgid "Voiceprints"
+msgstr "Stimmprofile"
+
+#: src/transcribe/cli/speakers.py:60
+#: src/transcribe/gui/voiceprints_dialog.py:214
+msgid "Consent"
+msgstr "Einwilligung"
+
+#: src/transcribe/cli/speakers.py:56
+msgid "List known persons with their number of voiceprints."
+msgstr "Bekannte Personen mit der Anzahl ihrer Stimmprofile anzeigen."
+
+#: src/transcribe/cli/speakers.py:70
+msgid "Create a person entry (voiceprints are added with `enroll` or `name`)."
+msgstr "Person anlegen (Stimmprofile kommen mit `enroll` oder `name` hinzu)."
+
+#: src/transcribe/cli/speakers.py:78
+msgid "Record (or withdraw) a person's consent to voiceprint storage."
+msgstr "Einwilligung einer Person zur Speicherung von Stimmprofilen erfassen (oder widerrufen)."
+
+#: src/transcribe/cli/speakers.py:97
+msgid "Rename a person."
+msgstr "Person umbenennen."
+
+#: src/transcribe/cli/speakers.py:105
+msgid "Move all voiceprints of DROP to KEEP and delete DROP."
+msgstr "Alle Stimmprofile von DROP zu KEEP verschieben und DROP löschen."
+
+#: src/transcribe/cli/speakers.py:113
+msgid "Delete a person and all of their voiceprints."
+msgstr "Person und alle ihre Stimmprofile löschen."
+
+#: src/transcribe/cli/speakers.py:148
+msgid "Enroll a voiceprint from a file or a microphone recording (single speaker!)."
+msgstr "Stimmprofil aus einer Datei oder Mikrofonaufnahme einlernen (nur ein Sprecher!)."
+
+#: src/transcribe/cli/speakers.py:181
+msgid "Name a speaker in a session (and learn their voice for future sessions)."
+msgstr "Sprecher einer Sitzung benennen (und die Stimme für künftige Sitzungen lernen)."
+
+#: src/transcribe/cli/speakers.py:231
+msgid "Speaker"
+msgstr "Sprecher"
+
+#: src/transcribe/cli/speakers.py:231
+msgid "Label"
+msgstr "Bezeichnung"
+
+#: src/transcribe/cli/speakers.py:231
+msgid "Suggestion"
+msgstr "Vorschlag"
+
+#: src/transcribe/cli/speakers.py:231
+msgid "Score"
+msgstr "Wert"
+
+#: src/transcribe/cli/speakers.py:207
+msgid "Re-identify a session's speakers against the current voiceprints."
+msgstr "Sprecher einer Sitzung erneut mit den aktuellen Stimmprofilen abgleichen."
+
+#: src/transcribe/cli/speakers.py:239
+msgid "Export persons and voiceprints to JSON (unencrypted - keep the file safe!)."
+msgstr "Personen und Stimmprofile als JSON exportieren (unverschlüsselt - Datei sicher aufbewahren!)."
+
+#: src/transcribe/cli/speakers.py:252
+msgid "Merge an export into the local voiceprint DB (persons matched by name)."
+msgstr "Einen Export in die lokale Stimmprofil-Datenbank übernehmen (Personen werden über den Namen zugeordnet)."
+
+#: src/transcribe/cli/speakers.py:66
+msgid "Voiceprints are encrypted at rest."
+msgstr "Stimmprofile werden verschlüsselt gespeichert."
+
+#: src/transcribe/cli/speakers.py:24
+msgid "Voiceprint database path."
+msgstr "Pfad der Stimmprofil-Datenbank."
+
+#: src/transcribe/cli/speakers.py:26
+msgid "The person agreed to storing their voiceprint (GDPR Art. 9)."
+msgstr "Die Person hat der Speicherung ihres Stimmprofils zugestimmt (DSGVO Art. 9)."
+
+#: src/transcribe/cli/speakers.py:74
+msgid "Added {name} (id {id})"
+msgstr "{name} angelegt (ID {id})"
+
+#: src/transcribe/cli/speakers.py:101
+msgid "Renamed {old} -> {new}"
+msgstr "Umbenannt: {old} -> {new}"
+
+#: src/transcribe/cli/speakers.py:109
+msgid "Merged {drop} into {keep}"
+msgstr "{drop} mit {keep} zusammengeführt"
+
+#: src/transcribe/cli/speakers.py:124
+msgid "Deleted {name}"
+msgstr "{name} gelöscht"
+
+#: src/transcribe/cli/speakers.py:176
+msgid "Enrolled {name}: {added} new voiceprint(s) from {chunks} chunk(s)."
+msgstr "{name} eingelernt: {added} neue(s) Stimmprofil(e) aus {chunks} Abschnitt(en)."
+
+#: src/transcribe/cli/speakers.py:248
+msgid "Exported {n} voiceprint(s) to {path}"
+msgstr "{n} Stimmprofil(e) exportiert nach {path}"
+
+#: src/transcribe/cli/speakers.py:260
+msgid "Imported {n} voiceprint(s) for {persons} person(s)."
+msgstr "{n} Stimmprofil(e) für {persons} Person(en) importiert."
+
+#: src/transcribe/cli/speakers.py:91
+msgid "Consent withdrawn; voiceprints of {name} deleted."
+msgstr "Einwilligung widerrufen; Stimmprofile von {name} gelöscht."
+
+#: src/transcribe/cli/speakers.py:94
+msgid "Consent recorded for {name}."
+msgstr "Einwilligung von {name} erfasst."
+
+#: src/transcribe/cli/speakers.py:122
+msgid "Delete {name} and all voiceprints?"
+msgstr "{name} und alle Stimmprofile löschen?"
+
+#: src/transcribe/cli/speakers.py:164
+msgid "Give exactly one of --file or --record."
+msgstr "Geben Sie genau eines von --file oder --record an."
+
+#: src/transcribe/cli/speakers.py:200
+msgid "{speaker} is now {name}; {added} voiceprint(s) stored."
+msgstr "{speaker} heißt jetzt {name}; {added} Stimmprofil(e) gespeichert."
+
+#: src/transcribe/cli/speakers.py:203
+msgid "{speaker} is now {name}."
+msgstr "{speaker} heißt jetzt {name}."
+
+#: src/transcribe/cli/speakers.py:83
+msgid "Withdraw consent: deletes all voiceprints of the person."
+msgstr "Einwilligung widerrufen: löscht alle Stimmprofile der Person."
+
+#: src/transcribe/cli/speakers.py:134
+msgid "Recording {seconds} s - please speak naturally..."
+msgstr "Aufnahme {seconds} s - bitte sprechen Sie ganz normal..."
+
+#: src/transcribe/cli/speakers.py:152
+msgid "Audio of the person speaking alone."
+msgstr "Aufnahme, in der nur diese Person spricht."
+
+#: src/transcribe/cli/speakers.py:155
+msgid "Record this many seconds from the microphone."
+msgstr "So viele Sekunden vom Mikrofon aufnehmen."
+
+#: src/transcribe/cli/speakers.py:184
+msgid "Session speaker id, e.g. S2."
+msgstr "Sprecher-ID in der Sitzung, z. B. S2."
+
+#: src/transcribe/cli/speakers.py:188
+msgid "Also store the voiceprint so the person is recognised next time."
+msgstr "Auch das Stimmprofil speichern, damit die Person beim nächsten Mal erkannt wird."
+
+#: src/transcribe/cli/speakers.py:242
+msgid "Only these persons."
+msgstr "Nur diese Personen."
+
+#: src/transcribe/cli/speakers.py:45
+msgid "Unknown person: {name}"
+msgstr "Unbekannte Person: {name}"
+
+#: src/transcribe/export/md.py:12
+msgid "Transcript"
+msgstr "Transkript"
+
+#: src/transcribe/gui/app.py:30
+msgid "The GUI needs the 'gui' extra: pip install 'transcribe[gui]'"
+msgstr "Die Oberfläche benötigt das Extra 'gui': pip install 'transcribe[gui]'"
+
+#: src/transcribe/gui/dialogs.py:31
+msgid "Name speaker"
+msgstr "Sprecher benennen"
+
+#: src/transcribe/gui/dialogs.py:34
+msgid "Remember this voice for future sessions"
+msgstr "Diese Stimme für künftige Sitzungen merken"
+
+#: src/transcribe/gui/dialogs.py:35
+msgid "The person agreed to storing their voiceprint"
+msgstr "Die Person hat dem Speichern ihres Stimmprofils zugestimmt"
+
+#: src/transcribe/gui/dialogs.py:40
+msgid "Voiceprints are biometric data. They stay on this computer and can be deleted at any time (File → Voiceprints)."
+msgstr "Stimmprofile sind biometrische Daten. Sie bleiben auf diesem Computer und können jederzeit gelöscht werden (Datei → Stimmprofile)."
+
+#: src/transcribe/gui/dialogs.py:53
+#: src/transcribe/gui/voiceprints_dialog.py:223
+msgid "Name:"
+msgstr "Name:"
+
+#: src/transcribe/gui/dialogs.py:88
+msgid "Download models"
+msgstr "Modelle herunterladen"
+
+#: src/transcribe/gui/dialogs.py:90
+msgid "Transcribe runs entirely on this computer. These models are needed once (several hundred MB in total):"
+msgstr "Transcribe läuft vollständig auf diesem Computer. Diese Modelle werden einmalig benötigt (insgesamt einige hundert MB):"
+
+#: src/transcribe/gui/dialogs.py:97
+msgid "Download"
+msgstr "Herunterladen"
+
+#: src/transcribe/gui/dialogs.py:99
+msgid "Later"
+msgstr "Später"
+
+#: src/transcribe/gui/dialogs.py:44
+msgid "Voiceprint storage is disabled in the settings."
+msgstr "Das Speichern von Stimmprofilen ist in den Einstellungen deaktiviert."
+
+#: src/transcribe/gui/dialogs.py:50
+msgid "Who is {speaker}?"
+msgstr "Wer ist {speaker}?"
+
+#: src/transcribe/gui/dialogs.py:124
+msgid "Downloading {model}…"
+msgstr "{model} wird heruntergeladen…"
+
+#: src/transcribe/gui/level_meter.py:49
+msgid "Signal level (dBFS)"
+msgstr "Signalpegel (dBFS)"
+
+#: src/transcribe/gui/level_meter.py:113
+msgid "Check audio devices"
+msgstr "Audiogeräte prüfen"
+
+#: src/transcribe/gui/level_meter.py:116
+msgid "Speak into your microphone and play something in the meeting app. The devices whose meters move are the ones to use."
+msgstr "Sprechen Sie ins Mikrofon und spielen Sie etwas in der Meeting-App ab. Die Geräte, deren Pegel sich bewegen, sind die richtigen."
+
+#: src/transcribe/gui/level_meter.py:145
+#: src/transcribe/gui/voiceprints_dialog.py:56
+#: src/transcribe/gui/voiceprints_dialog.py:158
+msgid "Close"
+msgstr "Schließen"
+
+#: src/transcribe/gui/level_meter.py:122
+msgid "Microphones / inputs"
+msgstr "Mikrofone / Eingänge"
+
+#: src/transcribe/gui/level_meter.py:123
+#: src/transcribe/gui/live_tab.py:46
+msgid "System audio (what the computer plays)"
+msgstr "Systemton (was der Computer abspielt)"
+
+#: src/transcribe/gui/level_meter.py:132
+msgid "Use"
+msgstr "Verwenden"
+
+#: src/transcribe/gui/level_meter.py:68
+msgid "{rms} dBFS (max {peak})"
+msgstr "{rms} dBFS (max. {peak})"
+
+#: src/transcribe/gui/level_meter.py:127
+msgid "{device} (default)"
+msgstr "{device} (Standard)"
+
+#: src/transcribe/gui/live_tab.py:49
+msgid "Starting"
+msgstr "Startet"
+
+#: src/transcribe/gui/live_tab.py:49
+msgid "Running"
+msgstr "Läuft"
+
+#: src/transcribe/gui/live_tab.py:49
+#: src/transcribe/gui/live_tab.py:345
+#: src/transcribe/gui/live_tab.py:348
+msgid "Error"
+msgstr "Fehler"
+
+#: src/transcribe/gui/live_tab.py:50
+msgid "Identifying speakers"
+msgstr "Sprecher werden erkannt"
+
+#: src/transcribe/gui/live_tab.py:50
+msgid "Stopped"
+msgstr "Gestoppt"
+
+#: src/transcribe/gui/live_tab.py:51
+msgid "Refining"
+msgstr "Wird verfeinert"
+
+#: src/transcribe/gui/live_tab.py:52
+msgid "speaker detection"
+msgstr "Sprechererkennung"
+
+#: src/transcribe/gui/live_tab.py:52
+msgid "transcription"
+msgstr "Transkription"
+
+#: src/transcribe/gui/live_tab.py:46
+msgid "Microphone"
+msgstr "Mikrofon"
+
+#: src/transcribe/gui/live_tab.py:47
+msgid "Microphone + system audio (calls)"
+msgstr "Mikrofon + Systemton (Anrufe)"
+
+#: src/transcribe/gui/live_tab.py:92
+msgid "Mix into one stream (cheaper)"
+msgstr "Zu einem Kanal mischen (sparsamer)"
+
+#: src/transcribe/gui/live_tab.py:95
+#: src/transcribe/gui/sessions_tab.py:81
+#: src/transcribe/gui/settings_dialog.py:202
+msgid "auto"
+msgstr "automatisch"
+
+#: src/transcribe/gui/live_tab.py:96
+#: src/transcribe/gui/live_tab.py:304
+#: src/transcribe/gui/live_tab.py:343
+msgid "Start"
+msgstr "Start"
+
+#: src/transcribe/gui/live_tab.py:101
+msgid "Check devices…"
+msgstr "Geräte prüfen…"
+
+#: src/transcribe/gui/live_tab.py:102
+msgid "Show signal levels of all microphones and outputs"
+msgstr "Signalpegel aller Mikrofone und Ausgänge anzeigen"
+
+#: src/transcribe/gui/live_tab.py:108
+msgid "Ready"
+msgstr "Bereit"
+
+#: src/transcribe/gui/live_tab.py:124
+msgid "Source:"
+msgstr "Quelle:"
+
+#: src/transcribe/gui/live_tab.py:125
+msgid "Microphone:"
+msgstr "Mikrofon:"
+
+#: src/transcribe/gui/live_tab.py:126
+msgid "System audio:"
+msgstr "Systemton:"
+
+#: src/transcribe/gui/live_tab.py:128
+#: src/transcribe/gui/sessions_tab.py:98
+msgid "Speakers:"
+msgstr "Sprecher:"
+
+#: src/transcribe/gui/live_tab.py:265
+msgid "Loading models (first run downloads them)…"
+msgstr "Modelle werden geladen (beim ersten Start heruntergeladen)…"
+
+#: src/transcribe/gui/live_tab.py:280
+#: src/transcribe/gui/live_tab.py:343
+msgid "Stop"
+msgstr "Stopp"
+
+#: src/transcribe/gui/live_tab.py:288
+msgid "Stopping…"
+msgstr "Wird beendet…"
+
+#: src/transcribe/gui/live_tab.py:302
+msgid "Session saved. <a href=\"sessions\">Name, merge or correct speakers in the Sessions tab</a>."
+msgstr "Sitzung gespeichert. <a href=\"sessions\">Sprecher im Tab „Sitzungen“ benennen, zusammenführen oder korrigieren</a>."
+
+#: src/transcribe/gui/live_tab.py:150
+msgid "Default microphone"
+msgstr "Standardmikrofon"
+
+#: src/transcribe/gui/live_tab.py:151
+msgid "Default output"
+msgstr "Standardausgabe"
+
+#: src/transcribe/gui/live_tab.py:254
+msgid "Audio source"
+msgstr "Audioquelle"
+
+#: src/transcribe/gui/live_tab.py:307
+msgid "Saved to {path}"
+msgstr "Gespeichert unter {path}"
+
+#: src/transcribe/gui/live_tab.py:267
+msgid "Live session"
+msgstr "Live-Sitzung"
+
+#: src/transcribe/gui/main_window.py:26
+#: src/transcribe/gui/settings_dialog.py:153
+msgid "Live"
+msgstr "Live"
+
+#: src/transcribe/gui/main_window.py:27
+#: src/transcribe/gui/sessions_tab.py:88
+msgid "Sessions"
+msgstr "Sitzungen"
+
+#: src/transcribe/gui/main_window.py:34
+msgid "&File"
+msgstr "&Datei"
+
+#: src/transcribe/gui/main_window.py:40
+msgid "&About"
+msgstr "Ü&ber"
+
+#: src/transcribe/gui/main_window.py:35
+msgid "&Settings…"
+msgstr "&Einstellungen…"
+
+#: src/transcribe/gui/main_window.py:36
+msgid "&Voiceprints…"
+msgstr "&Stimmprofile…"
+
+#: src/transcribe/gui/main_window.py:36
+msgid "&Quit"
+msgstr "&Beenden"
+
+#: src/transcribe/gui/main_window.py:53
+#: src/transcribe/gui/settings_dialog.py:147
+msgid "Settings"
+msgstr "Einstellungen"
+
+#: src/transcribe/gui/main_window.py:53
+msgid "Stop the live session first."
+msgstr "Beenden Sie zuerst die Live-Sitzung."
+
+#: src/transcribe/gui/main_window.py:66
+msgid "Quit"
+msgstr "Beenden"
+
+#: src/transcribe/gui/main_window.py:67
+msgid "A live session is running. Stop it and quit?"
+msgstr "Eine Live-Sitzung läuft. Beenden und schließen?"
+
+#: src/transcribe/gui/main_window.py:45
+msgid "&Help"
+msgstr "&Hilfe"
+
+#: src/transcribe/gui/main_window.py:42
+msgid "Local transcription with speaker identification. Audio and voiceprints never leave this computer."
+msgstr "Lokale Transkription mit Sprechererkennung. Audio und Stimmprofile verlassen diesen Computer nie."
+
+#: src/transcribe/gui/sessions_tab.py:52
+msgid "Refresh"
+msgstr "Aktualisieren"
+
+#: src/transcribe/gui/sessions_tab.py:56
+msgid "Right-click a line (or selected lines) to change the speaker; double-click to edit the text."
+msgstr "Rechtsklick auf eine Zeile (oder markierte Zeilen) ändert den Sprecher; Doppelklick bearbeitet den Text."
+
+#: src/transcribe/gui/sessions_tab.py:67
+#: src/transcribe/gui/sessions_tab.py:172
+#: src/transcribe/gui/sessions_tab.py:180
+msgid "Play"
+msgstr "Abspielen"
+
+#: src/transcribe/gui/sessions_tab.py:77
+#: src/transcribe/gui/settings_dialog.py:59
+#: src/transcribe/gui/voiceprints_dialog.py:155
+msgid "Export…"
+msgstr "Exportieren…"
+
+#: src/transcribe/gui/sessions_tab.py:82
+msgid "Refine"
+msgstr "Verfeinern"
+
+#: src/transcribe/gui/sessions_tab.py:83
+msgid "Re-run speaker detection and transcription on the recording"
+msgstr "Sprechererkennung und Transkription auf der Aufnahme erneut ausführen"
+
+#: src/transcribe/gui/sessions_tab.py:210
+msgid "Edit line"
+msgstr "Zeile bearbeiten"
+
+#: src/transcribe/gui/sessions_tab.py:211
+msgid "Each line becomes a line of its own (split where the speaker changes);\ndelete all text to remove the line."
+msgstr "Jede Zeile wird zu einer eigenen Zeile (dort trennen, wo der Sprecher wechselt);\nden ganzen Text löschen, um die Zeile zu entfernen."
+
+#: src/transcribe/gui/sessions_tab.py:278
+msgid "Export transcript"
+msgstr "Transkript exportieren"
+
+#: src/transcribe/gui/sessions_tab.py:175
+msgid "Pause"
+msgstr "Pause"
+
+#: src/transcribe/gui/sessions_tab.py:198
+msgid "New speaker"
+msgstr "Neuer Sprecher"
+
+#: src/transcribe/gui/sessions_tab.py:199
+msgid "Name of the new speaker:"
+msgstr "Name des neuen Sprechers:"
+
+#: src/transcribe/gui/sessions_tab.py:301
+msgid "Refined"
+msgstr "Verfeinert"
+
+#: src/transcribe/gui/sessions_tab.py:306
+msgid "Refine failed"
+msgstr "Verfeinern fehlgeschlagen"
+
+#: src/transcribe/gui/sessions_tab.py:126
+msgid "{n} speaker"
+msgid_plural "{n} speakers"
+msgstr[0] "{n} Sprecher"
+msgstr[1] "{n} Sprecher"
+
+#: src/transcribe/gui/sessions_tab.py:220
+msgid "Edit failed"
+msgstr "Bearbeiten fehlgeschlagen"
+
+#: src/transcribe/gui/sessions_tab.py:257
+msgid "Voiceprint not stored"
+msgstr "Stimmprofil nicht gespeichert"
+
+#: src/transcribe/gui/sessions_tab.py:258
+msgid "The speaker is renamed without learning the voice."
+msgstr "Der Sprecher wird umbenannt, ohne die Stimme zu lernen."
+
+#: src/transcribe/gui/sessions_tab.py:281
+msgid "Exported to {path}"
+msgstr "Exportiert nach {path}"
+
+#: src/transcribe/gui/sessions_tab.py:251
+msgid "{name}: {n} voiceprint stored"
+msgid_plural "{name}: {n} voiceprints stored"
+msgstr[0] "{name}: {n} Stimmprofil gespeichert"
+msgstr[1] "{name}: {n} Stimmprofile gespeichert"
+
+#: src/transcribe/gui/sessions_tab.py:295
+msgid "Refining: {stage} {percent}"
+msgstr "Verfeinern: {stage} {percent}"
+
+#: src/transcribe/gui/settings_dialog.py:133
+msgid "Browse…"
+msgstr "Durchsuchen…"
+
+#: src/transcribe/gui/settings_dialog.py:42
+msgid "Vocabulary"
+msgstr "Vokabular"
+
+#: src/transcribe/gui/settings_dialog.py:44
+msgid "Names, acronyms and jargon Whisper should recognise - one per line (or comma-separated). <b>wrong -> right</b> corrects a word the model still mishears. <b>#</b> starts a comment."
+msgstr "Namen, Abkürzungen und Fachbegriffe, die Whisper erkennen soll – einer pro Zeile (oder durch Kommas getrennt). <b>falsch -> richtig</b> korrigiert ein Wort, das das Modell weiterhin falsch versteht. <b>#</b> leitet einen Kommentar ein."
+
+#: src/transcribe/gui/settings_dialog.py:56
+#: src/transcribe/gui/voiceprints_dialog.py:153
+msgid "Import…"
+msgstr "Importieren…"
+
+#: src/transcribe/gui/settings_dialog.py:57
+msgid "Add the entries of a vocabulary file"
+msgstr "Die Einträge einer Vokabulardatei hinzufügen"
+
+#: src/transcribe/gui/settings_dialog.py:61
+msgid "Clear"
+msgstr "Leeren"
+
+#: src/transcribe/gui/settings_dialog.py:99
+msgid "Import vocabulary"
+msgstr "Vokabular importieren"
+
+#: src/transcribe/gui/settings_dialog.py:106
+msgid "Export vocabulary"
+msgstr "Vokabular exportieren"
+
+#: src/transcribe/gui/settings_dialog.py:151
+msgid "Speech recognition"
+msgstr "Spracherkennung"
+
+#: src/transcribe/gui/settings_dialog.py:155
+msgid "General"
+msgstr "Allgemein"
+
+#: src/transcribe/gui/settings_dialog.py:175
+msgid "faster-whisper: CPU or NVIDIA GPU. whisper.cpp: also AMD/Intel GPUs (Vulkan) and Apple GPUs (Metal); needs whisper-server, see scripts/build_whispercpp.sh."
+msgstr "faster-whisper: CPU oder NVIDIA-GPU. whisper.cpp: auch AMD-/Intel-GPUs (Vulkan) und Apple-GPUs (Metal); benötigt whisper-server, siehe scripts/build_whispercpp.sh."
+
+#: src/transcribe/gui/settings_dialog.py:183
+msgid "(same as live)"
+msgstr "(wie live)"
+
+#: src/transcribe/gui/settings_dialog.py:195
+msgid "cuda: faster-whisper on NVIDIA; gpu: whisper.cpp on any GPU"
+msgstr "cuda: faster-whisper auf NVIDIA; gpu: whisper.cpp auf jeder GPU"
+
+#: src/transcribe/gui/settings_dialog.py:198
+msgid "Allowed languages, comma-separated (e.g. de,en)"
+msgstr "Erlaubte Sprachen, durch Kommas getrennt (z. B. de,en)"
+
+#: src/transcribe/gui/settings_dialog.py:200
+msgid "Beam search width for files and refinement (live: Live tab)"
+msgstr "Beam-Breite für Dateien und Verfeinerung (live: Reiter Live)"
+
+#: src/transcribe/gui/settings_dialog.py:203
+msgid "Punctuated example prompt (recommended)"
+msgstr "Beispiel-Prompt mit Satzzeichen (empfohlen)"
+
+#: src/transcribe/gui/settings_dialog.py:205
+msgid "Keeps punctuation and capitals; off gives more verbatim text (see docs/BENCHMARKS.md)"
+msgstr "Erhält Satzzeichen und Großschreibung; ausgeschaltet entsteht wortgetreuerer Text (siehe docs/BENCHMARKS.md)"
+
+#: src/transcribe/gui/settings_dialog.py:208
+msgid "Edit vocabulary…"
+msgstr "Vokabular bearbeiten…"
+
+#: src/transcribe/gui/settings_dialog.py:217
+msgid "own build or PATH"
+msgstr "eigener Build oder PATH"
+
+#: src/transcribe/gui/settings_dialog.py:218
+msgid "Accurate word times (DTW; needed for speaker attribution)"
+msgstr "Genaue Wortzeiten (DTW; nötig für die Sprecherzuordnung)"
+
+#: src/transcribe/gui/settings_dialog.py:223
+msgid "Engine:"
+msgstr "Engine:"
+
+#: src/transcribe/gui/settings_dialog.py:224
+msgid "Model (live and files):"
+msgstr "Modell (live und Dateien):"
+
+#: src/transcribe/gui/settings_dialog.py:225
+msgid "Model after a live session:"
+msgstr "Modell nach einer Live-Sitzung:"
+
+#: src/transcribe/gui/settings_dialog.py:226
+msgid "Compute device:"
+msgstr "Rechengerät:"
+
+#: src/transcribe/gui/settings_dialog.py:227
+msgid "Languages:"
+msgstr "Sprachen:"
+
+#: src/transcribe/gui/settings_dialog.py:228
+msgid "Beam size:"
+msgstr "Beam-Breite:"
+
+#: src/transcribe/gui/settings_dialog.py:229
+msgid "CPU threads:"
+msgstr "CPU-Threads:"
+
+#: src/transcribe/gui/settings_dialog.py:231
+msgid "Vocabulary:"
+msgstr "Vokabular:"
+
+#: src/transcribe/gui/settings_dialog.py:242
+msgid "Clustering distance of the speaker detection: lower finds more speakers"
+msgstr "Clustering-Abstand der Sprechererkennung: niedriger findet mehr Sprecher"
+
+#: src/transcribe/gui/settings_dialog.py:244
+msgid "Second pass over sentences (recommended)"
+msgstr "Zweiter Durchgang über Sätze (empfohlen)"
+
+#: src/transcribe/gui/settings_dialog.py:246
+msgid "Re-clusters transcript phrases: fixes merged turns in fast dialogue and far too many speakers"
+msgstr "Gruppiert die Sätze des Transkripts neu: behebt zusammengelegte Wortwechsel in schnellen Dialogen und viel zu viele Sprecher"
+
+#: src/transcribe/gui/settings_dialog.py:249
+msgid "Estimate (may split a person; merge afterwards)"
+msgstr "Schätzen (kann eine Person aufteilen; danach zusammenführen)"
+
+#: src/transcribe/gui/settings_dialog.py:251
+msgid "Silhouette (distinct voices, e.g. meetings)"
+msgstr "Silhouette (gut unterscheidbare Stimmen, z. B. Besprechungen)"
+
+#: src/transcribe/gui/settings_dialog.py:256
+msgid "Live labels: similarity at which a sentence joins a known speaker; higher finds more speakers"
+msgstr "Live-Zuordnung: Ähnlichkeit, ab der ein Satz einem bekannten Sprecher zugeordnet wird; höher findet mehr Sprecher"
+
+#: src/transcribe/gui/settings_dialog.py:259
+msgid "Speaker threshold:"
+msgstr "Sprecher-Schwelle:"
+
+#: src/transcribe/gui/settings_dialog.py:261
+msgid "Number of speakers:"
+msgstr "Anzahl der Sprecher:"
+
+#: src/transcribe/gui/settings_dialog.py:262
+msgid "Threads:"
+msgstr "Threads:"
+
+#: src/transcribe/gui/settings_dialog.py:263
+msgid "Live speaker threshold:"
+msgstr "Live-Sprecher-Schwelle:"
+
+#: src/transcribe/gui/settings_dialog.py:264
+msgid "If you know how many people speak, give the number when transcribing (Sessions tab: Refine with a speaker count) - the most reliable setting."
+msgstr "Wenn Sie wissen, wie viele Personen sprechen, geben Sie die Anzahl beim Transkribieren an (Reiter Sitzungen: Verfeinern mit Sprecheranzahl) – die zuverlässigste Einstellung."
+
+#: src/transcribe/gui/settings_dialog.py:273
+msgid "Refine the transcript when a session stops"
+msgstr "Transkript nach dem Beenden einer Sitzung verfeinern"
+
+#: src/transcribe/gui/settings_dialog.py:276
+msgid "New audio between two decodes; smaller = faster text, more CPU"
+msgstr "Neues Audio zwischen zwei Dekodierungen; kleiner = schnellerer Text, mehr CPU-Last"
+
+#: src/transcribe/gui/settings_dialog.py:279
+msgid "Pause that ends an utterance"
+msgstr "Pause, die eine Äußerung beendet"
+
+#: src/transcribe/gui/settings_dialog.py:282
+msgid "1 = fastest; larger is slightly more accurate"
+msgstr "1 = am schnellsten; größer ist etwas genauer"
+
+#: src/transcribe/gui/settings_dialog.py:285
+msgid "Decode every:"
+msgstr "Dekodieren alle:"
+
+#: src/transcribe/gui/settings_dialog.py:286
+msgid "Utterance ends after:"
+msgstr "Äußerung endet nach:"
+
+#: src/transcribe/gui/settings_dialog.py:287
+msgid "Longest utterance:"
+msgstr "Längste Äußerung:"
+
+#: src/transcribe/gui/settings_dialog.py:288
+msgid "Beam size (live):"
+msgstr "Beam-Breite (live):"
+
+#: src/transcribe/gui/settings_dialog.py:293
+msgid "Recognise known people"
+msgstr "Bekannte Personen erkennen"
+
+#: src/transcribe/gui/settings_dialog.py:295
+msgid "Store voiceprints (needed to learn voices)"
+msgstr "Stimmprofile speichern (nötig, um Stimmen zu lernen)"
+
+#: src/transcribe/gui/settings_dialog.py:297
+msgid "Encrypt voiceprints (key in the OS keyring)"
+msgstr "Stimmprofile verschlüsseln (Schlüssel im Schlüsselbund des Systems)"
+
+#: src/transcribe/gui/settings_dialog.py:300
+msgid "Similarity at which a known person is labelled automatically"
+msgstr "Ähnlichkeit, ab der eine bekannte Person automatisch benannt wird"
+
+#: src/transcribe/gui/settings_dialog.py:303
+msgid "Similarity at which the app asks 'Is this X?'"
+msgstr "Ähnlichkeit, ab der die App fragt: „Ist das X?“"
+
+#: src/transcribe/gui/settings_dialog.py:305
+msgid "Required lead over the second-best person"
+msgstr "Nötiger Vorsprung vor der zweitbesten Person"
+
+#: src/transcribe/gui/settings_dialog.py:307
+msgid "Manage voiceprints…"
+msgstr "Stimmprofile verwalten…"
+
+#: src/transcribe/gui/settings_dialog.py:309
+msgid "Voiceprints are biometric data: stored only on this computer, only with the person's consent, deletable at any time."
+msgstr "Stimmprofile sind biometrische Daten: nur auf diesem Computer gespeichert, nur mit Einwilligung der Person, jederzeit löschbar."
+
+#: src/transcribe/gui/settings_dialog.py:317
+msgid "Label automatically from:"
+msgstr "Automatisch benennen ab:"
+
+#: src/transcribe/gui/settings_dialog.py:318
+msgid "Suggest from:"
+msgstr "Vorschlagen ab:"
+
+#: src/transcribe/gui/settings_dialog.py:319
+msgid "Margin:"
+msgstr "Vorsprung:"
+
+#: src/transcribe/gui/settings_dialog.py:320
+msgid "Voiceprints per person:"
+msgstr "Stimmprofile pro Person:"
+
+#: src/transcribe/gui/settings_dialog.py:328
+msgid "Automatic (system language)"
+msgstr "Automatisch (Systemsprache)"
+
+#: src/transcribe/gui/settings_dialog.py:333
+msgid "Takes effect after restarting the app"
+msgstr "Wirksam nach einem Neustart der App"
+
+#: src/transcribe/gui/settings_dialog.py:337
+msgid "Change with the TRANSCRIBE_MODELS_DIR environment variable"
+msgstr "Änderbar über die Umgebungsvariable TRANSCRIBE_MODELS_DIR"
+
+#: src/transcribe/gui/settings_dialog.py:339
+msgid "Language:"
+msgstr "Sprache:"
+
+#: src/transcribe/gui/settings_dialog.py:340
+msgid "Sessions:"
+msgstr "Sitzungen:"
+
+#: src/transcribe/gui/settings_dialog.py:341
+msgid "Models:"
+msgstr "Modelle:"
+
+#: src/transcribe/gui/settings_dialog.py:371
+msgid "whisper-server binary"
+msgstr "whisper-server-Programm"
+
+#: src/transcribe/gui/settings_dialog.py:377
+msgid "Sessions folder"
+msgstr "Ordner für Sitzungen"
+
+#: src/transcribe/gui/settings_dialog.py:87
+msgid "{terms} terms, {corrections} corrections."
+msgstr "Begriffe: {terms}, Korrekturen: {corrections}."
+
+#: src/transcribe/gui/settings_dialog.py:352
+msgid "none"
+msgstr "keine"
+
+#: src/transcribe/gui/settings_dialog.py:90
+msgid "Only the first {used} of {total} hint words fit Whisper's prompt ({chars} characters); put the important ones first. Corrections always apply."
+msgstr "Nur die ersten {used} von {total} Hinweiswörtern passen in Whispers Prompt ({chars} Zeichen); stellen Sie die wichtigen an den Anfang. Korrekturen gelten immer."
+
+#: src/transcribe/gui/settings_dialog.py:100
+#: src/transcribe/gui/voiceprints_dialog.py:246
+#: src/transcribe/gui/voiceprints_dialog.py:379
+msgid "All files"
+msgstr "Alle Dateien"
+
+#: src/transcribe/gui/settings_dialog.py:157
+msgid "Saved in {path}"
+msgstr "Gespeichert in {path}"
+
+#: src/transcribe/gui/settings_dialog.py:100
+msgid "Text files"
+msgstr "Textdateien"
+
+#: src/transcribe/gui/settings_dialog.py:351
+msgid "{terms} terms, {corrections} corrections"
+msgstr "Begriffe: {terms}, Korrekturen: {corrections}"
+
+#: src/transcribe/gui/speaker_panel.py:44
+msgid "Name…"
+msgstr "Benennen…"
+
+#: src/transcribe/gui/speaker_panel.py:45
+#: src/transcribe/gui/voiceprints_dialog.py:138
+msgid "Merge into…"
+msgstr "Zusammenführen mit…"
+
+#: src/transcribe/gui/speaker_panel.py:46
+msgid "Yes"
+msgstr "Ja"
+
+#: src/transcribe/gui/speaker_panel.py:47
+msgid "No"
+msgstr "Nein"
+
+#: src/transcribe/gui/speaker_panel.py:131
+msgid "Merge speaker"
+msgstr "Sprecher zusammenführen"
+
+#: src/transcribe/gui/speaker_panel.py:132
+msgid "Merge {speaker} into:"
+msgstr "{speaker} zusammenführen mit:"
+
+#: src/transcribe/gui/speaker_panel.py:143
+msgid "Is this <b>{name}</b>?"
+msgstr "Ist das <b>{name}</b>?"
+
+#: src/transcribe/gui/speaker_panel.py:85
+msgid ", score {score}"
+msgstr ", Wert {score}"
+
+#: src/transcribe/gui/transcript_view.py:205
+msgid "Edit text… (double-click)"
+msgstr "Text bearbeiten… (Doppelklick)"
+
+#: src/transcribe/gui/transcript_view.py:194
+msgid "Speaker of this line"
+msgid_plural "Speaker of {n} lines"
+msgstr[0] "Sprecher dieser Zeile"
+msgstr[1] "Sprecher dieser {n} Zeilen"
+
+#: src/transcribe/gui/transcript_view.py:203
+msgid "New speaker…"
+msgstr "Neuer Sprecher…"
+
+#: src/transcribe/gui/transcript_view.py:208
+msgid "Play from here"
+msgstr "Ab hier abspielen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:54
+msgid "Delete selected"
+msgstr "Auswahl löschen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:156
+msgid "Selected people, or everyone if none is selected"
+msgstr "Ausgewählte Personen oder alle, wenn keine ausgewählt ist"
+
+#: src/transcribe/gui/voiceprints_dialog.py:223
+#: src/transcribe/gui/voiceprints_dialog.py:228
+msgid "Add person"
+msgstr "Person hinzufügen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:294
+#: src/transcribe/gui/voiceprints_dialog.py:300
+msgid "Rename"
+msgstr "Umbenennen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:294
+msgid "New name:"
+msgstr "Neuer Name:"
+
+#: src/transcribe/gui/voiceprints_dialog.py:313
+msgid "Merge"
+msgstr "Zusammenführen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:341
+#: src/transcribe/gui/voiceprints_dialog.py:121
+msgid "Notes"
+msgstr "Notizen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:362
+msgid "Export voiceprints"
+msgstr "Stimmprofile exportieren"
+
+#: src/transcribe/gui/voiceprints_dialog.py:378
+msgid "Import voiceprints"
+msgstr "Stimmprofile importieren"
+
+#: src/transcribe/gui/voiceprints_dialog.py:52
+msgid "Added"
+msgstr "Hinzugefügt"
+
+#: src/transcribe/gui/voiceprints_dialog.py:52
+msgid "Source"
+msgstr "Quelle"
+
+#: src/transcribe/gui/voiceprints_dialog.py:52
+#: src/transcribe/gui/voiceprints_dialog.py:120
+msgid "Speech"
+msgstr "Sprechzeit"
+
+#: src/transcribe/gui/voiceprints_dialog.py:52
+msgid "Channel"
+msgstr "Kanal"
+
+#: src/transcribe/gui/voiceprints_dialog.py:52
+msgid "Model"
+msgstr "Modell"
+
+#: src/transcribe/gui/voiceprints_dialog.py:104
+msgid "Database: {path} - {state} - current model: {model}"
+msgstr "Datenbank: {path} – {state} – aktuelles Modell: {model}"
+
+#: src/transcribe/gui/voiceprints_dialog.py:116
+msgid "enroll these people again (Voiceprints… shows the model of each)."
+msgstr "lernen Sie die Stimmen dieser Personen neu ein (Stimmprofile… zeigt das Modell jedes Profils)."
+
+#: src/transcribe/gui/voiceprints_dialog.py:120
+msgid "Consent since"
+msgstr "Einwilligung seit"
+
+#: src/transcribe/gui/voiceprints_dialog.py:121
+msgid "Sources"
+msgstr "Quellen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:131
+msgid "Add person…"
+msgstr "Person hinzufügen…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:132
+msgid "Create an entry (voiceprints come later)"
+msgstr "Einen Eintrag anlegen (Stimmprofile folgen später)"
+
+#: src/transcribe/gui/voiceprints_dialog.py:133
+msgid "Enroll from file…"
+msgstr "Aus Datei einlernen…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:134
+msgid "Learn a voice from a recording of this person speaking alone"
+msgstr "Eine Stimme aus einer Aufnahme lernen, in der nur diese Person spricht"
+
+#: src/transcribe/gui/voiceprints_dialog.py:135
+msgid "Voiceprints…"
+msgstr "Stimmprofile…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:136
+msgid "List and delete single voiceprints"
+msgstr "Einzelne Stimmprofile anzeigen und löschen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:137
+msgid "Rename…"
+msgstr "Umbenennen…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:138
+msgid "Two entries are the same person"
+msgstr "Zwei Einträge sind dieselbe Person"
+
+#: src/transcribe/gui/voiceprints_dialog.py:139
+msgid "Consent…"
+msgstr "Einwilligung…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:139
+msgid "Record or withdraw consent"
+msgstr "Einwilligung erfassen oder widerrufen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:140
+msgid "Notes…"
+msgstr "Notizen…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:141
+msgid "Delete…"
+msgstr "Löschen…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:142
+msgid "Delete the person and all voiceprints"
+msgstr "Die Person und alle Stimmprofile löschen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:238
+#: src/transcribe/gui/voiceprints_dialog.py:278
+msgid "Enroll"
+msgstr "Einlernen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:239
+msgid "Name of the person speaking:"
+msgstr "Name der sprechenden Person:"
+
+#: src/transcribe/gui/voiceprints_dialog.py:353
+msgid "Delete"
+msgstr "Löschen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:395
+msgid "Please wait until enrollment is finished."
+msgstr "Bitte warten Sie, bis das Einlernen abgeschlossen ist."
+
+#: src/transcribe/gui/voiceprints_dialog.py:50
+msgid "Voiceprints of {name}"
+msgstr "Stimmprofile von {name}"
+
+#: src/transcribe/gui/voiceprints_dialog.py:82
+msgid "Delete voiceprints"
+msgstr "Stimmprofile löschen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:106
+msgid "encrypted"
+msgstr "verschlüsselt"
+
+#: src/transcribe/gui/voiceprints_dialog.py:106
+msgid "not encrypted"
+msgstr "nicht verschlüsselt"
+
+#: src/transcribe/gui/voiceprints_dialog.py:109
+msgid "storing new voiceprints is disabled in the settings"
+msgstr "das Speichern neuer Stimmprofile ist in den Einstellungen deaktiviert"
+
+#: src/transcribe/gui/voiceprints_dialog.py:181
+msgid "no consent"
+msgstr "keine Einwilligung"
+
+#: src/transcribe/gui/voiceprints_dialog.py:217
+msgid "Voiceprints are biometric data (GDPR Art. 9); store them only with consent."
+msgstr "Stimmprofile sind biometrische Daten (DSGVO Art. 9); speichern Sie sie nur mit Einwilligung."
+
+#: src/transcribe/gui/voiceprints_dialog.py:244
+msgid "Recording of {name} speaking alone"
+msgstr "Aufnahme, in der nur {name} spricht"
+
+#: src/transcribe/gui/voiceprints_dialog.py:280
+msgid "Learning {name}'s voice from {file}…"
+msgstr "Stimme von {name} wird aus {file} gelernt…"
+
+#: src/transcribe/gui/voiceprints_dialog.py:313
+msgid "{name} is the same person as:"
+msgstr "{name} ist dieselbe Person wie:"
+
+#: src/transcribe/gui/voiceprints_dialog.py:326
+msgid "Withdraw consent"
+msgstr "Einwilligung widerrufen"
+
+#: src/transcribe/gui/voiceprints_dialog.py:371
+msgid "Export"
+msgstr "Exportieren"
+
+#: src/transcribe/gui/voiceprints_dialog.py:373
+msgid "Exported {n} voiceprint(s) to {path} - the file is not encrypted, keep it safe."
+msgstr "{n} Stimmprofil(e) nach {path} exportiert – die Datei ist nicht verschlüsselt, bewahren Sie sie sicher auf."
+
+#: src/transcribe/gui/voiceprints_dialog.py:385
+msgid "Import"
+msgstr "Importieren"
+
+#: src/transcribe/gui/voiceprints_dialog.py:388
+msgid "Imported {n} voiceprint(s) of {persons} person(s)."
+msgstr "{n} Stimmprofil(e) von {persons} Person(en) importiert."
+
+#: src/transcribe/gui/voiceprints_dialog.py:229
+msgid "{name} already exists."
+msgstr "{name} existiert bereits."
+
+#: src/transcribe/gui/voiceprints_dialog.py:245
+msgid "Audio"
+msgstr "Audio"
+
+#: src/transcribe/gui/voiceprints_dialog.py:269
+msgid "{name}: {added} voiceprint(s) added from {pieces} piece(s) of speech."
+msgstr "{name}: {added} Stimmprofil(e) aus {pieces} Sprachabschnitt(en) hinzugefügt."
+
+#: src/transcribe/gui/voiceprints_dialog.py:301
+msgid "{name} already exists - use Merge into… instead."
+msgstr "{name} existiert bereits – verwenden Sie stattdessen „Zusammenführen mit…“."
+
+#: src/transcribe/gui/voiceprints_dialog.py:354
+msgid "Delete {names} and all their voiceprints?"
+msgstr "{names} und alle zugehörigen Stimmprofile löschen?"
+
+#: src/transcribe/gui/voiceprints_dialog.py:83
+msgid "Delete {n} voiceprint(s) of {name}?"
+msgstr "{n} Stimmprofil(e) von {name} löschen?"
+
+#: src/transcribe/gui/voiceprints_dialog.py:180
+msgid "{minutes:.1f} min"
+msgstr "{minutes:.1f} min"
+
+#: src/transcribe/gui/voiceprints_dialog.py:327
+msgid "Withdraw {name}'s consent? This deletes all {n} voiceprint(s); the person is no longer recognised."
+msgstr "Einwilligung von {name} widerrufen? Dadurch werden alle {n} Stimmprofil(e) gelöscht; die Person wird nicht mehr erkannt."
+
+#: src/transcribe/gui/voiceprints_dialog.py:385
+msgid "Cannot import {path}: {error}"
+msgstr "{path} kann nicht importiert werden: {error}"
+
+#: src/transcribe/gui/voiceprints_dialog.py:114
+msgid "{n} voiceprint(s) were made with another voice model and are not used"
+msgstr "{n} Stimmprofil(e) wurden mit einem anderen Stimmmodell erstellt und werden nicht verwendet"
+
+#: src/transcribe/gui/voiceprints_dialog.py:215
+msgid "Has {name} agreed to storing their voiceprint on this computer?"
+msgstr "Hat {name} eingewilligt, dass das Stimmprofil auf diesem Computer gespeichert wird?"
+
+#: src/transcribe/i18n.py:100
+msgid "Speaker {n}"
+msgstr "Sprecher {n}"
+
+#: src/transcribe/storage/transcript_model.py:67
+msgid "Unknown"
+msgstr "Unbekannt"

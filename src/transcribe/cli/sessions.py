@@ -13,19 +13,20 @@ from rich.table import Table
 from transcribe import sessions
 from transcribe.core.config import Config
 from transcribe.export.base import fmt_clock
+from transcribe.i18n import _, display_label, ngettext
 from transcribe.storage import editing
 from transcribe.storage.transcript_model import Transcript
 
-sessions_app = typer.Typer(help="List sessions and correct their transcripts.",
+sessions_app = typer.Typer(help=_("List sessions and correct their transcripts."),
                            no_args_is_help=True)
 console = Console()
 err = Console(stderr=True)
 
 SessionArg = Annotated[str, typer.Argument(
-    help="Session folder, its name in the sessions directory, or 'latest'.")]
+    help=_("Session folder, its name in the sessions directory, or 'latest'."))]
 TimeArg = Annotated[str, typer.Argument(
-    help="Line start as shown in the transcript (24:10, 00:24:10, 1450.5) or a range "
-         "(20:22-24:27).")]
+    help=_("Line start as shown in the transcript (24:10, 00:24:10, 1450.5) or a range "
+           "(20:22-24:27)."))]
 
 
 def resolve(session: str, config: Config | None = None) -> Path:
@@ -36,7 +37,7 @@ def resolve(session: str, config: Config | None = None) -> Path:
     if session in ("latest", "last"):
         found = sessions.list_sessions(root)
         if not found:
-            raise _fail(f"No sessions in {root}")
+            raise _fail(_("No sessions in {path}").format(path=root))
         return found[0].path
     if (root / session).is_dir():
         return root / session
@@ -44,8 +45,11 @@ def resolve(session: str, config: Config | None = None) -> Path:
         if root.exists() else []
     if len(matches) == 1:
         return matches[0]
-    raise _fail(f"No session {session!r}" + (f" (ambiguous: {len(matches)} matches)"
-                                             if matches else f" in {root}"))
+    if matches:
+        raise _fail(ngettext("No session {name} (ambiguous: {n} match)",
+                             "No session {name} (ambiguous: {n} matches)",
+                             len(matches)).format(name=repr(session), n=len(matches)))
+    raise _fail(_("No session {name} in {path}").format(name=repr(session), path=root))
 
 
 def parse_time(text: str) -> float:
@@ -54,7 +58,7 @@ def parse_time(text: str) -> float:
     try:
         values = [float(p) for p in parts]
     except ValueError as e:
-        raise _fail(f"Not a time: {text!r}") from e
+        raise _fail(_("Not a time: {text}").format(text=repr(text))) from e
     seconds = 0.0
     for v in values:
         seconds = seconds * 60 + v
@@ -75,15 +79,17 @@ def select(t: Transcript, when: str, only: str | None = None) -> list[str]:
         sid = _speaker(t, only)
         segs = [s for s in segs if s.speaker_id == sid]
     if not segs:
-        raise _fail(f"No line at {when}" + (f" spoken by {only}" if only else ""))
+        raise _fail(_("No line at {time} spoken by {speaker}").format(time=when, speaker=only)
+                    if only else _("No line at {time}").format(time=when))
     return [s.id for s in segs]
 
 
 def _speaker(t: Transcript, name: str) -> str:
     sid = editing.find_speaker(t, name)
     if sid is None:
-        raise _fail(f"No speaker {name!r}; speakers: "
-                    + ", ".join(f"{k} ({v.label})" for k, v in t.speakers.items()))
+        raise _fail(_("No speaker {name}; speakers: {speakers}").format(
+            name=repr(name), speakers=", ".join(f"{k} ({display_label(v.label)})"
+                                                for k, v in t.speakers.items())))
     return sid
 
 
@@ -101,50 +107,53 @@ def _show(t: Transcript, seg_ids: list[str]) -> None:
                           highlight=False)
 
 
-@sessions_app.command("list")
+@sessions_app.command("list", help=_("List stored sessions, newest first."))
 def sessions_list() -> None:
-    """List stored sessions, newest first."""
-    table = Table("Session", "Created", "Duration", "Speakers", "")
+    table = Table(_("Session"), _("Created"), _("Duration"), _("Speakers"), "")
     for info in sessions.list_sessions(Config.load().resolved_sessions_dir()):
+        flags = [_("refined")] if info.refined else []
+        flags += [_("live")] if info.live else []
         table.add_row(info.path.name, f"{info.created:%Y-%m-%d %H:%M}",
-                      fmt_clock(info.duration_s), str(info.speakers),
-                      ("refined " if info.refined else "") + ("live" if info.live else ""))
+                      fmt_clock(info.duration_s), str(info.speakers), " ".join(flags))
     console.print(table)
 
 
-@sessions_app.command("speakers")
+@sessions_app.command(
+    "speakers", help=_("A session's speakers: id, name, lines, speaking time and first line."))
 def sessions_speakers(session: SessionArg) -> None:
-    """A session's speakers: id, name, lines, speaking time and first line."""
     t = sessions.load_numbered(resolve(session))
-    table = Table("Id", "Name", "Lines", "Words", "Time", "First line")
+    table = Table(_("Id"), _("Name"), _("Lines"), _("Words"), _("Time"), _("First line"))
     for sid, spk in sorted(t.speakers.items(), key=lambda kv: int(kv[0][1:])
                            if kv[0][1:].isdigit() else 0):
         segs = [s for s in t.segments if s.speaker_id == sid]
         first = segs[0] if segs else None
-        table.add_row(sid, spk.label + (f" ({spk.suggestion}?)" if spk.suggestion else ""),
+        table.add_row(sid, display_label(spk.label)
+                      + (f" ({spk.suggestion}?)" if spk.suggestion else ""),
                       str(len(segs)), str(sum(len(s.words) for s in segs)),
                       fmt_clock(sum(s.t1 - s.t0 for s in segs)),
                       f"[{fmt_clock(first.t0)}] {first.text[:50]}" if first else "-")
     console.print(table)
 
 
-@sessions_app.command("rename")
+@sessions_app.command("rename", help=_(
+    "Rename a speaker (no voiceprint; see `tx speakers name` to also learn the voice)."))
 def sessions_rename(session: SessionArg,
-                    speaker: Annotated[str, typer.Argument(help="Id (S3) or current name.")],
-                    name: str) -> None:
-    """Rename a speaker (no voiceprint; see `tx speakers name` to also learn the voice)."""
+                    speaker: Annotated[str, typer.Argument(
+                        help=_("Id (S3) or current name."))],
+                    name: Annotated[str, typer.Argument(help=_("New name."))]) -> None:
     path = resolve(session)
     sid = _speaker(sessions.load_numbered(path), speaker)
     sessions.rename_speaker(path, sid, name)
-    console.print(f"{sid} is now {name}")
+    console.print(_("{speaker} is now {name}").format(speaker=sid, name=name))
 
 
-@sessions_app.command("merge")
+@sessions_app.command("merge", help=_(
+    "Merge speakers that are the same person (a split by the speaker detection)."))
 def sessions_merge(session: SessionArg,
-                   keep: Annotated[str, typer.Argument(help="Speaker to keep (id or name).")],
+                   keep: Annotated[str, typer.Argument(
+                       help=_("Speaker to keep (id or name)."))],
                    drop: Annotated[list[str], typer.Argument(
-                       help="Speaker(s) merged into KEEP and removed.")]) -> None:
-    """Merge speakers that are the same person (a split by the speaker detection)."""
+                       help=_("Speaker(s) merged into KEEP and removed."))]) -> None:
     path = resolve(session)
     config = Config.load()
     t = sessions.load_numbered(path)
@@ -152,22 +161,21 @@ def sessions_merge(session: SessionArg,
     for name in drop:
         sid = _speaker(t, name)
         sessions.merge_speakers(path, keep_id, sid, config)
-        console.print(f"{sid} merged into {keep_id} ({t.speaker_label(keep_id)})")
+        console.print(_("{speaker} merged into {keep} ({name})").format(
+            speaker=sid, keep=keep_id, name=t.speaker_label(keep_id)))
 
 
-@sessions_app.command("assign")
+@sessions_app.command("assign", help=_(
+    "Attribute lines to another (or a new) speaker.\n\n"
+    "Example: tx sessions assign latest 20:22-24:27 Carlos --from Justus"))
 def sessions_assign(
     session: SessionArg,
     when: TimeArg,
     speaker: Annotated[str, typer.Argument(
-        help="Speaker id or name; an unknown name creates a new speaker.")],
+        help=_("Speaker id or name; an unknown name creates a new speaker."))],
     only: Annotated[str | None, typer.Option(
-        "--from", help="Only lines currently attributed to this speaker.")] = None,
+        "--from", help=_("Only lines currently attributed to this speaker."))] = None,
 ) -> None:
-    """Attribute lines to another (or a new) speaker.
-
-    Example: tx sessions assign latest 20:22-24:27 Carlos --from Justus
-    """
     path = resolve(session)
     t = sessions.load_numbered(path)
     seg_ids = select(t, when, only)
@@ -175,19 +183,20 @@ def sessions_assign(
     sid = sessions.assign_segments(path, seg_ids, sid or "", None if sid else speaker,
                                    Config.load())
     if editing.find_speaker(t, speaker) is None:
-        console.print(f"New speaker {sid}: {speaker}")
+        console.print(_("New speaker {id}: {name}").format(id=sid, name=speaker))
     _show(sessions.load_numbered(path), seg_ids)
 
 
-@sessions_app.command("edit")
+@sessions_app.command("edit", help=_(
+    "Correct a line's text (word timings are kept where the words are unchanged)."))
 def sessions_edit(
     session: SessionArg,
-    when: Annotated[str, typer.Argument(help="Line start (24:10); must select one line.")],
+    when: Annotated[str, typer.Argument(
+        help=_("Line start (24:10); must select one line."))],
     text: Annotated[str, typer.Argument(
-        help="New text. '|' splits the line into several (then assign the parts); "
-             "empty text deletes the line.")],
+        help=_("New text. '|' splits the line into several (then assign the parts); "
+               "empty text deletes the line."))],
 ) -> None:
-    """Correct a line's text (word timings are kept where the words are unchanged)."""
     path = resolve(session)
     t = sessions.load_numbered(path)
     seg_ids = select(t, when)
@@ -198,10 +207,10 @@ def sessions_edit(
     if len(seg_ids) != 1:
         _show(t, seg_ids)
         options = ", ".join(f"{s.t0:.2f}" for s in t.segments if s.id in seg_ids)
-        raise _fail(f"{len(seg_ids)} lines start at {when}; pick one by its exact start "
-                    f"in seconds: {options}")
+        raise _fail(_("{n} lines start at {time}; pick one by its exact start in seconds: "
+                      "{options}").format(n=len(seg_ids), time=when, options=options))
     new_ids = sessions.edit_text(path, seg_ids[0], text.replace("|", "\n"), Config.load())
     if new_ids:
         _show(sessions.load_numbered(path), new_ids)
     else:
-        console.print("Line deleted.")
+        console.print(_("Line deleted."))

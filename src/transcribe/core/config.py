@@ -79,6 +79,11 @@ class LiveConfig:
     refine_model: str = ""  # Whisper model for refinement; "" = same as asr.model
 
 
+@dataclass
+class UiConfig:
+    language: str = "auto"  # auto (system language) | en | de - applied at the next start
+
+
 def vocabulary(config: Config):
     from transcribe.core.vocabulary import Vocabulary
 
@@ -102,6 +107,7 @@ class Config:
     asr: AsrConfig = field(default_factory=AsrConfig)
     speakers: SpeakerConfig = field(default_factory=SpeakerConfig)
     live: LiveConfig = field(default_factory=LiveConfig)
+    ui: UiConfig = field(default_factory=UiConfig)
     sessions_dir: str = ""
 
     def resolved_sessions_dir(self) -> Path:
@@ -117,6 +123,7 @@ class Config:
             asr=_build(AsrConfig, raw.get("asr", {})),
             speakers=_build(SpeakerConfig, raw.get("speakers", {})),
             live=_build(LiveConfig, raw.get("live", {})),
+            ui=_build(UiConfig, raw.get("ui", {})),
             sessions_dir=raw.get("sessions_dir", ""),
         )
 

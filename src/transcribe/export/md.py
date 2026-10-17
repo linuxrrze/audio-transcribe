@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from transcribe.export.base import fmt_clock
+from transcribe.i18n import _
 from transcribe.storage.transcript_model import Transcript
 
 
@@ -8,7 +9,7 @@ class MarkdownExporter:
     extension = "md"
 
     def render(self, transcript: Transcript) -> str:
-        title = transcript.meta.get("title", "Transcript")
+        title = transcript.meta.get("title") or _("Transcript")
         out = [f"# {title}", ""]
         for s in transcript.segments:
             label = f"**{transcript.speaker_label(s.speaker_id)}** " if s.speaker_id else ""

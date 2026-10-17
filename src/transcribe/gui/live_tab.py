@@ -39,11 +39,18 @@ from transcribe.gui.dialogs import NameSpeakerDialog
 from transcribe.gui.level_meter import DeviceCheckDialog, LevelMeter
 from transcribe.gui.speaker_panel import SpeakerPanel
 from transcribe.gui.transcript_view import TranscriptView
+from transcribe.i18n import N_, _
 from transcribe.storage import session_store
 from transcribe.storage.transcript_model import Speaker
 
-SOURCES = [("Microphone", "mic"), ("System audio (what the computer plays)", "system"),
-           ("Microphone + system audio (calls)", "both")]
+SOURCES = [(N_("Microphone"), "mic"), (N_("System audio (what the computer plays)"), "system"),
+           (N_("Microphone + system audio (calls)"), "both")]
+# live session status codes (live/session.py) and refinement stages, as shown to the user
+STATUS = {"starting": N_("Starting"), "running": N_("Running"), "error": N_("Error"),
+          "identifying": N_("Identifying speakers"), "stopped": N_("Stopped"),
+          "refining": N_("Refining")}
+STAGES = {"diarize": N_("speaker detection"), "transcribe": N_("transcription"),
+          "speakers": N_("speakers")}
 
 
 class LiveTab(QWidget):
@@ -79,26 +86,26 @@ class LiveTab(QWidget):
 
         self.source = QComboBox()
         for label, key in SOURCES:
-            self.source.addItem(label, key)
+            self.source.addItem(_(label), key)
         self.input = QComboBox()
         self.output = QComboBox()
-        self.mix = QCheckBox("Mix into one stream (cheaper)")
+        self.mix = QCheckBox(_("Mix into one stream (cheaper)"))
         self.speakers = QSpinBox()
         self.speakers.setRange(0, 20)
-        self.speakers.setSpecialValueText("auto")
-        self.start_btn = QPushButton("Start")
+        self.speakers.setSpecialValueText(_("auto"))
+        self.start_btn = QPushButton(_("Start"))
         self.start_btn.setDefault(True)
         self.start_btn.clicked.connect(self.toggle)
         self.source.currentIndexChanged.connect(self._update_controls)
         self.mic_meter, self.sys_meter = LevelMeter(), LevelMeter()
-        self.check_btn = QPushButton("Check devices…")
-        self.check_btn.setToolTip("Show signal levels of all microphones and outputs")
+        self.check_btn = QPushButton(_("Check devices…"))
+        self.check_btn.setToolTip(_("Show signal levels of all microphones and outputs"))
         self.check_btn.clicked.connect(self.check_devices)
         self.refresh_devices()
         for combo in (self.source, self.input, self.output):
             combo.currentIndexChanged.connect(self._restart_preview)
 
-        self.status = QLabel("Ready")
+        self.status = QLabel(_("Ready"))
         self.view = TranscriptView()
         self.panel = SpeakerPanel()
         self.panel.rename_requested.connect(self._rename)
@@ -114,11 +121,11 @@ class LiveTab(QWidget):
             return row
 
         form = QFormLayout()
-        form.addRow("Source:", self.source)
-        form.addRow("Microphone:", with_meter(self.input, self.mic_meter))
-        form.addRow("System audio:", with_meter(self.output, self.sys_meter))
+        form.addRow(_("Source:"), self.source)
+        form.addRow(_("Microphone:"), with_meter(self.input, self.mic_meter))
+        form.addRow(_("System audio:"), with_meter(self.output, self.sys_meter))
         form.addRow("", self.mix)
-        form.addRow("Speakers:", self.speakers)
+        form.addRow(_("Speakers:"), self.speakers)
         controls = QHBoxLayout()
         controls.addLayout(form, 1)
         right = QVBoxLayout()
@@ -140,8 +147,8 @@ class LiveTab(QWidget):
     # --- devices -----------------------------------------------------------------------
     def refresh_devices(self) -> None:
         entries, errors = list_devices()
-        for combo, kind, default in ((self.input, "input", "Default microphone"),
-                                     (self.output, "output", "Default output")):
+        for combo, kind, default in ((self.input, "input", _("Default microphone")),
+                                     (self.output, "output", _("Default output"))):
             combo.blockSignals(True)
             combo.clear()
             combo.addItem(default, None)
@@ -182,14 +189,14 @@ class LiveTab(QWidget):
                                          False), self.sys_meter)
         return out
 
-    def _restart_preview(self, *_) -> None:
+    def _restart_preview(self, *_args) -> None:
         self._stop_preview()
         if not self.preview_enabled or self.running or not self.isVisible():
             return
         selected = self._selected_entries()
-        self._preview_keys = {key: meter for key, (_, meter) in selected.items()}
+        self._preview_keys = {key: meter for key, (_entry, meter) in selected.items()}
         self._preview = LevelMonitor({key: self.level_source_factory(entry)
-                                      for key, (entry, _) in selected.items()}).start()
+                                      for key, (entry, _meter) in selected.items()}).start()
         self._preview_timer.start()
 
     def _stop_preview(self, reset_meters: bool = True) -> None:
@@ -244,7 +251,7 @@ class LiveTab(QWidget):
             source = self.source_factory(self.source.currentData(), self.input.currentData(),
                                          self.output.currentData(), self.mix.isChecked())
         except (RuntimeError, ValueError) as e:
-            QMessageBox.warning(self, "Audio source", str(e))
+            QMessageBox.warning(self, _("Audio source"), str(e))
             self._restart_preview()
             return
         session_dir = session_store.new_session_dir(self.config.resolved_sessions_dir(), "live")
@@ -255,9 +262,9 @@ class LiveTab(QWidget):
         self._live_panel()
         self.pending_names.clear()
         self.start_btn.setEnabled(False)
-        self._set_status("Loading models (first run downloads them)…")
+        self._set_status(_("Loading models (first run downloads them)…"))
         run_job(lambda: self.session_factory(source, self.config, session_dir, num,
-                                             True, {"title": "Live session",
+                                             True, {"title": _("Live session"),
                                                     "source": source.describe().name}),
                 self._started, self._failed, self)
 
@@ -270,7 +277,7 @@ class LiveTab(QWidget):
             self.session = None
             self._failed(str(e))
             return
-        self.start_btn.setText("Stop")
+        self.start_btn.setText(_("Stop"))
         self.start_btn.setEnabled(True)
         self._update_controls()
 
@@ -278,7 +285,7 @@ class LiveTab(QWidget):
         if self.session is None:
             return
         self.start_btn.setEnabled(False)
-        self._set_status("Stopping…")
+        self._set_status(_("Stopping…"))
         session = self.session
         run_job(lambda: session.stop(refine=self.config.live.refine), self._stopped,
                 self._failed, self)
@@ -292,12 +299,12 @@ class LiveTab(QWidget):
         self.panel.set_speakers(transcript.speakers)
         # the session is closed: speakers are edited in the Sessions tab
         self.panel.set_actions(rename=False, merge=False, suggestions=False)
-        self.panel.set_note('Session saved. <a href="sessions">Name, merge or correct '
-                            'speakers in the Sessions tab</a>.')
-        self.start_btn.setText("Start")
+        self.panel.set_note(_('Session saved. <a href="sessions">Name, merge or correct '
+                              'speakers in the Sessions tab</a>.'))
+        self.start_btn.setText(_("Start"))
         self.start_btn.setEnabled(True)
         self._update_controls()
-        self._set_status(f"Saved to {session_dir}")
+        self._set_status(_("Saved to {path}").format(path=session_dir))
         self._restart_preview()
         if self.pending_names and session_dir is not None:
             self._apply_pending_names(session_dir)
@@ -327,18 +334,18 @@ class LiveTab(QWidget):
             self.view.set_transcript(final)
             self.panel.set_speakers(final.speakers)
             if problems:
-                QMessageBox.warning(self, "Voiceprints", "\n".join(problems))
+                QMessageBox.warning(self, _("Voiceprints"), "\n".join(problems))
 
         run_job(apply, done, self._failed, self)
 
     def _failed(self, message: str) -> None:
         self.start_btn.setEnabled(True)
-        self.start_btn.setText("Stop" if self.running else "Start")
+        self.start_btn.setText(_("Stop") if self.running else _("Start"))
         self._update_controls()
-        self._set_status("Error")
+        self._set_status(_("Error"))
         if not self.running:
             self._restart_preview()
-        QMessageBox.critical(self, "Error", message)
+        QMessageBox.critical(self, _("Error"), message)
 
     # --- events ------------------------------------------------------------------------
     def _on_event(self, event: Event) -> None:
@@ -365,9 +372,11 @@ class LiveTab(QWidget):
                 meter = self.sys_meter if event.channel_id == "system" else self.mic_meter
                 meter.set_db(event.rms_db)
             case StatusChanged():
-                text = event.status.capitalize()
+                code = STATUS.get(event.status)
+                text = _(code) if code else event.status.capitalize()
                 if event.detail:
-                    text += f": {event.detail}"
+                    stage = STAGES.get(event.detail)
+                    text += f": {_(stage) if stage else event.detail}"
                 if event.progress is not None:
                     text += f" {event.progress:.0%}"
                 self._set_status(text)

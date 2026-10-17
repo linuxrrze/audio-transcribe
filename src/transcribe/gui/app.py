@@ -2,22 +2,40 @@
 
 from __future__ import annotations
 
+import os
 import sys
+
+# Qt 6 on Wayland logs every text-field focus change of the input-method protocol
+# ("qt.qpa.wayland.textinput: ... Trying to disable ... but ... is focused") - harmless
+# noise. Silenced unless the user asks for that category explicitly.
+QUIET_QT_LOGGING = "qt.qpa.wayland.textinput=false"
+
+
+def quiet_qt_logging() -> None:
+    """Add QUIET_QT_LOGGING to QT_LOGGING_RULES (before the QApplication exists)."""
+    rules = os.environ.get("QT_LOGGING_RULES", "")
+    if "qt.qpa.wayland.textinput" not in rules:
+        os.environ["QT_LOGGING_RULES"] = ";".join(r for r in (rules, QUIET_QT_LOGGING) if r)
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    quiet_qt_logging()
     try:
         from PySide6.QtCore import QTimer
         from PySide6.QtWidgets import QApplication
     except ImportError:
-        print("The GUI needs the 'gui' extra: pip install 'transcribe[gui]'", file=sys.stderr)
+        from transcribe.i18n import _
+
+        print(_("The GUI needs the 'gui' extra: pip install 'transcribe[gui]'"),
+              file=sys.stderr)
         return 1
     from transcribe.core.config import Config, required_models
     from transcribe.gui.main_window import MainWindow
 
     app = QApplication.instance() or QApplication([sys.argv[0], *argv])
     app.setApplicationName("Transcribe")
+    install_qt_translations(app)
     config = Config.load()
     window = MainWindow(config)
     window.show()
@@ -37,6 +55,25 @@ def main(argv: list[str] | None = None) -> int:
 
     QTimer.singleShot(0, first_run)
     return _run(app, window)
+
+
+def install_qt_translations(app) -> bool:
+    """Qt's own texts (standard buttons like Save/Cancel, file dialogs) in the UI language,
+    from the translations that ship with Qt. Returns whether any were loaded."""
+    from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
+
+    from transcribe.i18n import language
+
+    lang = language()
+    if lang == "en":
+        return False
+    QLocale.setDefault(QLocale(lang))  # number and date formats in dialogs
+    translator = QTranslator(app)
+    path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    if not translator.load(QLocale(lang), "qtbase", "_", path):
+        return False
+    app.installTranslator(translator)
+    return True
 
 
 def _run(app, window) -> int:

@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from transcribe.i18n import _, display_label
+
 
 class NameSpeakerDialog(QDialog):
     """Name + optional voiceprint enrollment, which requires explicit consent."""
@@ -26,28 +28,29 @@ class NameSpeakerDialog(QDialog):
     def __init__(self, current: str, suggestion: str | None = None, can_learn: bool = True,
                  store_allowed: bool = True, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Name speaker")
+        self.setWindowTitle(_("Name speaker"))
         self.name = QLineEdit(suggestion or ("" if current.startswith("Speaker ") else current))
-        self.name.setPlaceholderText("Name")
-        self.learn = QCheckBox("Remember this voice for future sessions")
-        self.consent = QCheckBox("The person agreed to storing their voiceprint")
+        self.name.setPlaceholderText(_("Name"))
+        self.learn = QCheckBox(_("Remember this voice for future sessions"))
+        self.consent = QCheckBox(_("The person agreed to storing their voiceprint"))
         self.learn.setEnabled(can_learn and store_allowed)
         self.learn.setChecked(can_learn and store_allowed)
         self.learn.toggled.connect(self._update)
         self.consent.toggled.connect(self._update)
-        info = QLabel("Voiceprints are biometric data. They stay on this computer and can "
-                      "be deleted at any time (File → Voiceprints).")
+        info = QLabel(_("Voiceprints are biometric data. They stay on this computer and "
+                        "can be deleted at any time (File → Voiceprints)."))
         info.setWordWrap(True)
         if not store_allowed:
-            info.setText("Voiceprint storage is disabled in the settings.")
+            info.setText(_("Voiceprint storage is disabled in the settings."))
         info.setStyleSheet("color: palette(placeholder-text);")
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                         | QDialogButtonBox.StandardButton.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
-        heading = QLabel(f"<b>Who is {html.escape(current)}?</b>")
+        who = _("Who is {speaker}?").format(speaker=display_label(current))
+        heading = QLabel(f"<b>{html.escape(who)}</b>")
         name_row = QFormLayout()
-        name_row.addRow("Name:", self.name)
+        name_row.addRow(_("Name:"), self.name)
         # A vertical layout, not a form: word-wrapped labels in a QFormLayout get too little
         # height on some platforms and overlap the checkbox above them.
         layout = QVBoxLayout(self)
@@ -64,7 +67,7 @@ class NameSpeakerDialog(QDialog):
         self.name.textChanged.connect(self._update)
         self._update()
 
-    def _update(self, *_) -> None:
+    def _update(self, *_args) -> None:
         self.consent.setEnabled(self.learn.isChecked())
         ok = bool(self.name.text().strip()) and (not self.learn.isChecked()
                                                  or self.consent.isChecked())
@@ -82,18 +85,18 @@ class ModelSetupDialog(QDialog):
         from PySide6.QtWidgets import QProgressBar
 
         super().__init__(parent)
-        self.setWindowTitle("Download models")
+        self.setWindowTitle(_("Download models"))
         self.missing = list(missing)
-        intro = QLabel("Transcribe runs entirely on this computer. These models are needed "
-                       "once (several hundred MB in total):")
+        intro = QLabel(_("Transcribe runs entirely on this computer. These models are "
+                         "needed once (several hundred MB in total):"))
         intro.setWordWrap(True)
         self.items = QLabel("\n".join(f"• {m}" for m in self.missing))
         self.bar = QProgressBar()
         self.bar.setRange(0, len(self.missing))
         self.current = QLabel("")
-        self.download_btn = QPushButton("Download")
+        self.download_btn = QPushButton(_("Download"))
         self.download_btn.clicked.connect(self.start)
-        later = QPushButton("Later")
+        later = QPushButton(_("Later"))
         later.clicked.connect(self.reject)
         row = QHBoxLayout()
         row.addStretch(1)
@@ -118,7 +121,7 @@ class ModelSetupDialog(QDialog):
                        for n in names)
             self.bar.setValue(done)
             if done < len(names):
-                self.current.setText(f"Downloading {names[done]}…")
+                self.current.setText(_("Downloading {model}…").format(model=names[done]))
 
         from PySide6.QtCore import QTimer
 

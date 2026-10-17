@@ -29,9 +29,11 @@ from transcribe.audio.levels import (
     list_devices,
     meter_fraction,
 )
+from transcribe.i18n import N_, _
 
 GREEN, YELLOW, RED = QColor("#2ca02c"), QColor("#e6b800"), QColor("#d62728")
-STATUS_TEXT = {"signal": "", "silent": "silent", "no data": "no data", "error": "error"}
+STATUS_TEXT = {"signal": "", "silent": N_("silent"), "no data": N_("no data"),
+               "error": N_("error")}
 
 
 class LevelMeter(QWidget):
@@ -44,9 +46,9 @@ class LevelMeter(QWidget):
         self.peak_db = FLOOR_DB
         self._peak_at = 0.0
         self.status = "no data"
-        self.setToolTip("Signal level (dBFS)")
+        self.setToolTip(_("Signal level (dBFS)"))
 
-    LABEL_W = 52  # space for "-34 dB" / "no data" right of the bar
+    LABEL_W = 64  # space for "-34 dB" / "no data" (also translated) right of the bar
 
     def sizeHint(self) -> QSize:  # noqa: N802 - Qt API
         return QSize(200, 16)
@@ -63,7 +65,8 @@ class LevelMeter(QWidget):
     def set_level(self, level: Level) -> None:
         self.rms_db, self.peak_db = level.rms_db, level.peak_db
         self.status = level.status
-        self.setToolTip(level.error or f"{level.rms_db:.0f} dBFS (max {level.max_db:.0f})")
+        self.setToolTip(level.error or _("{rms} dBFS (max {peak})").format(
+            rms=f"{level.rms_db:.0f}", peak=f"{level.max_db:.0f}"))
         self.update()
 
     def reset(self) -> None:
@@ -90,7 +93,8 @@ class LevelMeter(QWidget):
             x = r.left() + 1 + meter_fraction(self.peak_db) * w
             p.fillRect(QRectF(x - 1, r.top() + 1, 2, r.height() - 2),
                        RED if self.peak_db > -3 else self.palette().text().color())
-        label = STATUS_TEXT.get(self.status, "") or f"{self.rms_db:.0f} dB"
+        text = STATUS_TEXT.get(self.status, "")
+        label = _(text) if text else f"{self.rms_db:.0f} dB"
         p.setPen(self.palette().text().color())
         font = p.font()
         font.setPointSizeF(max(6.0, font.pointSizeF() * 0.8))
@@ -106,25 +110,26 @@ class DeviceCheckDialog(QDialog):
                  devices: tuple[list[DeviceEntry], list[str]] | None = None,
                  source_factory: Callable = device_source) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Check audio devices")
+        self.setWindowTitle(_("Check audio devices"))
         self.resize(640, 420)
         entries, errors = devices or list_devices()
-        intro = QLabel("Speak into your microphone and play something in the meeting app. "
-                       "The devices whose meters move are the ones to use.")
+        intro = QLabel(_("Speak into your microphone and play something in the meeting app. "
+                         "The devices whose meters move are the ones to use."))
         intro.setWordWrap(True)
         grid = QGridLayout()
         self.meters: dict[str, LevelMeter] = {}
         row = 0
-        for kind, title in (("input", "Microphones / inputs"),
-                            ("output", "System audio (what the computer plays)")):
+        for kind, title in (("input", _("Microphones / inputs")),
+                            ("output", _("System audio (what the computer plays)"))):
             grid.addWidget(QLabel(f"<b>{title}</b>"), row, 0, 1, 3)
             row += 1
             for e in (e for e in entries if e.kind == kind):
-                grid.addWidget(QLabel(e.name + (" (default)" if e.is_default else "")), row, 0)
+                name = _("{device} (default)").format(device=e.name) if e.is_default else e.name
+                grid.addWidget(QLabel(name), row, 0)
                 meter = LevelMeter()
                 self.meters[e.key] = meter
                 grid.addWidget(meter, row, 1)
-                use = QPushButton("Use")
+                use = QPushButton(_("Use"))
                 use.clicked.connect(self._use_handler(on_use, e))
                 grid.addWidget(use, row, 2)
                 row += 1
@@ -137,7 +142,7 @@ class DeviceCheckDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(inner)
-        close = QPushButton("Close")
+        close = QPushButton(_("Close"))
         close.clicked.connect(self.reject)
         buttons = QHBoxLayout()
         buttons.addStretch(1)

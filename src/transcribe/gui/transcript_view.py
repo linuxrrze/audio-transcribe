@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QMenu, QTextBrowser
 
 from transcribe.export.base import fmt_clock
 from transcribe.gui.colors import speaker_color
+from transcribe.i18n import _, display_label, ngettext
 from transcribe.storage.transcript_model import Speaker, Transcript
 
 
@@ -49,10 +50,19 @@ class TranscriptView(QTextBrowser):
         self._timer = QTimer(self)
         self._timer.setInterval(100)
         self._timer.timeout.connect(self._render_if_dirty)
+        # Follow the newest line until the user scrolls up; scrolling back to the end
+        # follows again. Driven by rangeChanged because Qt lays the new text out lazily:
+        # right after setHtml() the scroll range is often still the old one.
+        self._follow = True
+        self._rendering = False
+        bar = self.verticalScrollBar()
+        bar.valueChanged.connect(self._scrolled)
+        bar.rangeChanged.connect(self._range_changed)
         self._timer.start()
 
     # --- model -------------------------------------------------------------------------
     def clear_all(self) -> None:
+        self._follow = True
         self._segs.clear()
         self._speakers.clear()
         self._partials.clear()
@@ -66,11 +76,13 @@ class TranscriptView(QTextBrowser):
         for i, s in enumerate(transcript.segments):
             sid = s.id or f"seg-{i}"
             self._segs[sid] = _Seg(sid, s.t0, s.t1, s.speaker_id, s.text, s.channel_id)
+        self._follow = False  # a stored transcript: the user reads, nothing arrives
         self._render()
         if keep_position:  # after an edit: stay where the user was working
             self.verticalScrollBar().setValue(position)
         else:
             self.moveCursor(QTextCursor.MoveOperation.Start)
+            self.verticalScrollBar().setValue(0)
 
     def add_segment(self, seg_id: str, t0: float, t1: float, speaker: str | None, text: str,
                     channel: str = "") -> None:
@@ -108,7 +120,7 @@ class TranscriptView(QTextBrowser):
         if speaker_id is None:
             return ""
         spk = self._speakers.get(speaker_id)
-        return spk.label if spk else f"Speaker {speaker_id[1:]}"
+        return display_label(spk.label if spk else f"Speaker {speaker_id[1:]}")
 
     # --- rendering ---------------------------------------------------------------------
     def _mark(self) -> None:
@@ -121,8 +133,7 @@ class TranscriptView(QTextBrowser):
     def _render(self) -> None:
         self._dirty = False
         bar = self.verticalScrollBar()
-        follow = bar.value() >= bar.maximum() - 4
-        position = bar.value()
+        follow, position = self._follow, bar.value()
         multi = len({s.channel for s in self._segs.values()} | set(self._partials)) > 1
         parts = []
         self._order = []
@@ -143,8 +154,20 @@ class TranscriptView(QTextBrowser):
                 tag = f"[{html.escape(channel)}] " if multi else ""
                 parts.append(f'<p style="color:#888;">… {tag}{html.escape(committed)} '
                              f'<i>{html.escape(pending)}</i></p>')
-        self.setHtml("".join(parts))
+        self._rendering = True  # setHtml() scrolls to the top: not a user action
+        try:
+            self.setHtml("".join(parts))
+        finally:
+            self._rendering = False
         bar.setValue(bar.maximum() if follow else position)
+
+    def _scrolled(self, value: int) -> None:
+        if not self._rendering:
+            self._follow = value >= self.verticalScrollBar().maximum() - 4
+
+    def _range_changed(self, _minimum: int, maximum: int) -> None:
+        if self._follow and not self._rendering:
+            self.verticalScrollBar().setValue(maximum)
 
     # --- corrections (editable) ---------------------------------------------------------
     def segments_at(self, pos: QPoint) -> list[str]:
@@ -168,21 +191,21 @@ class TranscriptView(QTextBrowser):
             return
         menu = QMenu(self)
         n = len(seg_ids)
-        title = "this line" if n == 1 else f"{n} lines"
-        speakers = menu.addMenu(f"Speaker of {title}")
+        speakers = menu.addMenu(ngettext("Speaker of this line", "Speaker of {n} lines",
+                                         n).format(n=n))
         for sid, spk in sorted(self._speakers.items(), key=lambda kv: _num(kv[0])):
-            action = speakers.addAction(spk.label)
+            action = speakers.addAction(display_label(spk.label))
             action.setCheckable(True)
             action.setChecked(all(self._segs[i].speaker == sid for i in seg_ids))
-            action.triggered.connect(lambda _=False, sid=sid: self.assign_requested.emit(
-                seg_ids, sid))
+            action.triggered.connect(
+                lambda _checked=False, sid=sid: self.assign_requested.emit(seg_ids, sid))
         speakers.addSeparator()
-        speakers.addAction("New speaker…").triggered.connect(
+        speakers.addAction(_("New speaker…")).triggered.connect(
             lambda: self.assign_requested.emit(seg_ids, ""))
-        edit = menu.addAction("Edit text… (double-click)")
+        edit = menu.addAction(_("Edit text… (double-click)"))
         edit.setEnabled(n == 1)
         edit.triggered.connect(lambda: self.edit_requested.emit(seg_ids[0]))
-        menu.addAction("Play from here").triggered.connect(
+        menu.addAction(_("Play from here")).triggered.connect(
             lambda: self.seek_requested.emit(self._segs[seg_ids[0]].t0))
         menu.exec(event.globalPos())
 

@@ -28,8 +28,10 @@ from transcribe.core.config import Config
 from transcribe.export.base import fmt_clock
 from transcribe.gui.bridge import run_job
 from transcribe.gui.dialogs import NameSpeakerDialog
+from transcribe.gui.live_tab import STAGES
 from transcribe.gui.speaker_panel import SpeakerPanel
 from transcribe.gui.transcript_view import TranscriptView
+from transcribe.i18n import _, ngettext
 from transcribe.storage.transcript_model import Transcript
 
 
@@ -47,12 +49,12 @@ class SessionsTab(QWidget):
         self.transcript: Transcript | None = None
         self.list = QListWidget()
         self.list.currentItemChanged.connect(self._selected)
-        refresh = QPushButton("Refresh")
+        refresh = QPushButton(_("Refresh"))
         refresh.clicked.connect(self.reload)
         self.view = TranscriptView()
         self.view.editable = True
-        self.view.setToolTip("Right-click a line (or selected lines) to change the speaker; "
-                             "double-click to edit the text.")
+        self.view.setToolTip(_("Right-click a line (or selected lines) to change the "
+                               "speaker; double-click to edit the text."))
         self.view.assign_requested.connect(self._assign)
         self.view.edit_requested.connect(self._edit_text)
         self.panel = SpeakerPanel()
@@ -62,7 +64,7 @@ class SessionsTab(QWidget):
         self.panel.decline_requested.connect(self._decline)
 
         self.player, self.audio_out = self._make_player()
-        self.play_btn = QPushButton("Play")
+        self.play_btn = QPushButton(_("Play"))
         self.play_btn.clicked.connect(self._toggle_play)
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.sliderMoved.connect(lambda ms: self.player and self.player.setPosition(ms))
@@ -72,17 +74,18 @@ class SessionsTab(QWidget):
         self.format = QComboBox()
         self.format.addItems(registry.available("transcribe.exporters"))
         self.format.setCurrentText("txt")
-        export = QPushButton("Export…")
+        export = QPushButton(_("Export…"))
         export.clicked.connect(self._export)
         self.refine_speakers = QSpinBox()
         self.refine_speakers.setRange(0, 20)
-        self.refine_speakers.setSpecialValueText("auto")
-        self.refine_btn = QPushButton("Refine")
-        self.refine_btn.setToolTip("Re-run diarization + transcription on the recording")
+        self.refine_speakers.setSpecialValueText(_("auto"))
+        self.refine_btn = QPushButton(_("Refine"))
+        self.refine_btn.setToolTip(_("Re-run speaker detection and transcription on the "
+                                     "recording"))
         self.refine_btn.clicked.connect(self._refine)
 
         left = QVBoxLayout()
-        left.addWidget(QLabel("<b>Sessions</b>"))
+        left.addWidget(QLabel(f"<b>{_('Sessions')}</b>"))
         left.addWidget(self.list, 1)
         left.addWidget(refresh)
         left_w = QWidget()
@@ -92,7 +95,7 @@ class SessionsTab(QWidget):
         transport.addWidget(self.slider, 1)
         transport.addWidget(self.time)
         actions = QHBoxLayout()
-        actions.addWidget(QLabel("Speakers:"))
+        actions.addWidget(QLabel(_("Speakers:")))
         actions.addWidget(self.refine_speakers)
         actions.addWidget(self.refine_btn)
         actions.addStretch(1)
@@ -120,8 +123,10 @@ class SessionsTab(QWidget):
         self.list.clear()
         for info in sessions.list_sessions(self.config.resolved_sessions_dir()):
             flags = (" ✓" if info.refined else "") + (" ●" if info.live else "")
+            n_speakers = ngettext("{n} speaker", "{n} speakers", info.speakers).format(
+                n=info.speakers)
             item = QListWidgetItem(f"{info.title}{flags}\n{info.created:%Y-%m-%d %H:%M}  "
-                                   f"{fmt_clock(info.duration_s)}  {info.speakers} speakers")
+                                   f"{fmt_clock(info.duration_s)}  {n_speakers}")
             item.setData(Qt.ItemDataRole.UserRole, str(info.path))
             self.list.addItem(item)
             if keep and info.path == keep:
@@ -164,15 +169,15 @@ class SessionsTab(QWidget):
             return
         if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.player.pause()
-            self.play_btn.setText("Play")
+            self.play_btn.setText(_("Play"))
         else:
             self.player.play()
-            self.play_btn.setText("Pause")
+            self.play_btn.setText(_("Pause"))
 
     def _seek(self, seconds: float) -> None:
         if self.player is not None:
             self.player.setPosition(int(seconds * 1000))
-            if self.play_btn.text() == "Play":
+            if self.play_btn.text() == _("Play"):
                 self._toggle_play()
 
     def _position(self, ms: int) -> None:
@@ -190,7 +195,8 @@ class SessionsTab(QWidget):
             return
         name = None
         if not sid:
-            name, ok = QInputDialog.getText(self, "New speaker", "Name of the new speaker:")
+            name, ok = QInputDialog.getText(self, _("New speaker"),
+                                            _("Name of the new speaker:"))
             if not ok or not name.strip():
                 return
             name = name.strip()
@@ -201,9 +207,9 @@ class SessionsTab(QWidget):
         if self.current is None:
             return
         text, ok = QInputDialog.getMultiLineText(
-            self, "Edit line",
-            "Each line becomes a line of its own (split where the speaker changes);\n"
-            "delete all text to remove the line.", self.view.segment_text(seg_id))
+            self, _("Edit line"),
+            _("Each line becomes a line of its own (split where the speaker changes);\n"
+              "delete all text to remove the line."), self.view.segment_text(seg_id))
         if ok and text != self.view.segment_text(seg_id):
             self._apply(lambda: sessions.edit_text(self.current, seg_id, text, self.config))
 
@@ -211,7 +217,7 @@ class SessionsTab(QWidget):
         try:
             edit()
         except (KeyError, ValueError, RuntimeError) as e:
-            QMessageBox.warning(self, "Edit failed", str(e))
+            QMessageBox.warning(self, _("Edit failed"), str(e))
             return
         self._after_edit()
 
@@ -242,12 +248,15 @@ class SessionsTab(QWidget):
         try:
             if enroll:
                 added = name_speaker(session, path, sid, name, self.config, consent=consent)
-                self.status_message.emit(f"{name}: {added} voiceprint(s) stored")
+                self.status_message.emit(ngettext(
+                    "{name}: {n} voiceprint stored", "{name}: {n} voiceprints stored",
+                    added).format(name=name, n=added))
             else:
                 sessions.rename_speaker(session, sid, name)
         except (ValueError, PermissionError, FileNotFoundError, KeyError) as e:
-            QMessageBox.warning(self, "Voiceprint not stored",
-                                f"{e}\n\nThe speaker is renamed without learning the voice.")
+            QMessageBox.warning(self, _("Voiceprint not stored"),
+                                f"{e}\n\n" + _("The speaker is renamed without learning the "
+                                                 "voice."))
             sessions.rename_speaker(session, sid, name)
         self._after_edit()
 
@@ -266,10 +275,10 @@ class SessionsTab(QWidget):
             return
         exporter = registry.load("transcribe.exporters", self.format.currentText())()
         default = str(Path.home() / f"{self.current.name}.{exporter.extension}")
-        path, _ = QFileDialog.getSaveFileName(self, "Export transcript", default)
+        path, _filter = QFileDialog.getSaveFileName(self, _("Export transcript"), default)
         if path:
             Path(path).write_text(exporter.render(self.transcript), encoding="utf-8")
-            self.status_message.emit(f"Exported to {path}")
+            self.status_message.emit(_("Exported to {path}").format(path=path))
 
     def _refine(self) -> None:
         if self.current is None:
@@ -282,15 +291,18 @@ class SessionsTab(QWidget):
         def work():
             return sessions.refine_session(
                 session, self.config, num,
-                lambda stage, frac: progress.changed.emit(f"Refining: {stage} {frac:.0%}"))
+                lambda stage, frac: progress.changed.emit(
+                    _("Refining: {stage} {percent}").format(
+                        stage=_(STAGES[stage]) if stage in STAGES else stage,
+                        percent=f"{frac:.0%}")))
 
-        def done(_):
+        def done(_result):
             self.refine_btn.setEnabled(True)
-            self.status_message.emit("Refined")
+            self.status_message.emit(_("Refined"))
             self.reload(session)
 
         def failed(msg: str):
             self.refine_btn.setEnabled(True)
-            QMessageBox.critical(self, "Refine failed", msg)
+            QMessageBox.critical(self, _("Refine failed"), msg)
 
         run_job(work, done, failed, self)

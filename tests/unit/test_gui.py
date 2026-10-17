@@ -290,6 +290,22 @@ def test_settings_roundtrip_and_vocabulary_dialog(app, config, monkeypatch):
     assert c.asr.corrections == {"Hitschcock": "Hitchcock"}
     assert c.speakers.speaker_count == "silhouette" and c.live.step == 0.5
     assert c.speakers.match_threshold_low == 0.9
+    assert c.live.refine_model == ""  # "(same as live)" is stored as ""
+    assert c.ui.language == "auto"
+
+
+def test_settings_language_and_refine_model(app, config):
+    from transcribe.gui.settings_dialog import SettingsDialog
+
+    config.live.refine_model = "large-v3-turbo"
+    dlg = SettingsDialog(config)
+    assert dlg.refine_model.currentData() == "large-v3-turbo"
+    dlg.ui_language.setCurrentIndex(dlg.ui_language.findData("de"))
+    assert dlg.ui_language.currentText() == "Deutsch"
+    c = dlg.apply()
+    assert c.ui.language == "de" and c.live.refine_model == "large-v3-turbo"
+    dlg.refine_model.setCurrentIndex(0)
+    assert dlg.apply().live.refine_model == ""
 
 
 def test_voiceprints_dialog(app, config, tmp_path, monkeypatch):
@@ -378,3 +394,72 @@ def test_sessions_tab_line_corrections(app, config, tmp_path, monkeypatch):
     t = load(d)
     assert [s.text for s in t.segments[:2]] == ["Erste Zeile", "zweite Zeile"]
     assert len(view._order) == len(t.segments)
+
+
+def test_transcript_view_follows_new_lines_until_scrolled_up(app):
+    from transcribe.gui.transcript_view import TranscriptView
+
+    view = TranscriptView()
+    view.resize(400, 200)
+    view.show()
+    bar = view.verticalScrollBar()
+
+    def add(i):
+        view.add_segment(f"s{i}", float(i), i + 0.5, "S1", f"line {i} " + "word " * 12)
+        view._render()
+        app.processEvents()
+
+    for i in range(40):
+        add(i)
+    assert bar.maximum() > 0 and bar.value() == bar.maximum()  # follows the newest line
+    bar.setValue(bar.maximum() // 2)  # the user scrolls up to read
+    position = bar.value()
+    for i in range(40, 45):
+        add(i)
+    assert bar.value() == position  # not pulled away while reading
+    bar.setValue(bar.maximum())  # back at the end: follows again
+    for i in range(45, 50):
+        add(i)
+    assert bar.value() == bar.maximum()
+    t = Transcript(segments=[Segment(float(i), i + 0.5, [Word(f" w{i}" * 20, float(i),
+                                                              i + 0.5)], "S1", id=str(i))
+                             for i in range(40)], speakers={"S1": Speaker("S1", "Anna")})
+    view.set_transcript(t)  # a stored transcript opens at the top and stays there
+    app.processEvents()
+    assert bar.value() == 0
+
+
+def test_german_ui_with_qt_standard_buttons(app, config):
+    from PySide6.QtCore import QTranslator
+    from PySide6.QtWidgets import QDialogButtonBox
+
+    from transcribe import i18n
+    from transcribe.gui.app import install_qt_translations
+    from transcribe.gui.settings_dialog import SettingsDialog
+
+    i18n.set_language("de")
+    try:
+        assert install_qt_translations(app)
+        dlg = SettingsDialog(config)
+        assert dlg.windowTitle() == "Einstellungen"
+        save = dlg.findChild(QDialogButtonBox).button(QDialogButtonBox.StandardButton.Save)
+        assert save.text().replace("&", "") == "Speichern"  # Qt's own translation
+    finally:
+        for t in app.findChildren(QTranslator):
+            app.removeTranslator(t)
+        i18n.set_language("en")
+
+
+def test_wayland_textinput_noise_is_silenced(monkeypatch):
+    from transcribe.gui.app import quiet_qt_logging
+
+    monkeypatch.delenv("QT_LOGGING_RULES", raising=False)
+    quiet_qt_logging()
+    assert os.environ["QT_LOGGING_RULES"] == "qt.qpa.wayland.textinput=false"
+    monkeypatch.setenv("QT_LOGGING_RULES", "qt.multimedia.*=false")
+    quiet_qt_logging()  # keeps the user's own rules
+    assert os.environ["QT_LOGGING_RULES"] == ("qt.multimedia.*=false;"
+                                              "qt.qpa.wayland.textinput=false")
+    monkeypatch.setenv("QT_LOGGING_RULES", "qt.qpa.wayland.textinput=true")
+    quiet_qt_logging()  # the user wants to see them
+    assert os.environ["QT_LOGGING_RULES"] == "qt.qpa.wayland.textinput=true"

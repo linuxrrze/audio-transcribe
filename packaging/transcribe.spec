@@ -14,6 +14,7 @@ for pkg in ("faster_whisper",):  # Silero VAD model shipped as package data
 for pkg in ("ctranslate2", "sherpa_onnx", "onnxruntime", "soxr"):
     binaries += collect_dynamic_libs(pkg)
 datas += copy_metadata("transcribe")  # entry points (registry also has built-ins)
+datas += [(str(ROOT / "src" / "transcribe" / "locale"), "transcribe/locale")]  # translations
 hidden = [
     "transcribe.asr.faster_whisper", "transcribe.asr.whisper_cpp",
     "transcribe.diarize.sherpa_offline",

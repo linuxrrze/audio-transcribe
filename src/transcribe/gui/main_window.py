@@ -11,6 +11,7 @@ from transcribe.gui.live_tab import LiveTab
 from transcribe.gui.sessions_tab import SessionsTab
 from transcribe.gui.settings_dialog import SettingsDialog
 from transcribe.gui.voiceprints_dialog import VoiceprintsDialog
+from transcribe.i18n import _
 
 
 class MainWindow(QMainWindow):
@@ -22,25 +23,26 @@ class MainWindow(QMainWindow):
         self.live = live_tab or LiveTab(config)
         self.sessions = SessionsTab(config)
         self.tabs = QTabWidget()
-        self.tabs.addTab(self.live, "Live")
-        self.tabs.addTab(self.sessions, "Sessions")
+        self.tabs.addTab(self.live, _("Live"))
+        self.tabs.addTab(self.sessions, _("Sessions"))
         self.setCentralWidget(self.tabs)
         self.live.session_finished.connect(self.sessions.reload)
         self.live.open_session_requested.connect(self._show_session)
         self.live.status_message.connect(self.statusBar().showMessage)
         self.sessions.status_message.connect(self.statusBar().showMessage)
 
-        menu = self.menuBar().addMenu("&File")
-        for text, slot in [("&Settings…", self._settings), ("&Voiceprints…", self._people),
-                           ("&Quit", self.close)]:
+        menu = self.menuBar().addMenu(_("&File"))
+        for text, slot in [(_("&Settings…"), self._settings),
+                           (_("&Voiceprints…"), self._people), (_("&Quit"), self.close)]:
             action = QAction(text, self)
             action.triggered.connect(slot)
             menu.addAction(action)
-        about = QAction("&About", self)
+        about = QAction(_("&About"), self)
         about.triggered.connect(lambda: QMessageBox.about(
-            self, "Transcribe", f"Transcribe {__version__}\nLocal transcription with speaker "
-            "identification. Audio and voiceprints never leave this computer."))
-        self.menuBar().addMenu("&Help").addAction(about)
+            self, "Transcribe", f"Transcribe {__version__}\n" + _(
+                "Local transcription with speaker identification. Audio and voiceprints "
+                "never leave this computer.")))
+        self.menuBar().addMenu(_("&Help")).addAction(about)
 
     def _show_session(self, session_dir) -> None:
         self.sessions.reload(session_dir)
@@ -48,7 +50,7 @@ class MainWindow(QMainWindow):
 
     def _settings(self) -> None:
         if self.live.running:
-            QMessageBox.information(self, "Settings", "Stop the live session first.")
+            QMessageBox.information(self, _("Settings"), _("Stop the live session first."))
             return
         if SettingsDialog(self.config, self).exec():
             self.sessions.reload()  # the sessions folder may have changed
@@ -57,12 +59,12 @@ class MainWindow(QMainWindow):
         try:
             VoiceprintsDialog(self.config, self).exec()
         except RuntimeError as e:  # e.g. encrypted database without its key
-            QMessageBox.warning(self, "Voiceprints", str(e))
+            QMessageBox.warning(self, _("Voiceprints"), str(e))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt API
         if self.live.running:
-            answer = QMessageBox.question(self, "Quit",
-                                          "A live session is running. Stop it and quit?")
+            answer = QMessageBox.question(self, _("Quit"),
+                                          _("A live session is running. Stop it and quit?"))
             if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return

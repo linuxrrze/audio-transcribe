@@ -60,10 +60,13 @@ class Transcript:
                 seg.id = f"seg-{i}"
 
     def speaker_label(self, speaker_id: str | None) -> str:
+        """Display name (default labels like "Speaker 3" in the UI language)."""
+        from transcribe.i18n import _, display_label
+
         if speaker_id is None:
-            return "Unknown"
+            return _("Unknown")
         spk = self.speakers.get(speaker_id)
-        return spk.label if spk else speaker_id
+        return display_label(spk.label if spk else f"Speaker {speaker_id[1:]}")
 
     def to_dict(self) -> dict[str, object]:
         return {
