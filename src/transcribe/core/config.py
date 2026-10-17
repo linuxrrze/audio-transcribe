@@ -30,6 +30,10 @@ class AsrConfig:
     beam_size: int = 5
     cpu_threads: int = 0  # 0 = library default
     style_prompt: bool = True  # punctuated example prompt (see asr/faster_whisper.py)
+    # Speech detection (Silero) before Whisper: probability threshold, lower for
+    # telephone-band audio where Silero is less certain (vad/silero.py)
+    vad_threshold: float = 0.5
+    vad_threshold_narrowband: float = 0.25
     # Custom vocabulary (core/vocabulary.py): hint words for names, acronyms, jargon ...
     vocabulary: list[str] = field(default_factory=list)
     # ... and corrections applied to the transcript, e.g. {"Fanfress" = "Fentriss"}

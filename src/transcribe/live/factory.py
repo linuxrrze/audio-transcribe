@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -41,7 +40,13 @@ def make_refiner(config: Config, asr: AsrEngine, num_speakers: int | None):
 def build_live_session(source: AudioSource, config: Config, session_dir: Path,
                        num_speakers: int | None = None, diarize: bool = True,
                        meta: dict[str, object] | None = None) -> LiveSession:
-    from transcribe.vad.silero import speech_regions
+    from transcribe.vad.silero import speech_regions, threshold_for
+
+    a = config.asr
+
+    def vad(audio: np.ndarray) -> list[tuple[float, float]]:
+        return speech_regions(audio, min_silence_ms=300, pad_ms=100, threshold=threshold_for(
+            audio, a.vad_threshold, a.vad_threshold_narrowband))
 
     asr_cls = registry.load("transcribe.asr", config.asr.engine)
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -68,7 +73,7 @@ def build_live_session(source: AudioSource, config: Config, session_dir: Path,
     lc = config.live
     return LiveSession(
         source, live_asr, session_dir, config.asr.languages,
-        partial(speech_regions, min_silence_ms=300, pad_ms=100),
+        vad,
         embedder=embedder, tracker=tracker,
         refine=make_refiner(config, asr, num_speakers) if lc.refine and diarize else None,
         streamer_config=StreamerConfig(step=lc.step, end_silence=lc.end_silence,

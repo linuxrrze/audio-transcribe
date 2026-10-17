@@ -96,10 +96,13 @@ def _cached(path: Path, compute: Callable[[], dict]) -> dict:
     return result
 
 
-def _asr_key(c: Config, language: str) -> str:
+def _asr_key(c: Config, language: str, vad_threshold: float | None = None) -> str:
+    """``vad_threshold``: the one that applies to this audio (wideband or telephone band),
+    so a telephone-band setting does not invalidate wideband results."""
     a = c.asr
     return _key("asr", a.engine, a.model, a.device, a.beam_size, a.style_prompt,
-                a.vocabulary, a.corrections, a.whispercpp_dtw, language)
+                a.vocabulary, a.corrections, a.whispercpp_dtw, language, "vad",
+                vad_threshold)
 
 
 def _dia_key(c: Config) -> str:
@@ -121,7 +124,10 @@ class Engines:
         k = _asr_key(c, "")
         if k not in self._asr:
             self._asr[k] = registry.load("transcribe.asr", c.asr.engine).from_config(c)
-        return self._asr[k]
+        engine = copy.copy(self._asr[k])  # same loaded model, this setting's VAD thresholds
+        if hasattr(engine, "vad_thresholds"):
+            engine.vad_thresholds = (c.asr.vad_threshold, c.asr.vad_threshold_narrowband)
+        return engine
 
     def diarizer(self, c: Config):
         from transcribe.diarize.sherpa_offline import SherpaDiarizer
@@ -166,7 +172,10 @@ def evaluate(ds: Dataset, rec: Recording, condition: str, c: Config, overrides: 
     if full:
         hyp_words, m = _full(cache, rec, audio, c, engines)
     else:
-        asr = _cached(cache / f"asr-{_asr_key(c, rec.language)}.json", lambda: _asr(
+        from transcribe.vad.silero import threshold_for
+
+        vad = threshold_for(audio(), c.asr.vad_threshold, c.asr.vad_threshold_narrowband)
+        asr = _cached(cache / f"asr-{_asr_key(c, rec.language, vad)}.json", lambda: _asr(
             engines.asr(c), audio(), rec.language))
         dia = _cached(cache / f"dia-{_dia_key(c)}.json",
                       lambda: _diarize(engines.diarizer(c), audio()))

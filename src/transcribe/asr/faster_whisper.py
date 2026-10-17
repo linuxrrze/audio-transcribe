@@ -12,6 +12,7 @@ from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core.config import Config
 from transcribe.core.models import whisper_dir
 from transcribe.storage.transcript_model import Word
+from transcribe.vad.silero import threshold_for
 
 _FALLBACK = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
 
@@ -44,7 +45,8 @@ class FasterWhisperEngine:
 
     def __init__(self, model: str = "small", device: str = "auto", compute_type: str = "auto",
                  beam_size: int = 5, cpu_threads: int = 0, hotwords: str | None = None,
-                 style_prompt: bool = True) -> None:
+                 style_prompt: bool = True,
+                 vad_thresholds: tuple[float, float] = (0.5, 0.25)) -> None:
         from faster_whisper import WhisperModel
 
         self.device, self.compute_type = resolve_device(device, compute_type)
@@ -53,6 +55,7 @@ class FasterWhisperEngine:
         self.temperature_fallback = True
         self.hotwords = hotwords  # custom vocabulary hint words (every decoding window)
         self.style_prompt = style_prompt
+        self.vad_thresholds = vad_thresholds  # (wideband, telephone band)
         self._model = WhisperModel(
             model, device=self.device, compute_type=self.compute_type,
             cpu_threads=cpu_threads, download_root=str(whisper_dir()),
@@ -75,7 +78,8 @@ class FasterWhisperEngine:
 
         a = config.asr
         return cls(a.model, a.device, a.compute_type, a.beam_size, a.cpu_threads,
-                   vocabulary(config).hotwords(), a.style_prompt)
+                   vocabulary(config).hotwords(), a.style_prompt,
+                   (a.vad_threshold, a.vad_threshold_narrowband))
 
     def detect_language(self, audio: np.ndarray, languages: Sequence[str]) -> dict[str, float]:
         _, _, all_probs = self._model.detect_language(audio=audio)
@@ -94,6 +98,7 @@ class FasterWhisperEngine:
             temperature=_FALLBACK if self.temperature_fallback else 0.0,
             word_timestamps=True,
             vad_filter=True,
+            vad_parameters={"threshold": threshold_for(audio, *self.vad_thresholds)},
             initial_prompt=prompt or (STYLE_PROMPTS.get(language or "")
                                       if self.style_prompt else None),
             hotwords=self.hotwords,

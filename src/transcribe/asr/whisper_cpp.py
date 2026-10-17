@@ -372,7 +372,8 @@ class WhisperCppEngine:
 
     def __init__(self, model: str = "small", device: str = "auto", beam_size: int = 5,
                  cpu_threads: int = 0, hotwords: str | None = None, style_prompt: bool = True,
-                 server: str = "", dtw: bool = True) -> None:
+                 server: str = "", dtw: bool = True,
+                 vad_thresholds: tuple[float, float] = (0.5, 0.25)) -> None:
         from transcribe.core.models import ensure_ggml
 
         device = "gpu" if device == "cuda" else device  # either name means "use the GPU"
@@ -383,6 +384,7 @@ class WhisperCppEngine:
         self.temperature_fallback = True
         self.hotwords = hotwords
         self.style_prompt = style_prompt
+        self.vad_thresholds = vad_thresholds  # (wideband, telephone band)
         model_path = Path(model) if model.endswith(".bin") else ensure_ggml(model)
         self.model_path = model_path
         self._vocab: set[bytes] | None = None
@@ -410,7 +412,8 @@ class WhisperCppEngine:
 
         a = config.asr
         return cls(a.model, a.device, a.beam_size, a.cpu_threads, vocabulary(config).hotwords(),
-                   a.style_prompt, a.whispercpp_server, a.whispercpp_dtw)
+                   a.style_prompt, a.whispercpp_server, a.whispercpp_dtw,
+                   (a.vad_threshold, a.vad_threshold_narrowband))
 
     def with_options(self, beam_size: int, temperature_fallback: bool) -> WhisperCppEngine:
         """A view of this engine (sharing the server process) with other decoding options."""
@@ -462,9 +465,10 @@ class WhisperCppEngine:
         context budget is exactly the prompt, leaving no room for whisper.cpp's own
         feedback.
         """
-        from transcribe.vad.silero import speech_regions
+        from transcribe.vad.silero import speech_regions, threshold_for
 
-        regions = speech_regions(audio, min_silence_ms=_VAD_MIN_SILENCE_MS, pad_ms=_VAD_PAD_MS)
+        regions = speech_regions(audio, min_silence_ms=_VAD_MIN_SILENCE_MS, pad_ms=_VAD_PAD_MS,
+                                 threshold=threshold_for(audio, *self.vad_thresholds))
         speech, pieces = cut_speech(audio, regions)
         if len(speech) < SAMPLE_RATE // 10:
             return []

@@ -95,12 +95,8 @@ class LiveSpeakerTracker:
 
 
 class BandwidthEstimator:
-    """Is a channel telephone-band? Energy above 4 kHz relative to the speech band:
-    ~1e-7 for telephone audio, ~1e-2 for wideband speech (also with noise, reverb, MP3 or
-    Opus). Single short pieces can come close (1e-4), so the decision uses the median of
-    the channel's recent pieces."""
-
-    CUTOFF = 1e-4
+    """Is a channel telephone-band? Median of the high-band ratio of its recent pieces
+    (see audio/bandwidth.py), so one odd piece does not flip the channel."""
 
     def __init__(self, window: int = 15) -> None:
         from collections import deque
@@ -109,14 +105,14 @@ class BandwidthEstimator:
 
     def update(self, audio: np.ndarray, sample_rate: int = 16000) -> bool:
         """Add a piece of speech; returns whether the channel is narrowband."""
-        if len(audio) >= sample_rate // 10:
-            spectrum = np.abs(np.fft.rfft(audio)) ** 2
-            f = np.fft.rfftfreq(len(audio), 1 / sample_rate)
-            speech = float(spectrum[(f > 300) & (f < 3400)].sum())
-            if speech > 0:
-                self._ratios.append(float(spectrum[(f > 4000) & (f < 7500)].sum()) / speech)
+        from transcribe.audio.bandwidth import high_band_ratio
+
+        if (ratio := high_band_ratio(audio, sample_rate)) is not None:
+            self._ratios.append(ratio)
         return self.narrowband
 
     @property
     def narrowband(self) -> bool:
-        return bool(self._ratios) and float(np.median(self._ratios)) < self.CUTOFF
+        from transcribe.audio.bandwidth import CUTOFF
+
+        return bool(self._ratios) and float(np.median(self._ratios)) < CUTOFF
