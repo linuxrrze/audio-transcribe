@@ -60,7 +60,8 @@ def test_unknown_message_and_plural_fallback(lang):
 
 
 def test_detect(monkeypatch, tmp_path):
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    # platformdirs ignores XDG_CONFIG_HOME on Windows/macOS: redirect the folder itself
+    monkeypatch.setattr("transcribe.core.config.config_dir", lambda: tmp_path / "transcribe")
     for var in ("LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("TRANSCRIBE_LANG", "de")

@@ -39,7 +39,9 @@ def extract() -> dict[tuple[str, str], list[str]]:
                 key = (strs[0], strs[1])
             else:
                 continue
-            found.setdefault(key, []).append(f"{path.relative_to(ROOT)}:{node.lineno}")
+            # "/" on every platform: the catalog must not depend on where it was updated
+            where = f"{path.relative_to(ROOT).as_posix()}:{node.lineno}"
+            found.setdefault(key, []).append(where)
     return found
 
 
