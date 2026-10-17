@@ -20,7 +20,7 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap and
   them automatically or ask "might be X?". Consent, no-storage mode, encryption at rest.
 - **M4** desktop app (`tx gui` / `tx-gui`): live view, speaker panel (name, merge,
   "Is this X?" suggestions), session browser with playback synced to the text, export,
-  refine, settings and a "Known people" privacy dialog.
+  refine, settings and a voiceprint manager (consent, enrollment, deletion).
 - **M6** packaging: PyInstaller bundles (CLI + desktop app) for Linux, Windows and macOS
   built by GitHub Actions; first-run model download; CI on all three platforms.
 - **M5** system audio: transcribe what the computer plays (`--source system`), or
@@ -31,10 +31,13 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap and
 
 ## Install
 ```sh
-uv sync                      # in the repo: project .venv, then `uv run tx ...`
+uv sync                      # in the repo: project .venv incl. desktop app, then `uv run tx ...`
+uv sync --all-extras         # + encryption (secure) and Windows system audio (system)
 pip install .                # or into any venv (also `uv pip install .`), then `tx ...`
 pip install ".[gui]"         # + desktop app; extras: gui, secure (encryption), system (Windows)
 ```
+`uv sync` removes extras you don't name again - use the same flags after every
+`git pull` (`--no-group gui` for a CLI-only environment).
 Linux also needs the PortAudio library for microphones (`apt install libportaudio2`).
 Note: `uv run` always uses the project's `.venv`, not an activated venv (`uv run --active`
 uses the active one).
@@ -91,7 +94,7 @@ Mr Fan Fress -> Mr. Fentriss  # multi-word, keeps the timestamps
 - Corrections run on the recognised words (case-insensitive, whole words) in file
   transcription, live mode and refinement.
 - Permanent entries: `[asr] vocabulary = [...]` and `[asr.corrections]` in
-  `config.toml`, or **File → Settings → Vocabulary** in the app. `--vocab` /
+  `config.toml`, or **File → Settings → Edit vocabulary…** in the app. `--vocab` /
   `--vocab-file` add to them for one run.
 
 ### Speaker accuracy
@@ -178,7 +181,7 @@ accept 4 s live latency.
 
 ### Desktop app
 ```sh
-uv sync --extra gui
+uv sync
 uv run tx gui
 ```
 ![Sessions tab](docs/screenshots/sessions.png)
@@ -189,7 +192,12 @@ uv run tx gui
 - **Sessions:** click a timestamp to play from there; the playing line is highlighted.
   Fix diarization by merging speakers, accept or decline suggestions, refine (optionally
   with a known speaker count), export. Correct single lines - see below.
-- **File → Known people:** see and delete stored voiceprints.
+- **File → Settings:** engine and models, speakers, live mode, voiceprint thresholds,
+  storage; the vocabulary has its own editor (import/export a list, shows how many hint
+  words fit Whisper's prompt).
+- **File → Voiceprints:** everyone with stored voiceprints - add a person, enroll a voice
+  from a recording, record or withdraw consent, rename, merge, notes, list and delete
+  single voiceprints, import/export, delete.
 - The GUI is a thin layer over the same core as the CLI (`transcribe.sessions`,
   `transcribe.live.factory`); core events reach the Qt thread through a signal bridge,
   model loading and refinement run in background threads.
@@ -303,7 +311,7 @@ secure --extra system && uv run python packaging/build.py`
 
 ## Development
 ```sh
-uv sync --extra secure
+uv sync --all-extras
 uv run pytest                 # fast unit tests (+ system-audio test if PulseAudio runs)
 TX_SLOW=1 uv run pytest       # + end-to-end tests (downloads ~650 MB of models)
 uv run python -m transcribe.bench.dialogue out.wav   # synthetic de/en test dialogue

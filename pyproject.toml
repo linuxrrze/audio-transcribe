@@ -61,6 +61,11 @@ json = "transcribe.export.json:JsonExporter"
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10"]
 packaging = ["pyinstaller>=6.10"]
+# The desktop app for a plain `uv sync` in the repo (pip users: the `gui` extra).
+gui = ["transcribe[gui]"]
+
+[tool.uv]
+default-groups = ["dev", "gui"]
 
 [build-system]
 requires = ["hatchling"]

@@ -68,6 +68,24 @@ class Voiceprint:
     channel_type: str
 
 
+@dataclass(frozen=True)
+class VoiceprintInfo:
+    id: int
+    model_id: str
+    duration_s: float
+    channel_type: str
+    source_session: str | None
+    created_at: str
+
+
+@dataclass(frozen=True)
+class PersonStats:
+    voiceprints: int
+    seconds: float
+    models: list[str]
+    sources: list[str]
+
+
 EXPORT_FORMAT = "transcribe-voiceprints/1"
 
 
@@ -133,6 +151,29 @@ class VoiceprintDB:
             args = (model_id,)
         rows = self._conn.execute(sql + " GROUP BY person_id", args).fetchall()
         return {r["person_id"]: r["n"] for r in rows}
+
+    def person_stats(self) -> dict[int, PersonStats]:
+        """Per person: number of voiceprints, seconds of speech, models and sources."""
+        rows = self._conn.execute(
+            "SELECT person_id, COUNT(*) AS n, SUM(duration_s) AS seconds, "
+            "GROUP_CONCAT(DISTINCT model_id) AS models, "
+            "GROUP_CONCAT(DISTINCT source_session) AS sources "
+            "FROM voiceprint GROUP BY person_id").fetchall()
+        return {r["person_id"]: PersonStats(
+            r["n"], r["seconds"] or 0.0, sorted((r["models"] or "").split(",")),
+            sorted(x for x in (r["sources"] or "").split(",") if x)) for r in rows}
+
+    def voiceprint_info(self, person_id: int) -> list[VoiceprintInfo]:
+        """A person's voiceprints without their vectors (no decryption needed)."""
+        rows = self._conn.execute(
+            "SELECT id, model_id, duration_s, channel_type, source_session, created_at "
+            "FROM voiceprint WHERE person_id = ? ORDER BY created_at, id",
+            (person_id,)).fetchall()
+        return [VoiceprintInfo(**dict(r)) for r in rows]
+
+    def set_notes(self, person_id: int, notes: str) -> None:
+        with self._conn:
+            self._conn.execute("UPDATE person SET notes = ? WHERE id = ?", (notes, person_id))
 
     def rename_person(self, person_id: int, new_name: str) -> None:
         with self._conn:

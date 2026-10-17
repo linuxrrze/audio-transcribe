@@ -1,4 +1,4 @@
-"""Main window: Live and Sessions tabs, settings, known people."""
+"""Main window: Live and Sessions tabs, settings, voiceprints."""
 
 from __future__ import annotations
 
@@ -7,9 +7,10 @@ from PySide6.QtWidgets import QMainWindow, QMessageBox, QTabWidget
 
 from transcribe import __version__
 from transcribe.core.config import Config
-from transcribe.gui.dialogs import KnownPeopleDialog, SettingsDialog
 from transcribe.gui.live_tab import LiveTab
 from transcribe.gui.sessions_tab import SessionsTab
+from transcribe.gui.settings_dialog import SettingsDialog
+from transcribe.gui.voiceprints_dialog import VoiceprintsDialog
 
 
 class MainWindow(QMainWindow):
@@ -29,7 +30,7 @@ class MainWindow(QMainWindow):
         self.sessions.status_message.connect(self.statusBar().showMessage)
 
         menu = self.menuBar().addMenu("&File")
-        for text, slot in [("&Settings…", self._settings), ("&Known people…", self._people),
+        for text, slot in [("&Settings…", self._settings), ("&Voiceprints…", self._people),
                            ("&Quit", self.close)]:
             action = QAction(text, self)
             action.triggered.connect(slot)
@@ -44,13 +45,14 @@ class MainWindow(QMainWindow):
         if self.live.running:
             QMessageBox.information(self, "Settings", "Stop the live session first.")
             return
-        SettingsDialog(self.config, self).exec()
+        if SettingsDialog(self.config, self).exec():
+            self.sessions.reload()  # the sessions folder may have changed
 
     def _people(self) -> None:
         try:
-            KnownPeopleDialog(self.config, self).exec()
-        except RuntimeError as e:
-            QMessageBox.warning(self, "Known people", str(e))
+            VoiceprintsDialog(self.config, self).exec()
+        except RuntimeError as e:  # e.g. encrypted database without its key
+            QMessageBox.warning(self, "Voiceprints", str(e))
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 - Qt API
         if self.live.running:

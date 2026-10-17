@@ -294,6 +294,42 @@ def process_session(session_dir: Path | None, audio: Audio, transcript: Transcri
 
 
 # --- enrollment --------------------------------------------------------------------------
+ENROLL_CHUNK_S = 6.0
+ENROLL_MIN_CHUNK_S = 3.0
+
+
+def speech_chunks(audio: np.ndarray) -> list[np.ndarray]:
+    """Speech-only audio cut into ~6 s chunks (each one exemplar)."""
+    from transcribe.vad.silero import speech_regions
+
+    regions = speech_regions(audio)
+    if not regions:
+        return []
+    speech = np.concatenate([audio[int(a * SAMPLE_RATE) : int(b * SAMPLE_RATE)]
+                             for a, b in regions])
+    n = int(ENROLL_CHUNK_S * SAMPLE_RATE)
+    chunks = [speech[i : i + n] for i in range(0, len(speech), n)]
+    return [c for c in chunks if len(c) >= ENROLL_MIN_CHUNK_S * SAMPLE_RATE]
+
+
+def enroll_audio(db: VoiceprintDB, name: str, audio: np.ndarray, consent: bool,
+                 config: Config, source: str, embedder: Embedder | None = None
+                 ) -> tuple[int, int]:
+    """Enroll ``name`` from a recording of that person alone. Returns (#chunks, #added)."""
+    chunks = speech_chunks(audio)
+    if not chunks:
+        raise ValueError("Not enough speech (need at least 3 s)")
+    if embedder is None:
+        from transcribe.speakers.embedder import SherpaEmbedder
+
+        embedder = SherpaEmbedder.from_config(config)
+    vectors = [embedder.embed(c) for c in chunks]
+    _, added = enroll_vectors(db, name, embedder.model_id, vectors,
+                              [len(c) / SAMPLE_RATE for c in chunks], consent, config,
+                              source=source)
+    return len(chunks), added
+
+
 def enroll_vectors(db: VoiceprintDB, name: str, model_id: str, vectors: list[np.ndarray],
                    durations: list[float], consent: bool, config: Config,
                    channel_type: str = "unknown", source: str | None = None) -> tuple[int, int]:

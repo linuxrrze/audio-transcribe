@@ -25,9 +25,6 @@ ConsentOpt = Annotated[bool, typer.Option(
 SessionArg = Annotated[Path, typer.Argument(exists=True, file_okay=False,
                                             help="Session folder.")]
 
-ENROLL_CHUNK_S = 6.0
-ENROLL_MIN_CHUNK_S = 3.0
-
 
 def _open(path: Path | None) -> tuple[Config, VoiceprintDB]:
     from transcribe.speakers.identity import open_db
@@ -124,21 +121,6 @@ def speakers_delete(
     console.print(f"Deleted {name}")
 
 
-def _speech_chunks(audio: np.ndarray) -> list[np.ndarray]:
-    """Speech-only audio cut into ~6 s chunks (each one exemplar)."""
-    from transcribe.audio.base import SAMPLE_RATE
-    from transcribe.vad.silero import speech_regions
-
-    regions = speech_regions(audio)
-    if not regions:
-        return []
-    speech = np.concatenate([audio[int(a * SAMPLE_RATE) : int(b * SAMPLE_RATE)]
-                             for a, b in regions])
-    n = int(ENROLL_CHUNK_S * SAMPLE_RATE)
-    chunks = [speech[i : i + n] for i in range(0, len(speech), n)]
-    return [c for c in chunks if len(c) >= ENROLL_MIN_CHUNK_S * SAMPLE_RATE]
-
-
 def _record(seconds: float, device: str | None) -> np.ndarray:
     from transcribe.audio.mic import MicSource
 
@@ -171,8 +153,7 @@ def speakers_enroll(
 ) -> None:
     """Enroll a voiceprint from a file or a microphone recording (single speaker!)."""
     from transcribe.audio.file import load_audio
-    from transcribe.speakers.embedder import SherpaEmbedder
-    from transcribe.speakers.identity import enroll_vectors
+    from transcribe.speakers.identity import enroll_audio
 
     if (file is None) == (record is None):
         err.print("[red]Give exactly one of --file or --record.[/]")
@@ -182,19 +163,12 @@ def speakers_enroll(
         audio = load_audio(file) if file else _record(record or 20, input_device)
     except RuntimeError as e:
         raise _fail(e) from e
-    chunks = _speech_chunks(audio)
-    if not chunks:
-        err.print("[red]Not enough speech (need at least 3 s).[/]")
-        raise typer.Exit(1)
-    embedder = SherpaEmbedder.from_config(config)
-    vectors = [embedder.embed(c) for c in chunks]
     try:
-        _, added = enroll_vectors(store, name, embedder.model_id, vectors,
-                                  [len(c) / 16000 for c in chunks], consent, config,
-                                  source=str(file) if file else "mic")
-    except PermissionError as e:
+        n_chunks, added = enroll_audio(store, name, audio, consent, config,
+                                       source=str(file) if file else "mic")
+    except (ValueError, PermissionError) as e:
         raise _fail(e) from e
-    console.print(f"Enrolled {name}: {added} new voiceprint(s) from {len(chunks)} chunk(s).")
+    console.print(f"Enrolled {name}: {added} new voiceprint(s) from {n_chunks} chunk(s).")
 
 
 @speakers_app.command("name")

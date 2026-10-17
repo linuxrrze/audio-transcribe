@@ -1131,6 +1131,9 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+gui = [
+    { name = "transcribe", extra = ["gui"] },
+]
 packaging = [
     { name = "pyinstaller" },
 ]
@@ -1162,6 +1165,7 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.5" },
 ]
+gui = [{ name = "transcribe", extras = ["gui"] }]
 packaging = [{ name = "pyinstaller", specifier = ">=6.10" }]
 
 [[package]]

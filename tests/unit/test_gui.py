@@ -243,17 +243,99 @@ def test_device_check_dialog_use_selects_device(app, config):
     dlg.reject()
 
 
-def test_settings_vocabulary_roundtrip(app, config):
-    from transcribe.gui.dialogs import SettingsDialog
+def test_settings_roundtrip_and_vocabulary_dialog(app, config, monkeypatch):
+    from transcribe.gui import settings_dialog
+    from transcribe.gui.settings_dialog import SettingsDialog, VocabularyDialog
 
     config.asr.vocabulary = ["Justus"]
     config.asr.corrections = {"Fanfress": "Fentriss"}
     dlg = SettingsDialog(config)
-    assert dlg.vocabulary.toPlainText() == "Justus\nFanfress -> Fentriss"
-    dlg.vocabulary.setPlainText("Justus\nDSGVO, FAU\nHitschcock -> Hitchcock")
+    assert dlg.tabs.count() == 5
+    assert dlg.vocab_label.text() == "1 terms, 1 corrections"
+    assert not dlg.wcpp_dtw.isEnabled()  # whisper.cpp options only for that engine
+    dlg.engine.setCurrentText("whisper.cpp")
+    assert dlg.wcpp_dtw.isEnabled()
+
+    # the vocabulary is edited in its own dialog
+    vocab = VocabularyDialog(dlg.vocab)
+    assert vocab.editor.toPlainText() == "Justus\nFanfress -> Fentriss"
+    vocab.editor.setPlainText("Justus\nDSGVO, FAU\nHitschcock -> Hitchcock")
+    assert "3 terms, 1 corrections" in vocab.status.text()
+    vocab.editor.setPlainText("\n".join(f"Name{i:03d}" for i in range(120)))
+    assert "Only the first" in vocab.status.text()  # more than fits Whisper's prompt
+
+    class Accepting(VocabularyDialog):
+        def exec(self):
+            self.editor.setPlainText("Justus\nDSGVO, FAU\nHitschcock -> Hitchcock")
+            return True
+
+    monkeypatch.setattr(settings_dialog, "VocabularyDialog", Accepting)
+    dlg._edit_vocabulary()
+    dlg.beam_size.setValue(3)
+    dlg.speaker_count.setCurrentIndex(1)
+    dlg.step.setValue(0.5)
+    dlg.high.setValue(0.9)
+    dlg.low.setValue(0.95)  # never above the auto-label threshold
     c = dlg.apply()
+    assert c.asr.engine == "whisper.cpp" and c.asr.beam_size == 3
     assert c.asr.vocabulary == ["Justus", "DSGVO", "FAU"]
     assert c.asr.corrections == {"Hitschcock": "Hitchcock"}
+    assert c.speakers.speaker_count == "silhouette" and c.live.step == 0.5
+    assert c.speakers.match_threshold_low == 0.9
+
+
+def test_voiceprints_dialog(app, config, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QInputDialog, QMessageBox
+
+    from transcribe.gui import voiceprints_dialog as vd
+    from transcribe.speakers.voiceprint_db import VoiceprintDB
+
+    db = VoiceprintDB(tmp_path / "vp.sqlite")
+    anna = db.add_person("Anna", consent=True)
+    db.add_exemplars(anna.id, "m1", [np.ones(4, np.float32), np.arange(4, dtype=np.float32)],
+                     [6.0, 4.0], source_session="2026-01-01_120000_demo")
+    db.add_person("Ben")
+    monkeypatch.setattr(QMessageBox, "question",
+                        lambda *a, **k: QMessageBox.StandardButton.Yes)
+    dlg = vd.VoiceprintsDialog(config, db=db)
+    assert dlg.table.rowCount() == 2
+    assert [dlg.table.item(0, c).text() for c in range(4)] == ["Anna", "2", "0.2 min",
+                                                               dlg.table.item(0, 3).text()]
+    assert dlg.table.item(1, 3).text() == "no consent"
+    assert dlg.table.item(0, 4).text() == "2026-01-01_120000_demo"
+
+    dlg.table.selectRow(1)  # Ben
+    assert dlg.buttons["rename"].isEnabled()
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Benjamin", True))
+    dlg._rename()
+    dlg._consent()  # Yes: consent recorded
+    assert db.find_person("Benjamin").consent_at
+    monkeypatch.setattr(QInputDialog, "getMultiLineText",
+                        lambda *a, **k: ("Podcast guest", True))
+    dlg._notes()
+    assert db.find_person("Benjamin").notes == "Podcast guest"
+    monkeypatch.setattr(QInputDialog, "getItem", lambda *a, **k: ("Anna", True))
+    dlg._merge()  # Benjamin is Anna
+    assert [p.display_name for p in db.persons()] == ["Anna"]
+
+    dlg.table.selectRow(0)
+    details = vd.VoiceprintDetailsDialog(db, db.find_person("Anna"))
+    assert details.table.rowCount() == 2
+    details.table.selectRow(0)
+    details._delete()
+    assert len(db.voiceprint_info(anna.id)) == 1
+
+    out = tmp_path / "export.json"
+    monkeypatch.setattr(vd.QFileDialog, "getSaveFileName", lambda *a, **k: (str(out), ""))
+    dlg._export()
+    assert out.exists() and "Exported 1" in dlg.status.text()
+    dlg._consent()  # withdraw: voiceprints deleted
+    assert db.voiceprint_info(anna.id) == [] and not db.find_person("Anna").consent_at
+    monkeypatch.setattr(vd.QFileDialog, "getOpenFileName", lambda *a, **k: (str(out), ""))
+    dlg._import()
+    assert len(db.voiceprint_info(anna.id)) == 1
+    dlg._delete()
+    assert db.persons() == []
 
 
 def test_sessions_tab_line_corrections(app, config, tmp_path, monkeypatch):
