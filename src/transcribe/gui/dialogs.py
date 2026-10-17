@@ -5,6 +5,8 @@ Settings: ``settings_dialog``; stored voiceprints: ``voiceprints_dialog``.
 
 from __future__ import annotations
 
+import html
+
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -38,16 +40,27 @@ class NameSpeakerDialog(QDialog):
         info.setWordWrap(True)
         if not store_allowed:
             info.setText("Voiceprint storage is disabled in the settings.")
+        info.setStyleSheet("color: palette(placeholder-text);")
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                         | QDialogButtonBox.StandardButton.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
-        form = QFormLayout(self)
-        form.addRow("Name:", self.name)
-        form.addRow(self.learn)
-        form.addRow(self.consent)
-        form.addRow(info)
-        form.addRow(self.buttons)
+        heading = QLabel(f"<b>Who is {html.escape(current)}?</b>")
+        name_row = QFormLayout()
+        name_row.addRow("Name:", self.name)
+        # A vertical layout, not a form: word-wrapped labels in a QFormLayout get too little
+        # height on some platforms and overlap the checkbox above them.
+        layout = QVBoxLayout(self)
+        layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetMinimumSize)
+        layout.addWidget(heading)
+        layout.addLayout(name_row)
+        layout.addWidget(self.learn)
+        layout.addWidget(self.consent)
+        layout.addSpacing(6)
+        layout.addWidget(info)
+        layout.addSpacing(6)
+        layout.addWidget(self.buttons)
+        info.setMinimumWidth(440)  # room for the title and the consent text
         self.name.textChanged.connect(self._update)
         self._update()
 
