@@ -34,7 +34,11 @@ from transcribe.audio.base import SAMPLE_RATE
 from transcribe.audio.file import load_audio
 from transcribe.bench.ami import cache_dir, fetch, load_rttm
 from transcribe.live.session import sentence_pieces
-from transcribe.speakers.live_tracker import DEFAULT_THRESHOLD, LiveSpeakerTracker
+from transcribe.speakers.live_tracker import (
+    DEFAULT_THRESHOLD,
+    BandwidthEstimator,
+    LiveSpeakerTracker,
+)
 from transcribe.storage.transcript_model import Segment, Word
 
 FRAME = 0.01
@@ -145,10 +149,11 @@ def pieces(data: Data, ws: list[Word], mode: str) -> list[tuple[Segment, np.ndar
 def label(items: list[tuple[Segment, np.ndarray]], embedder,
           threshold: float) -> list[tuple[float, float, str]]:
     tracker = LiveSpeakerTracker(threshold)
+    bandwidth = BandwidthEstimator()
     out = []
     for seg, audio in items:
         emb = embedder.embed(audio) if len(audio) >= 0.3 * SAMPLE_RATE else None
-        speaker, _ = tracker.assign(seg.id, emb, seg.t1 - seg.t0)
+        speaker, _ = tracker.assign(seg.id, emb, seg.t1 - seg.t0, bandwidth.update(audio))
         out.append((seg.t0, seg.t1, speaker))
     return out
 

@@ -40,7 +40,7 @@ from transcribe.live.echo import echo_of, suppress_echo
 from transcribe.live.streamer import ChannelStreamer, StreamerConfig, VadFn
 from transcribe.speakers.embedder import Embedder
 from transcribe.speakers.identity import SessionIdentity, apply_matches
-from transcribe.speakers.live_tracker import LiveSpeakerTracker
+from transcribe.speakers.live_tracker import BandwidthEstimator, LiveSpeakerTracker
 from transcribe.storage import session_store
 from transcribe.storage.recorder import AudioRecorder, load_recording
 from transcribe.storage.transcript_model import Segment, Speaker, Transcript
@@ -108,6 +108,7 @@ class LiveSession:
         self.streamers = {ch: self._make_streamer(asr, languages, vad, ch, streamer_config)
                           for ch in self.channels}
         self._segments: dict[str, Segment] = {}
+        self._bandwidth: dict[str, BandwidthEstimator] = {}  # per channel: telephone band?
         self._queue: queue.Queue[AudioFrame | None] = queue.Queue()
         self._stop = threading.Event()
         # Completion is signalled with an Event, not Thread.join(): a KeyboardInterrupt
@@ -254,7 +255,9 @@ class LiveSession:
         if self.tracker is not None:
             emb = (self.embedder.embed(audio)
                    if self.embedder and len(audio) >= MIN_EMBED_S * SAMPLE_RATE else None)
-            speaker, changes = self.tracker.assign(seg.id, emb, seg.t1 - seg.t0)
+            narrow = self._bandwidth.setdefault(seg.channel_id, BandwidthEstimator()).update(
+                audio)
+            speaker, changes = self.tracker.assign(seg.id, emb, seg.t1 - seg.t0, narrow)
             self._set_speaker(seg, speaker)
             for seg_id, new in changes.items():
                 old = self._segments.get(seg_id)

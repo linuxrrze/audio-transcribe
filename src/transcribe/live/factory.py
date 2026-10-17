@@ -56,7 +56,8 @@ def build_live_session(source: AudioSource, config: Config, session_dir: Path,
     with_options = getattr(asr, "with_options", None)
     live_asr = (with_options(config.live.beam_size, temperature_fallback=False)
                 if with_options else asr)
-    tracker = (LiveSpeakerTracker(config.speakers.live_threshold, num_speakers)
+    tracker = (LiveSpeakerTracker(config.speakers.live_threshold, num_speakers,
+                                  narrowband_threshold=config.speakers.live_threshold_narrowband)
                if diarize else None)
     identity = None
     if embedder is not None and (config.speakers.identify_known

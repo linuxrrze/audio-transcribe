@@ -400,9 +400,24 @@ uv run python -m transcribe.bench.suite report tune
 
 What this shows, to work on next:
 
-1. **Live labels collapse on telephone audio** (impurity 32-38 % vs 2-6 % clean), while the
-   offline labels stay pure: voices sound more alike once band-limited, and the live
-   threshold (0.4) merges them. A channel-dependent threshold is the obvious candidate.
+1. **Live labels collapsed on telephone audio** (impurity 32-38 % vs 2-6 % clean), while
+   the offline labels stayed pure: band-limited voices sound more alike (TitaNet
+   similarity of *different* speakers rises from ~0.1 to ~0.35, the same speaker stays
+   ~0.7), and the live threshold 0.4 merged them. **Fixed:** live labels now detect
+   telephone-band channels (energy above 4 kHz vs. the speech band, median over recent
+   sentences: ~1e-7 on a phone line, ~1e-2 otherwise - also with noise, reverb, MP3 or
+   Opus) and use `live_threshold_narrowband = 0.6` there (best of 0.4-0.7 on both data
+   sets; a single 0.6 for all audio would cost AMI clean 4.6 points):
+
+   | live DER / impurity | before | after |
+   |---|---|---|
+   | AMI phone | 47.7 % / 32.2 % | **27.7 % / 2.2 %** |
+   | German conversations phone | 39.3 % / 37.7 % | **5.3 % / 2.4 %** |
+   | clean, noise 10 dB, Opus 16 kbit/s (both) | | unchanged |
+
+   Centring the embeddings on the session mean (removing the common channel component)
+   aligned the thresholds too, but halved the separation with only four speakers (AMI
+   clean EER 6.3 -> 12.3 %) - not used.
 2. **Attribution, not recognition, dominates on meetings:** cpWER 33 % vs WER 18 % on
    AMI. The offline second pass splits 4 people into ~11.5 labels (speaker count error
    7.5) - pure, but each split costs cpWER; the live labels get closer to 4 and beat the

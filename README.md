@@ -160,7 +160,9 @@ mid-sentence 22 % → 2 %.
   far or to a new speaker; a label never changes once shown. In replayed recordings
   81-91 % of the speech is labelled correctly live (previously 29-73 %; see
   [benchmarks](docs/BENCHMARKS.md#live-speaker-labels)). `[speakers] live_threshold`
-  (default 0.4) trades merged voices against extra labels. The refinement pass on stop
+  (default 0.4) trades merged voices against extra labels; telephone-band channels
+  (phone lines, some calls) are detected and use `live_threshold_narrowband` (0.6), as
+  voices sound more alike there. The refinement pass on stop
   is authoritative; `--no-refine` keeps the live result. Both are saved
   (`transcript.live.json`, `transcript.json`).
 - Audio is recorded as 30 s FLAC parts while running, so a crash loses at most 30 s;

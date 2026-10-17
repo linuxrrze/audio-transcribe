@@ -256,10 +256,12 @@ def _live(rec: Recording, audio: np.ndarray, words: list[Word], c: Config,
     """Live labels as live mode would show them (utterances, sentence pieces, tracker)."""
     from transcribe.bench.live_speakers import utterances
     from transcribe.live.session import MIN_EMBED_S, sentence_pieces
-    from transcribe.speakers.live_tracker import LiveSpeakerTracker
+    from transcribe.speakers.live_tracker import BandwidthEstimator, LiveSpeakerTracker
     from transcribe.storage.transcript_model import Segment
 
-    tracker = LiveSpeakerTracker(c.speakers.live_threshold)
+    tracker = LiveSpeakerTracker(c.speakers.live_threshold,
+                                 narrowband_threshold=c.speakers.live_threshold_narrowband)
+    bandwidth = BandwidthEstimator()
     plain = [Word(w.text, w.t0, w.t1, w.confidence) for w in words]
     out: list[tuple[float, float, str]] = []
     for a, b in utterances(audio):
@@ -270,7 +272,8 @@ def _live(rec: Recording, audio: np.ndarray, words: list[Word], c: Config,
         for piece, clip in sentence_pieces(seg, audio[int(a * SAMPLE_RATE):int(b * SAMPLE_RATE)]):
             emb = engines.embedder(c).embed(clip) if len(clip) >= MIN_EMBED_S * SAMPLE_RATE \
                 else None
-            speaker, _ = tracker.assign(piece.id, emb, piece.t1 - piece.t0)
+            speaker, _ = tracker.assign(piece.id, emb, piece.t1 - piece.t0,
+                                        bandwidth.update(clip))
             out.append((piece.t0, piece.t1, speaker))
     return out
 

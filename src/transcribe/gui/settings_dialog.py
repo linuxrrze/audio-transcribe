@@ -255,12 +255,16 @@ class SettingsDialog(QDialog):
         self.live_threshold = _spin(s.live_threshold, 0.1, 0.9, 0.05)
         self.live_threshold.setToolTip(_("Live labels: similarity at which a sentence joins a "
                                          "known speaker; higher finds more speakers"))
+        self.live_threshold_nb = _spin(s.live_threshold_narrowband, 0.1, 0.9, 0.05)
+        self.live_threshold_nb.setToolTip(_("The same for telephone-band audio (phone and "
+                                            "some call audio), where voices sound more alike"))
         form = QFormLayout()
         form.addRow(_("Speaker threshold:"), self.threshold)
         form.addRow(self.resegment)
         form.addRow(_("Number of speakers:"), self.speaker_count)
         form.addRow(_("Threads:"), self.num_threads)
         form.addRow(_("Live speaker threshold:"), self.live_threshold)
+        form.addRow(_("… for telephone audio:"), self.live_threshold_nb)
         note = QLabel(_("If you know how many people speak, give the number when "
                         "transcribing (Sessions tab: Refine with a speaker count) - the most "
                         "reliable setting."))
@@ -400,6 +404,7 @@ class SettingsDialog(QDialog):
         s.speaker_count = self.speaker_count.currentData()
         s.num_threads = self.num_threads.value()
         s.live_threshold = self.live_threshold.value()
+        s.live_threshold_narrowband = self.live_threshold_nb.value()
         s.identify_known = self.identify.isChecked()
         s.store_voiceprints = self.store.isChecked()
         s.encrypt_voiceprints = self.encrypt.isChecked()

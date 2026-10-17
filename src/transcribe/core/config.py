@@ -52,6 +52,7 @@ class SpeakerConfig:
     # two clearly different voices in a short dialogue (docs/BENCHMARKS.md)
     diarize_threshold: float = 0.5
     live_threshold: float = 0.4  # live labels: similarity to join a speaker; higher -> more
+    live_threshold_narrowband: float = 0.6  # the same for telephone-band audio
     resegment: bool = True  # second pass: re-cluster transcript phrases (fast dialogue)
     # Without --speakers: "estimate" (never merges voices; may over-split - merge in the
     # app) or "silhouette" (best for meetings with distinct voices; can merge similar ones)

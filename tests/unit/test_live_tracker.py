@@ -45,3 +45,29 @@ def test_threshold():
     tr = LiveSpeakerTracker(threshold=0.7)
     tr.assign("a", A, 2.0)
     assert tr.assign("b", near, 2.0)[0] == "S1"
+
+
+def test_narrowband_pieces_use_their_own_threshold():
+    near = A + 0.9 * B  # cosine 0.74 to A
+    tr = LiveSpeakerTracker(threshold=0.7, narrowband_threshold=0.8)
+    tr.assign("a", A, 2.0)
+    assert tr.assign("wide", near, 2.0)[0] == "S1"  # 0.74 >= 0.7
+    tr = LiveSpeakerTracker(threshold=0.7, narrowband_threshold=0.8)
+    tr.assign("a", A, 2.0, narrowband=True)
+    assert tr.assign("phone", near, 2.0, narrowband=True)[0] == "S2"  # 0.74 < 0.8
+
+
+def test_bandwidth_estimator_detects_telephone_band():
+    from transcribe.bench.suite.augment import phone
+    from transcribe.speakers.live_tracker import BandwidthEstimator
+
+    rng = np.random.default_rng(0)
+    pieces = [(rng.standard_normal(16000) * 0.1).astype(np.float32) for _ in range(5)]
+    wide, narrow = BandwidthEstimator(), BandwidthEstimator()
+    assert not any(wide.update(p) for p in pieces)
+    assert all(narrow.update(phone(p, rng)) for p in pieces)
+    assert not BandwidthEstimator().narrowband  # no evidence yet: wideband
+    mixed = BandwidthEstimator()  # one odd piece does not flip a channel
+    for p in pieces[:4]:
+        mixed.update(phone(p, rng))
+    assert mixed.update(pieces[4])
