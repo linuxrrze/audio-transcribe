@@ -15,6 +15,13 @@ VOICES: dict[str, tuple[str, str, int]] = {  # name -> (asset, language, speaker
     "thorsten": ("piper-de-thorsten", "de", 0),
     "amy": ("piper-en-amy", "en", 0),
     "kerstin": ("piper-de-kerstin", "de", 0),
+    # more German voices for the benchmark suite's synthetic conversations
+    "karlsson": ("piper-de-karlsson", "de", 0),
+    "eva": ("piper-de-evak", "de", 0),
+    "ramona": ("piper-de-ramona", "de", 0),
+    "pavoque": ("piper-de-pavoque", "de", 0),
+    "miro": ("piper-de-miro", "de", 0),
+    "dii": ("piper-de-dii", "de", 0),
 }
 VCTK_SPEAKERS = 109
 

@@ -345,6 +345,7 @@ secure --extra system && uv run python packaging/build.py`
 uv sync --all-extras
 uv run pytest                 # fast unit tests (+ system-audio test if PulseAudio runs)
 TX_SLOW=1 uv run pytest       # + end-to-end tests (downloads ~650 MB of models)
+uv run python -m transcribe.bench.suite --help   # large-scale benchmark (docs/BENCHMARKS.md)
 uv run python -m transcribe.bench.dialogue out.wav   # synthetic de/en test dialogue
 uv run python -m transcribe.bench.latency out.wav small  # real-time live latency
 uv run python -m transcribe.bench.calibrate --sweep      # voiceprint thresholds

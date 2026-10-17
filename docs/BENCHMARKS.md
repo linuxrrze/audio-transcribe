@@ -337,3 +337,44 @@ To measure on a machine with a GPU (Vulkan / Metal build from
 uv run python -m transcribe.bench.models --engine whisper.cpp --models small large-v3-turbo --latency
 uv run python -m transcribe.bench.models --engine whisper.cpp --device cpu --models large-v3-turbo
 ```
+
+## Benchmark suite
+
+`python -m transcribe.bench.suite` measures "who said what" on many recordings at once:
+datasets in one format, recording conditions, setting sweeps, standard metrics and a
+fixed split between tuning (`dev`) and reporting (`test`) data.
+
+```sh
+uv run python -m transcribe.bench.suite build ami --split dev           # 18 meetings
+uv run python -m transcribe.bench.suite build ami --split test          # 16 meetings
+uv run python -m transcribe.bench.suite build voxconverse --split dev --limit 50
+uv run python -m transcribe.bench.suite build synth --lang de --split dev --count 20
+uv run python -m transcribe.bench.suite build synth --lang de --commonvoice ~/cv/de
+uv run python -m transcribe.bench.suite add-session <corrected session> --dataset local
+uv run python -m transcribe.bench.suite list
+
+uv run python -m transcribe.bench.suite run tune --data ami synth-de-piper --split dev \
+    --conditions clean noise:10 phone --set speakers.diarize_threshold=0.4,0.5,0.6 --live
+uv run python -m transcribe.bench.suite report tune
+```
+
+- **Datasets:** AMI meetings (official dev/test split, transcripts and speaker turns),
+  VoxConverse (debates and news, many speakers, speaker turns only), synthetic German or
+  English conversations (8 German Piper voices, or real voices from a Common Voice
+  download; fast turns, interruptions, pauses), and your own sessions after correcting
+  them in the app (`add-session`; they stay on your computer).
+- **Conditions:** `clean`, `noise:<SNR dB>`, `reverb:<RT60 s>`, `phone`, `mp3:<kbps>`,
+  `opus:<kbps>`, combinable (`reverb:0.5+noise:15`).
+- **Settings:** `--set section.key=v1,v2` for any config value; all combinations run.
+  Whisper output and speaker turns are cached per recording and condition, so sweeping
+  speaker settings only re-runs the cheap steps; runs are resumable.
+- **Metrics** (`bench/suite/metrics.py`, standard definitions, no extra dependencies):
+  WER, **cpWER** (speaker-attributed WER: a word counts as wrong if misrecognised *or*
+  attributed to the wrong person), DER with and without 0.25 s collar, impurity (share
+  of speech under someone else's label), speaker-count error, speed; with `--live` the
+  same for live labels. Rates are summed over recordings with 95 % bootstrap confidence
+  intervals.
+- **Regression check:** `report NAME --baseline summary.json --tolerance 0.02` exits 1 if
+  a rate got worse by more than 2 points.
+- Data and caches live in `~/.cache/transcribe/bench` (AMI ~60 MB per meeting,
+  VoxConverse test ~4.3 GB).
