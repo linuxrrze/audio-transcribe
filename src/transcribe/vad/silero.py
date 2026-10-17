@@ -9,7 +9,7 @@ from transcribe.audio.base import SAMPLE_RATE
 THRESHOLD = 0.5  # speech probability (Silero's default)
 # Silero's probabilities are lower on telephone-band audio, for speech and non-speech:
 # at 0.5 it found only 75 % of the speech in band-limited AMI meetings (93 % wideband).
-# See docs/BENCHMARKS.md ("Speech detection on telephone audio").
+# See docs/BENCHMARKS.md, "First results", item 4 ("VAD on telephone-band audio").
 THRESHOLD_NARROWBAND = 0.25
 
 
