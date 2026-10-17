@@ -22,9 +22,9 @@ def data_dir() -> Path:
 
 @dataclass
 class AsrConfig:
-    engine: str = "faster-whisper"
+    engine: str = "faster-whisper"  # faster-whisper | whisper.cpp (GPUs beyond NVIDIA)
     model: str = "small"
-    device: str = "auto"  # auto | cpu | cuda
+    device: str = "auto"  # auto | cpu | cuda (faster-whisper) | gpu (whisper.cpp)
     compute_type: str = "auto"  # auto | int8 | float16 | ...
     languages: list[str] = field(default_factory=lambda: ["de", "en"])
     beam_size: int = 5
@@ -34,6 +34,10 @@ class AsrConfig:
     vocabulary: list[str] = field(default_factory=list)
     # ... and corrections applied to the transcript, e.g. {"Fanfress" = "Fentriss"}
     corrections: dict[str, str] = field(default_factory=dict)
+    # whisper.cpp engine (asr/whisper_cpp.py): whisper-server binary, "" = own build or PATH
+    whispercpp_server: str = ""
+    # DTW word timestamps (needed for accurate speaker attribution; disables flash attention)
+    whispercpp_dtw: bool = True
 
 
 @dataclass
@@ -76,9 +80,14 @@ def vocabulary(config: Config):
 
 
 def required_models(config: Config) -> tuple[list[str], list[str]]:
-    """(Whisper models, other assets) the configuration needs."""
+    """(Whisper models, other assets) the configuration needs.
+
+    whisper.cpp models are listed as ``ggml:<name>`` (core/models.py downloads both kinds).
+    """
     whisper = [config.asr.model] + ([config.live.refine_model] if config.live.refine_model
                                     else [])
+    if config.asr.engine == "whisper.cpp":
+        whisper = [m if m.endswith(".bin") else f"ggml:{m}" for m in whisper]
     return whisper, [config.speakers.segmentation_model, config.speakers.embedding_model]
 
 

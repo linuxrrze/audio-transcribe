@@ -23,7 +23,8 @@ GROUPS = (
 BUILTINS: dict[str, dict[str, str]] = {
     "transcribe.sources": {"file": "transcribe.audio.file:FileSource",
                            "mic": "transcribe.audio.mic:MicSource"},
-    "transcribe.asr": {"faster-whisper": "transcribe.asr.faster_whisper:FasterWhisperEngine"},
+    "transcribe.asr": {"faster-whisper": "transcribe.asr.faster_whisper:FasterWhisperEngine",
+                       "whisper.cpp": "transcribe.asr.whisper_cpp:WhisperCppEngine"},
     "transcribe.embedders": {"sherpa-onnx": "transcribe.speakers.embedder:SherpaEmbedder"},
     "transcribe.diarizers": {"sherpa-onnx": "transcribe.diarize.sherpa_offline:SherpaDiarizer"},
     "transcribe.exporters": {"txt": "transcribe.export.txt:TxtExporter",

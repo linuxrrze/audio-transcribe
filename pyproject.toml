@@ -46,6 +46,7 @@ sherpa-onnx = "transcribe.speakers.embedder:SherpaEmbedder"
 
 [project.entry-points."transcribe.asr"]
 faster-whisper = "transcribe.asr.faster_whisper:FasterWhisperEngine"
+"whisper.cpp" = "transcribe.asr.whisper_cpp:WhisperCppEngine"
 
 [project.entry-points."transcribe.diarizers"]
 sherpa-onnx = "transcribe.diarize.sherpa_offline:SherpaDiarizer"

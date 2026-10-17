@@ -56,23 +56,45 @@ def load_rttm(path: Path) -> list[tuple[float, float, str]]:
     return out
 
 
-def reference_text(meeting: str, cache: Path | None = None) -> str:
-    """Manual transcript of all speakers, ordered by time (punctuation tokens dropped)."""
+def reference_words(meeting: str, cache: Path | None = None) -> list[tuple[float, float, str]]:
+    """Manual transcript as (start, end, word), all speakers, ordered by time
+    (punctuation tokens dropped)."""
     cache = cache or cache_dir()
     archive = cache / "ami_public_manual_1.6.2.zip"
     if not archive.exists():
         urllib.request.urlretrieve(AMI_MANUAL, archive)
-    words: list[tuple[float, str]] = []
+    words: list[tuple[float, float, str]] = []
     with zipfile.ZipFile(archive) as z:
         for name in z.namelist():
             if re.fullmatch(rf"words/{meeting}\.[A-Z]\.words\.xml", name):
                 for el in ET.fromstring(z.read(name)).iter("w"):
                     if el.get("punc") == "true" or not el.text or el.get("starttime") is None:
                         continue
-                    words.append((float(el.get("starttime", 0)), el.text))
+                    t0 = float(el.get("starttime", 0))
+                    words.append((t0, float(el.get("endtime") or t0), el.text))
     if not words:
         raise FileNotFoundError(f"No manual transcript for {meeting}")
-    return " ".join(text for _, text in sorted(words))
+    return sorted(words)
+
+
+def reference_text(meeting: str, cache: Path | None = None) -> str:
+    """Manual transcript of all speakers, ordered by time (punctuation tokens dropped)."""
+    return " ".join(text for _, _, text in reference_words(meeting, cache))
+
+
+def timestamp_error(words: list[Word], ref: list[tuple[float, float, str]]) -> float:
+    """Median |start time error| (s) of hypothesis words aligned to identical reference
+    words (sequence alignment of normalised tokens)."""
+    import difflib
+
+    def norm(t: str) -> str:
+        return re.sub(r"[^\w']", "", t.lower())
+
+    sm = difflib.SequenceMatcher(None, [norm(w.text) for w in words],
+                                 [norm(r[2]) for r in ref], autojunk=False)
+    errors = [abs(words[b.a + k].t0 - ref[b.b + k][0])
+              for b in sm.get_matching_blocks() for k in range(b.size)]
+    return float(sorted(errors)[len(errors) // 2]) if errors else float("nan")
 
 
 def word_accuracy(words: list[Word], ref: list[tuple[float, float, str]]) -> float:

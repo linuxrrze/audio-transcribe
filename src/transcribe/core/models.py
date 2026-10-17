@@ -1,7 +1,8 @@
 """Downloadable model assets (cached in the platform user cache dir).
 
 Whisper models are fetched by faster-whisper from the Hugging Face hub into
-``models_dir() / "whisper"``; everything else is listed in ``ASSETS``.
+``models_dir() / "whisper"``, ggml models for whisper.cpp into ``models_dir() /
+"whisper.cpp"``; everything else is listed in ``ASSETS``.
 """
 
 from __future__ import annotations
@@ -173,14 +174,50 @@ def ensure_whisper(model: str) -> Path:
     return Path(download_model(model, cache_dir=str(whisper_dir())))
 
 
+# --- ggml models for whisper.cpp (Hugging Face, ggerganov/whisper.cpp) ------------------
+GGML_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{name}.bin"
+
+
+def ggml_path(model: str) -> Path:
+    return models_dir() / "whisper.cpp" / f"ggml-{model}.bin"
+
+
+def ensure_ggml(model: str, progress: ProgressFn | None = None) -> Path:
+    path = ggml_path(model)
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".part")
+        try:
+            _download(GGML_URL.format(name=model), tmp, progress)
+        except Exception as e:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError(f"Cannot download whisper.cpp model {model!r}: {e}") from e
+        tmp.replace(path)
+    return path
+
+
+def model_present(name: str) -> bool:
+    """``whisper:<m>``/``<m>`` (faster-whisper), ``ggml:<m>`` (whisper.cpp) or a model file."""
+    if name.startswith("ggml:"):
+        return ggml_path(name[5:]).exists()
+    if name.endswith(".bin"):
+        return Path(name).exists()
+    return whisper_present(name.removeprefix("whisper:"))
+
+
 def missing_models(whisper_models: list[str], assets: list[str]) -> list[str]:
-    """Names of models that still need downloading (``whisper:<name>`` or asset names)."""
-    out = [f"whisper:{m}" for m in dict.fromkeys(whisper_models) if m and not whisper_present(m)]
+    """Names of models that still need downloading (``whisper:<name>``, ``ggml:<name>``
+    or asset names)."""
+    out = [m if m.startswith("ggml:") else f"whisper:{m}"
+           for m in dict.fromkeys(whisper_models)
+           if m and not m.endswith(".bin") and not model_present(m)]
     return out + [a for a in assets if not is_present(a)]
 
 
 def download(name: str, progress: ProgressFn | None = None) -> Path:
-    """Download ``whisper:<model>`` or a named asset (see ``missing_models``)."""
+    """Download ``whisper:<model>``, ``ggml:<model>`` or a named asset."""
     if name.startswith("whisper:"):
         return ensure_whisper(name.split(":", 1)[1])
+    if name.startswith("ggml:"):
+        return ensure_ggml(name.split(":", 1)[1], progress)
     return ensure(name, progress)

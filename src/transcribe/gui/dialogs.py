@@ -75,6 +75,12 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Settings")
         self.config = config
+        self.engine = QComboBox()
+        self.engine.addItems(["faster-whisper", "whisper.cpp"])
+        self.engine.setCurrentText(config.asr.engine)
+        self.engine.setToolTip("faster-whisper: CPU or NVIDIA GPU. whisper.cpp: also AMD/Intel "
+                               "GPUs (Vulkan) and Apple GPUs (Metal); needs whisper-server, "
+                               "see scripts/build_whispercpp.sh.")
         self.model = QComboBox()
         self.model.addItems(WHISPER_MODELS)
         self.model.setEditable(True)
@@ -83,7 +89,8 @@ class SettingsDialog(QDialog):
         self.refine_model.addItems(["(same as live)", *WHISPER_MODELS])
         self.refine_model.setCurrentText(config.live.refine_model or "(same as live)")
         self.device = QComboBox()
-        self.device.addItems(["auto", "cpu", "cuda"])
+        self.device.addItems(["auto", "cpu", "cuda", "gpu"])
+        self.device.setToolTip("cuda: faster-whisper on NVIDIA; gpu: whisper.cpp on any GPU")
         self.device.setCurrentText(config.asr.device)
         self.languages = QLineEdit(",".join(config.asr.languages))
         self.threshold = QDoubleSpinBox()
@@ -109,6 +116,7 @@ class SettingsDialog(QDialog):
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         form = QFormLayout(self)
+        form.addRow("Speech recognition:", self.engine)
         form.addRow("Whisper model (live):", self.model)
         form.addRow("Model for refinement:", self.refine_model)
         form.addRow("Compute device:", self.device)
@@ -124,6 +132,7 @@ class SettingsDialog(QDialog):
 
     def apply(self) -> Config:
         c = self.config
+        c.asr.engine = self.engine.currentText()
         c.asr.model = self.model.currentText().strip() or c.asr.model
         refine = self.refine_model.currentText()
         c.live.refine_model = "" if refine.startswith("(") else refine

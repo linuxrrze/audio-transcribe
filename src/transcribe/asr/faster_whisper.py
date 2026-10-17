@@ -28,6 +28,8 @@ STYLE_PROMPTS = {
 def resolve_device(device: str, compute_type: str) -> tuple[str, str]:
     import ctranslate2
 
+    if device == "gpu":  # the whisper.cpp name; CTranslate2 only has CUDA
+        device = "cuda"
     if device == "auto":
         device = "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
     if device not in ("cpu", "cuda"):

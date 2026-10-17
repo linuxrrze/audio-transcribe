@@ -1,11 +1,13 @@
 """Compare Whisper models: accuracy, speaker attribution and speed (CPU or GPU).
 
     python -m transcribe.bench.models [--models small medium large-v3-turbo]
+        [--engine faster-whisper|whisper.cpp] [--device auto|cpu|gpu] [--no-dtw]
         [--meetings ES2004a IS1009a] [--dialogue] [--latency]
         [--audio FILE --lang de --check-words Name1,Name2] [--json results.json]
 
 - AMI meetings (English, real speech): WER against the manual transcript, word speaker
-  accuracy (diarizer alone / with the second pass) and real-time factor of the ASR.
+  accuracy (diarizer alone / with the second pass), median word start time error and
+  real-time factor of the ASR.
   Diarization runs once per meeting (it does not depend on the Whisper model).
 - --dialogue: the synthetic German/English two-speaker dialogue, full pipeline:
   WER per language and speaker accuracy.
@@ -39,7 +41,9 @@ from transcribe.bench.ami import (
     fetch,
     load_rttm,
     reference_text,
+    reference_words,
     speaker_purity,
+    timestamp_error,
     word_accuracy,
 )
 from transcribe.bench.metrics import edit_distance, normalize
@@ -67,11 +71,11 @@ class Row:
 
 
 def _engine(model: str, config: Config):
-    from transcribe.asr.faster_whisper import FasterWhisperEngine
+    from transcribe.core import registry
 
     c = copy.deepcopy(config)
     c.asr.model = model
-    return FasterWhisperEngine.from_config(c)
+    return registry.load("transcribe.asr", c.asr.engine).from_config(c)
 
 
 def _timed_transcribe(engine, audio: np.ndarray, language: str) -> tuple[list[Word], float]:
@@ -94,7 +98,9 @@ def bench_meeting(meeting: str, engines: dict, config: Config, embedder) -> list
         text = "".join(w.text for w in words)
         resegment(words, audio, embedder, max_speakers=k_max)
         rows.append(Row(model, meeting, {
+            "engine": engine.name,
             "wer": round(wer_without_fillers(ref_text, text), 4),
+            "start_error_s": round(timestamp_error(words, reference_words(meeting)), 3),
             "sentence_ends_per_100w": round(
                 100 * sum(w.text.rstrip().endswith((".", "?", "!")) for w in words)
                 / max(1, len(words)), 1),
@@ -192,12 +198,18 @@ def main() -> None:
     ap.add_argument("--json", type=Path)
     ap.add_argument("--no-style-prompt", action="store_true",
                     help="decode without the punctuated style prompt (for comparison)")
+    ap.add_argument("--engine", default="faster-whisper", help="faster-whisper | whisper.cpp")
+    ap.add_argument("--device", default="auto")
+    ap.add_argument("--no-dtw", action="store_true",
+                    help="whisper.cpp: token instead of DTW word timestamps")
     args = ap.parse_args()
 
     from transcribe.speakers.embedder import SherpaEmbedder
 
     config = Config()
     config.asr.style_prompt = not args.no_style_prompt
+    config.asr.engine, config.asr.device = args.engine, args.device
+    config.asr.whispercpp_dtw = not args.no_dtw
     embedder = SherpaEmbedder(config.speakers.embedding_model)
     rows: list[Row] = []
     if args.meetings or args.audio:

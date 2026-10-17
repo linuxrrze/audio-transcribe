@@ -26,6 +26,8 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap and
 - **M5** system audio: transcribe what the computer plays (`--source system`), or
   microphone + system audio as separate channels (`--source both`) with echo suppression
   - the basis for recording Zoom/Teams/Jitsi calls.
+- **whisper.cpp engine** (`--engine whisper.cpp`): GPU acceleration on AMD/Intel (Vulkan)
+  and Apple (Metal) GPUs.
 
 ## Install
 ```sh
@@ -125,6 +127,36 @@ mid-sentence 22 % → 2 %.
   `tx refine` works on an interrupted session.
 - Linux needs the PortAudio library for microphone input (`apt install libportaudio2`);
   the Windows/macOS wheels bundle it.
+
+### GPU acceleration on AMD, Intel and Apple (whisper.cpp engine)
+faster-whisper uses the CPU or an NVIDIA GPU. For other GPUs, the `whisper.cpp` engine
+runs Whisper through [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (Vulkan,
+Metal, CUDA or CPU). On a Radeon 780M iGPU, `large-v3-turbo` ran ~4-5x faster than on the
+CPU of the same machine (see [benchmarks](docs/BENCHMARKS.md#whispercpp-engine)).
+```sh
+scripts/build_whispercpp.sh            # whisper-server: CPU + Vulkan (macOS: Metal)
+uv run tx transcribe talk.mp3 --engine whisper.cpp -m large-v3-turbo
+uv run tx live --engine whisper.cpp --device gpu
+```
+or permanently in `config.toml`:
+```toml
+[asr]
+engine = "whisper.cpp"
+model = "large-v3-turbo"
+device = "auto"                 # auto (GPU build if present) | gpu | cpu
+whispercpp_server = ""          # path to any whisper-server; "" = own build, then PATH
+whispercpp_dtw = true           # accurate word times (speaker attribution)
+```
+- The engine starts `whisper-server` as a child process (the model stays loaded, also
+  for live mode) and talks to it on `127.0.0.1`. ggml models download on first use
+  (`tx models download` fetches the configured ones as `ggml:<model>`).
+- The script needs cmake and a C++ compiler, for Vulkan also the Vulkan headers and
+  `glslc` (Debian/Ubuntu: `apt install cmake g++ libvulkan-dev glslc`). On Windows,
+  build whisper.cpp per its README and set `whispercpp_server`. NVIDIA GPUs work with
+  both engines.
+- Accuracy and word timing match faster-whisper (same Whisper models, same VAD); custom
+  vocabulary and the style prompt work the same way. On a CPU without a usable GPU,
+  stay with faster-whisper: it is as fast for files and faster live.
 
 ### Desktop app
 ```sh

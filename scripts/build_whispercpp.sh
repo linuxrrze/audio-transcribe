@@ -1,6 +1,8 @@
 #!/bin/sh
-# Build whisper.cpp (pinned release) twice: CPU-only and Vulkan, for benchmarking
-#   python -m transcribe.bench.whispercpp --binary cpu=... --binary vulkan=...
+# Build whisper.cpp (pinned release) twice: CPU-only and GPU (Vulkan; Metal on macOS).
+#   whisper-server: used by the whisper.cpp ASR engine ([asr] engine = "whisper.cpp"),
+#     which prefers the GPU build over build-cpu
+#   whisper-cli, whisper-bench: python -m transcribe.bench.whispercpp --binary cpu=... ...
 #
 # Needs: cmake, a C++17 compiler, and for Vulkan the loader + headers + glslc
 #   Debian/Ubuntu: apt install cmake g++ libvulkan-dev glslc mesa-vulkan-drivers
@@ -17,12 +19,21 @@ if [ ! -d "$SRC" ]; then
     | tar xz -C "$DEST"
   mv "$DEST/whisper.cpp-${VERSION#v}" "$SRC"
 fi
-cmake -S "$SRC" -B "$DEST/build-cpu" -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF ${CMAKE_ARGS:-}
-cmake --build "$DEST/build-cpu" -j "$JOBS" --target whisper-cli whisper-bench
-if [ "${SKIP_VULKAN:-0}" != 1 ]; then
-  cmake -S "$SRC" -B "$DEST/build-vulkan" -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON \
-    -DWHISPER_BUILD_TESTS=OFF ${CMAKE_ARGS:-}
-  cmake --build "$DEST/build-vulkan" -j "$JOBS" --target whisper-cli whisper-bench
+# macOS: Metal instead of Vulkan (and Metal off in the CPU build, where it is the default)
+if [ "$(uname -s)" = Darwin ]; then
+  GPU=metal; GPU_FLAGS="-DGGML_METAL=ON"; CPU_FLAGS="-DGGML_METAL=OFF"
+else
+  GPU=vulkan; GPU_FLAGS="-DGGML_VULKAN=ON"; CPU_FLAGS=""
 fi
-echo "CPU:    $DEST/build-cpu/bin/whisper-cli (+ whisper-bench)"
-[ "${SKIP_VULKAN:-0}" = 1 ] || echo "Vulkan: $DEST/build-vulkan/bin/whisper-cli (+ whisper-bench)"
+TARGETS="whisper-cli whisper-server whisper-bench"
+cmake -S "$SRC" -B "$DEST/build-cpu" -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF \
+  $CPU_FLAGS ${CMAKE_ARGS:-}
+cmake --build "$DEST/build-cpu" -j "$JOBS" --target $TARGETS
+if [ "${SKIP_GPU:-${SKIP_VULKAN:-0}}" != 1 ]; then
+  cmake -S "$SRC" -B "$DEST/build-$GPU" -DCMAKE_BUILD_TYPE=Release $GPU_FLAGS \
+    -DWHISPER_BUILD_TESTS=OFF ${CMAKE_ARGS:-}
+  cmake --build "$DEST/build-$GPU" -j "$JOBS" --target $TARGETS
+fi
+echo "CPU:    $DEST/build-cpu/bin/whisper-server (+ whisper-cli, whisper-bench)"
+[ "${SKIP_GPU:-${SKIP_VULKAN:-0}}" = 1 ] || \
+  echo "$GPU: $DEST/build-$GPU/bin/whisper-server (+ whisper-cli, whisper-bench)"

@@ -38,7 +38,6 @@ from transcribe.bench.ami import DEFAULT_MEETINGS, fetch, reference_text
 from transcribe.bench.models import wer_without_fillers
 from transcribe.core import models
 
-GGML_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{name}.bin"
 VAD_URL = "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin"
 
 
@@ -52,8 +51,7 @@ def _download(url: str, path: Path) -> Path:
 
 
 def ggml_model(name: str) -> Path:
-    return _download(GGML_URL.format(name=name),
-                     models.models_dir() / "whisper.cpp" / f"ggml-{name}.bin")
+    return models.ensure_ggml(name)
 
 
 def vad_model() -> Path:

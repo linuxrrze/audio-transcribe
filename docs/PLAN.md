@@ -57,6 +57,7 @@ Each stage runs in a worker thread and passes data through bounded `queue.Queue`
 - **Default: `faster-whisper` (CTranslate2)**. int8 on CPU, float16 on CUDA, and it returns word timestamps.
   - CPU default: `small` or `medium` (int8). GPU: `large-v3-turbo`. German quality: offer `primeline/whisper-large-v3-turbo-german` (CT2-converted) as a selectable model.
 - **macOS acceleration:** a second backend using `whisper.cpp` (`pywhispercpp`, Metal/CoreML), because CTranslate2 has no Metal backend.
+  *(Implemented as `whisper.cpp` engine: `whisper-server` as a child process instead of `pywhispercpp`, whose wheels are CPU-only. Covers Vulkan (AMD/Intel) as well as Metal; see `asr/whisper_cpp.py` and docs/BENCHMARKS.md.)*
 - **Live strategy:** LocalAgreement-2 streaming (the approach used by `whisper_streaming` / SimulStreaming). It re-decodes a growing window and commits a word once two consecutive hypotheses agree. This produces `PartialText` events (grey, may change) and `FinalText` events (committed). Expected latency is about 1.5–3 s on GPU and about 3–6 s with CPU-small.
 - Language (implemented in M1): Whisper can't restrict detection to a subset, so the pipeline detects a language **per speaker** from that speaker's longest turns (restricted to `{de, en}`), then transcribes runs of same-language turns with the language pinned. Without diarization, VAD regions are the language units. The user can pin the language.
 - Optional future backend: `sherpa-onnx` streaming transducers, for true low-latency and low-power operation.

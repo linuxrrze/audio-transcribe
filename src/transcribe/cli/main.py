@@ -65,7 +65,10 @@ SpeakersOpt = Annotated[int | None, typer.Option(
 DiarizeOpt = Annotated[bool, typer.Option(help="Identify speakers.")]
 ThresholdOpt = Annotated[float | None, typer.Option(
     "--diarize-threshold", help="Clustering threshold; lower finds more speakers.")]
-DeviceOpt = Annotated[str | None, typer.Option(help="auto | cpu | cuda")]
+DeviceOpt = Annotated[str | None, typer.Option(
+    help="auto | cpu | cuda (faster-whisper) | gpu (whisper.cpp)")]
+EngineOpt = Annotated[str | None, typer.Option(
+    "--engine", help="ASR engine: faster-whisper | whisper.cpp (AMD/Intel/Apple GPUs).")]
 FormatOpt = Annotated[str, typer.Option("--format", "-f", help="Output format.")]
 OutOpt = Annotated[Path | None, typer.Option("--out", "-o", help="Write output here.")]
 VocabOpt = Annotated[str | None, typer.Option(
@@ -77,7 +80,7 @@ VocabFileOpt = Annotated[Path | None, typer.Option(
 
 def _config(model: str | None = None, device: str | None = None, lang: str | None = None,
             threshold: float | None = None, vocab: str | None = None,
-            vocab_file: Path | None = None) -> Config:
+            vocab_file: Path | None = None, engine: str | None = None) -> Config:
     from transcribe.core.vocabulary import Vocabulary
 
     config = Config.load()
@@ -87,6 +90,8 @@ def _config(model: str | None = None, device: str | None = None, lang: str | Non
     if extra:
         merged = Vocabulary(config.asr.vocabulary, config.asr.corrections).merged(extra)
         config.asr.vocabulary, config.asr.corrections = merged.terms, merged.corrections
+    if engine:
+        config.asr.engine = engine
     if model:
         config.asr.model = model
     if device:
@@ -163,6 +168,7 @@ def transcribe(
     diarize: DiarizeOpt = True,
     threshold: ThresholdOpt = None,
     device: DeviceOpt = None,
+    engine: EngineOpt = None,
     vocab: VocabOpt = None,
     vocab_file: VocabFileOpt = None,
     fmt: FormatOpt = "txt",
@@ -174,7 +180,7 @@ def transcribe(
     from transcribe.audio.file import load_audio
     from transcribe.core.offline import load_engines, transcribe_audio
 
-    config = _config(model, device, lang, threshold, vocab, vocab_file)
+    config = _config(model, device, lang, threshold, vocab, vocab_file, engine)
     exporter = registry.load("transcribe.exporters", fmt)()
     with err.status("Loading models (first run downloads them)..."):
         asr, diarizer = load_engines(config, diarize)
@@ -223,6 +229,7 @@ def live(
     diarize: DiarizeOpt = True,
     threshold: ThresholdOpt = None,
     device: DeviceOpt = None,
+    engine: EngineOpt = None,
     vocab: VocabOpt = None,
     vocab_file: VocabFileOpt = None,
     refine: Annotated[bool, typer.Option(
@@ -237,7 +244,7 @@ def live(
     from transcribe.cli.live_view import LiveView
     from transcribe.live.factory import build_live_session
 
-    config = _config(model, device, lang, threshold, vocab, vocab_file)
+    config = _config(model, device, lang, threshold, vocab, vocab_file, engine)
     exporter = registry.load("transcribe.exporters", fmt)()
     try:
         source = build_source(source_kind, input_device, output_device, mix, file,
@@ -282,6 +289,7 @@ def refine(
     num_speakers: SpeakersOpt = None,
     threshold: ThresholdOpt = None,
     device: DeviceOpt = None,
+    engine: EngineOpt = None,
     vocab: VocabOpt = None,
     vocab_file: VocabFileOpt = None,
 ) -> None:
@@ -289,7 +297,7 @@ def refine(
     from transcribe.sessions import refine_session
     from transcribe.storage.recorder import recorded_channels
 
-    config = _config(model, device, lang, threshold, vocab, vocab_file)
+    config = _config(model, device, lang, threshold, vocab, vocab_file, engine)
     channels = recorded_channels(session)
     stages = [f"{ch} {st}".strip() if len(channels) > 1 else st
               for ch in channels for st in _offline_stages(config, True)]
@@ -434,15 +442,16 @@ def models_list() -> None:
 
     whisper, _ = required_models(Config.load())
     for w in dict.fromkeys(whisper):
-        state = "yes" if models.whisper_present(w) else "-"
-        console.print(f"whisper:{w}  cached: {state}")
+        state = "yes" if models.model_present(w) else "-"
+        console.print(f"{w if ':' in w else 'whisper:' + w}  cached: {state}")
     console.print(f"Cache: {models.models_dir()}")
 
 
 @models_app.command("download")
 def models_download(
     names: Annotated[list[str] | None, typer.Argument(
-        help="Asset names or whisper:<model>; default: everything the config needs.")] = None,
+        help="Asset names, whisper:<model> or ggml:<model>; default: everything the "
+             "config needs.")] = None,
 ) -> None:
     """Download models (default: the configured Whisper and diarization models)."""
     from transcribe.core.config import required_models
@@ -455,7 +464,7 @@ def models_download(
             err.print("All configured models are present.")
             return
     for name in names:
-        if not name.startswith("whisper:") and name not in models.ASSETS:
+        if not name.startswith(("whisper:", "ggml:")) and name not in models.ASSETS:
             err.print(f"[red]Unknown model {name}[/]")
             raise typer.Exit(1)
         with Progress(console=err, transient=True) as progress:

@@ -161,13 +161,70 @@ The GPU accelerates the encoder; token-by-token decoding barely benefits.
   (WER 58 %), the CPU run "I'll go first." 27 times. The GPU's different arithmetic
   (fp16) made the loop worse, but it is a Whisper behaviour, not a Vulkan bug. With
   whisper.cpp's Silero VAD: no loops, and both builds at 21-23 % WER. The main
-  pipeline always uses faster-whisper's VAD filter; a whisper.cpp engine must too.
+  pipeline always uses a VAD filter, the whisper.cpp engine included.
 - VAD also saves time (silence is skipped): CPU 0.56 → 0.33, iGPU 0.12 → 0.08 RTF.
 - Accuracy with VAD matches faster-whisper with the same model (21-23 %, see above).
-- faster-whisper (CTranslate2) supports only NVIDIA GPUs. Using AMD/Intel iGPUs (and
-  Apple Metal) requires a whisper.cpp engine plugin - the measurements say it is worth
-  it: with Vulkan, the most accurate model runs ~5× faster than `large-v3-turbo` on the
-  CPU and ~2× faster than `small` does today.
+- faster-whisper (CTranslate2) supports only NVIDIA GPUs. For AMD/Intel iGPUs (and
+  Apple Metal) there is now the whisper.cpp engine (below) - with Vulkan, the most
+  accurate model runs ~5× faster than `large-v3-turbo` on the CPU and ~2× faster than
+  `small` on the CPU.
 
 Reproduce: `scripts/build_whispercpp.sh`, then
 `python -m transcribe.bench.whispercpp --binary cpu=... --binary vulkan=... --models large-v3-turbo [--vad] --out-dir runs/`.
+
+## whisper.cpp engine
+
+`[asr] engine = "whisper.cpp"` (`--engine whisper.cpp`) runs the same Whisper models
+through whisper.cpp's `whisper-server`, for GPUs that faster-whisper cannot use. Measured
+here on the CPU build (the test machine has no usable GPU), against faster-whisper on the
+same CPU, full pipeline:
+
+`python -m transcribe.bench.models --engine whisper.cpp --device cpu --models small`
+
+| Engine, model | WER ES2004a / IS1009a | word start error | purity (second pass) | RTF (CPU) |
+|---|---|---|---|---|
+| faster-whisper `small` | 25.7 % / 23.3 % | 0.05 / 0.05 s | 98.5 % / 90.1 % | 0.15-0.17 |
+| whisper.cpp `small` | 23.7 % / 23.8 % | 0.05 / 0.05 s | 98.1 % / 90.3 % | 0.16 |
+| faster-whisper `large-v3-turbo` | 22.8 % / 21.9 % | | 97 % / 88 % | 0.42 |
+| whisper.cpp `large-v3-turbo` | 22.9 % / 23.7 % | 0.04 / 0.05 s | 97.7 % / 94.2 % | 0.45-0.48 |
+
+German/English dialogue (`--dialogue`): 0.0 % WER in both languages, 100 % speaker
+accuracy. On the CPU both engines are equally fast; the point of whisper.cpp is the GPU
+(Radeon 780M: ~4-5× faster than its CPU, see above).
+
+Making whisper.cpp match took four fixes, each found on these meetings:
+
+1. **VAD in the engine.** whisper-server v1.9.5 with `--vad` returns word times on the
+   shortened (silence-free) timeline. The engine cuts the speech out itself (Silero,
+   faster-whisper's settings) and maps times back.
+2. **DTW word timestamps.** whisper.cpp's token timestamps are rough: median start
+   error 0.26-0.39 s (faster-whisper: 0.05 s), which cost 4 points of speaker purity on
+   ES2004a. DTW (`-dtw <model>`) is precise once read correctly: `t_dtw` marks where a
+   token *ends*; a word starts where the previous one ended. whisper.cpp silently drops
+   DTW when flash attention is on, so the engine turns flash attention off (`-nfa`).
+   `[asr] whispercpp_dtw = false` restores flash attention for speed if word timing
+   does not matter.
+3. **Controlled context.** whisper.cpp feeds the text decoded so far back into the next
+   window. On IS1009a one window came out in lower case without punctuation after
+   minute 3, and every later window copied it (sentence ends 11.6 → 2.7 per 100 words,
+   purity 86 %). With no context at all, it dropped more speech (ES2004a 31.7 % WER).
+   Now the engine decodes ≤28 s windows itself, passes the previous window's text as
+   prompt only if it is well-formed (capitals and sentence punctuation), and limits
+   whisper.cpp's context to exactly that prompt - counted with whisper.cpp's own
+   tokenizer, read from the model file, so the hint words are never cut off.
+4. **One-pass language detection.** The server's language probabilities cost two
+   encoder passes; a request with a fixed language and 50 ms duration returns the same
+   probabilities after one (4.0 → 2.0 s per call on the CPU).
+
+**Live mode on the CPU** (`--latency`, `small`): median delay 8.2 s (5.4 s with
+`whispercpp_dtw = false`), faster-whisper 4.0 s - every live decode runs the encoder,
+and whisper.cpp's CPU encoder without flash attention is slower. On a CPU, use
+faster-whisper live; whisper.cpp is meant for the GPU, where the encoder is 7× faster.
+
+To measure on a machine with a GPU (Vulkan / Metal build from
+`scripts/build_whispercpp.sh`):
+
+```sh
+python -m transcribe.bench.models --engine whisper.cpp --models small large-v3-turbo --latency
+python -m transcribe.bench.models --engine whisper.cpp --device cpu --models large-v3-turbo
+```
