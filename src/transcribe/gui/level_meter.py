@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 
 from PySide6.QtCore import QRectF, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QPainter
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import (
     QDialog,
     QGridLayout,
@@ -48,10 +48,24 @@ class LevelMeter(QWidget):
         self.status = "no data"
         self.setToolTip(_("Signal level (dBFS)"))
 
-    LABEL_W = 64  # space for "-34 dB" / "no data" (also translated) right of the bar
+    LABEL_W = 64  # least space for the label right of the bar ("-34 dB", "no data")
+
+    def _label_font(self) -> QFont:
+        font = QFont(self.font())
+        font.setPointSizeF(max(6.0, font.pointSizeF() * 0.8))
+        return font
+
+    def label_width(self) -> int:
+        """Room for the widest label - translations ("keine Daten") can be longer."""
+        metrics = QFontMetrics(self._label_font())
+        texts = [_(t) for t in STATUS_TEXT.values() if t] + ["-60 dB"]
+        return max(self.LABEL_W, max(metrics.horizontalAdvance(t) for t in texts) + 8)
 
     def sizeHint(self) -> QSize:  # noqa: N802 - Qt API
-        return QSize(200, 16)
+        return QSize(136 + self.label_width(), 16)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt API
+        return QSize(40 + self.label_width(), 16)
 
     def set_db(self, rms_db: float) -> None:
         now = time.monotonic()
@@ -77,7 +91,8 @@ class LevelMeter(QWidget):
     def paintEvent(self, _event) -> None:  # noqa: N802 - Qt API
         p = QPainter(self)
         full = QRectF(self.rect())
-        r = full.adjusted(0.5, 0.5, -0.5 - self.LABEL_W, -0.5)
+        label_w = self.label_width()
+        r = full.adjusted(0.5, 0.5, -0.5 - label_w, -0.5)
         p.setPen(self.palette().mid().color())
         p.setBrush(self.palette().base())
         p.drawRect(r)
@@ -96,10 +111,8 @@ class LevelMeter(QWidget):
         text = STATUS_TEXT.get(self.status, "")
         label = _(text) if text else f"{self.rms_db:.0f} dB"
         p.setPen(self.palette().text().color())
-        font = p.font()
-        font.setPointSizeF(max(6.0, font.pointSizeF() * 0.8))
-        p.setFont(font)
-        p.drawText(QRectF(r.right() + 4, full.top(), self.LABEL_W - 4, full.height()),
+        p.setFont(self._label_font())
+        p.drawText(QRectF(r.right() + 4, full.top(), label_w - 4, full.height()),
                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, label)
 
 
@@ -137,6 +150,7 @@ class DeviceCheckDialog(QDialog):
             grid.addWidget(QLabel(f"<span style='color:#d62728'>{err}</span>"), row, 0, 1, 3)
             row += 1
         grid.setColumnStretch(1, 1)
+        grid.setRowStretch(row, 1)  # rows stay at the top instead of spreading out
         inner = QWidget()
         inner.setLayout(grid)
         scroll = QScrollArea()

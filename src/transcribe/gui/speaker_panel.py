@@ -59,13 +59,16 @@ class SpeakerPanel(QWidget):
         buttons = QHBoxLayout()
         buttons.addWidget(self.rename_btn)
         buttons.addWidget(self.merge_btn)
+        # the question gets a line of its own: next to the buttons a long name (or a
+        # longer translation) wrapped into a narrow column
         suggest = QHBoxLayout()
-        suggest.addWidget(self.hint, 1)
+        suggest.addStretch(1)
         suggest.addWidget(self.accept_btn)
         suggest.addWidget(self.decline_btn)
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel(f"<b>{_('Speakers')}</b>"))
         layout.addWidget(self.list, 1)
+        layout.addWidget(self.hint)
         layout.addLayout(suggest)
         layout.addLayout(buttons)
         layout.addWidget(self.note)
@@ -142,5 +145,5 @@ class SpeakerPanel(QWidget):
         has_suggestion = bool(spk and spk.suggestion) and self._actions["suggestions"]
         self.hint.setText(_("Is this <b>{name}</b>?").format(name=spk.suggestion)
                           if has_suggestion and spk else "")
-        for b in (self.accept_btn, self.decline_btn):
-            b.setVisible(has_suggestion)
+        for w in (self.hint, self.accept_btn, self.decline_btn):
+            w.setVisible(has_suggestion)

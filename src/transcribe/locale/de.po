@@ -422,7 +422,7 @@ msgstr "Dauer"
 
 #: src/transcribe/cli/sessions.py:112
 #: src/transcribe/gui/settings_dialog.py:152
-#: src/transcribe/gui/speaker_panel.py:67
+#: src/transcribe/gui/speaker_panel.py:69
 msgid "Speakers"
 msgstr "Sprecher"
 
@@ -800,38 +800,38 @@ msgstr "{model} wird heruntergeladen…"
 msgid "Signal level (dBFS)"
 msgstr "Signalpegel (dBFS)"
 
-#: src/transcribe/gui/level_meter.py:113
+#: src/transcribe/gui/level_meter.py:126
 msgid "Check audio devices"
 msgstr "Audiogeräte prüfen"
 
-#: src/transcribe/gui/level_meter.py:116
+#: src/transcribe/gui/level_meter.py:129
 msgid "Speak into your microphone and play something in the meeting app. The devices whose meters move are the ones to use."
 msgstr "Sprechen Sie ins Mikrofon und spielen Sie etwas in der Meeting-App ab. Die Geräte, deren Pegel sich bewegen, sind die richtigen."
 
-#: src/transcribe/gui/level_meter.py:145
+#: src/transcribe/gui/level_meter.py:159
 #: src/transcribe/gui/voiceprints_dialog.py:56
 #: src/transcribe/gui/voiceprints_dialog.py:158
 msgid "Close"
 msgstr "Schließen"
 
-#: src/transcribe/gui/level_meter.py:122
+#: src/transcribe/gui/level_meter.py:135
 msgid "Microphones / inputs"
 msgstr "Mikrofone / Eingänge"
 
-#: src/transcribe/gui/level_meter.py:123
+#: src/transcribe/gui/level_meter.py:136
 #: src/transcribe/gui/live_tab.py:46
 msgid "System audio (what the computer plays)"
 msgstr "Systemton (was der Computer abspielt)"
 
-#: src/transcribe/gui/level_meter.py:132
+#: src/transcribe/gui/level_meter.py:145
 msgid "Use"
 msgstr "Verwenden"
 
-#: src/transcribe/gui/level_meter.py:68
+#: src/transcribe/gui/level_meter.py:82
 msgid "{rms} dBFS (max {peak})"
 msgstr "{rms} dBFS (max. {peak})"
 
-#: src/transcribe/gui/level_meter.py:127
+#: src/transcribe/gui/level_meter.py:140
 msgid "{device} (default)"
 msgstr "{device} (Standard)"
 
@@ -1430,19 +1430,19 @@ msgstr "Ja"
 msgid "No"
 msgstr "Nein"
 
-#: src/transcribe/gui/speaker_panel.py:131
+#: src/transcribe/gui/speaker_panel.py:134
 msgid "Merge speaker"
 msgstr "Sprecher zusammenführen"
 
-#: src/transcribe/gui/speaker_panel.py:132
+#: src/transcribe/gui/speaker_panel.py:135
 msgid "Merge {speaker} into:"
 msgstr "{speaker} zusammenführen mit:"
 
-#: src/transcribe/gui/speaker_panel.py:143
+#: src/transcribe/gui/speaker_panel.py:146
 msgid "Is this <b>{name}</b>?"
 msgstr "Ist das <b>{name}</b>?"
 
-#: src/transcribe/gui/speaker_panel.py:85
+#: src/transcribe/gui/speaker_panel.py:88
 msgid ", score {score}"
 msgstr ", Wert {score}"
 
