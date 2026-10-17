@@ -378,3 +378,40 @@ uv run python -m transcribe.bench.suite report tune
   a rate got worse by more than 2 points.
 - Data and caches live in `~/.cache/transcribe/bench` (AMI ~60 MB per meeting,
   VoxConverse test ~4.3 GB).
+- **Nightly CI** runs a small subset (6 German conversations + 1 AMI meeting, clean and
+  10 dB noise, live labels) against `tests/bench/baseline-ci.json` and fails if a rate
+  gets worse by more than 5 points (quantised Whisper differs slightly between CPUs).
+
+### First results (dev split, `small`, CPU)
+
+`run first --data synth-de-piper ami --split dev --conditions clean noise:10 phone --live`
+- 4 AMI dev meetings (1.6 h) and 10 synthetic German conversations (2-6 voices, 8.5 min).
+
+| Data | Condition | WER | cpWER | DER | DER live | impurity / live | speaker count error |
+|---|---|---|---|---|---|---|---|
+| AMI | clean | 18.4 % | 33.3 % | 18.2 % | **11.6 %** | 2.3 % / 1.8 % | 7.5 |
+| AMI | noise 10 dB | 24.3 % | 45.7 % | 23.1 % | 15.6 % | 2.3 % / 2.5 % | 9.8 |
+| AMI | phone | 23.7 % | 43.9 % | 25.0 % | **47.7 %** | 3.2 % / **32 %** | 8.0 |
+| German conversations | clean | 5.6 % | 17.2 % | 7.2 % | 4.3 % | 4.3 % / 6.0 % | 1.0 |
+| German conversations | noise 10 dB | 19.8 % | 39.3 % | 27.2 % | 18.5 % | 8.1 % / 14 % | 1.4 |
+| German conversations | phone | 10.2 % | 31.2 % | 14.9 % | **39.3 %** | 9.5 % / **38 %** | 0.9 |
+
+(95 % intervals in `summary.md`; with 4 meetings they are wide, e.g. AMI cpWER 25-43 %.)
+
+What this shows, to work on next:
+
+1. **Live labels collapse on telephone audio** (impurity 32-38 % vs 2-6 % clean), while the
+   offline labels stay pure: voices sound more alike once band-limited, and the live
+   threshold (0.4) merges them. A channel-dependent threshold is the obvious candidate.
+2. **Attribution, not recognition, dominates on meetings:** cpWER 33 % vs WER 18 % on
+   AMI. The offline second pass splits 4 people into ~11.5 labels (speaker count error
+   7.5) - pure, but each split costs cpWER; the live labels get closer to 4 and beat the
+   offline DER (11.6 vs 18.2 %).
+3. **Noise costs more in German than on AMI** (WER +14 vs +6 points at 10 dB).
+4. **VAD on telephone-band audio:** Silero finds only ~73 % of the speech in band-limited
+   AMI audio (69.5 of 94.8 s in a 2-minute excerpt); Whisper alone transcribes 92 % of
+   the words. (An earlier version of the `phone` condition added full-band noise after
+   band-limiting, which made the VAD collapse to 12 % - not realistic, fixed.)
+5. **Many speakers in a short recording:** in one 5-voice conversation the second pass
+   merged the voices into 2 (cpWER 88 %) - its speaker-count estimate ignores speakers
+   with < 3 s of speech; the live labels got this recording right.

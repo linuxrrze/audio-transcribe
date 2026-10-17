@@ -1,0 +1,126 @@
+[
+ {
+  "dataset": "ami",
+  "condition": "clean",
+  "config": "default",
+  "recordings": 1,
+  "hours": 0.26,
+  "WER": 0.1341,
+  "cpWER": 0.2173,
+  "DER": 0.1164,
+  "DER (no collar)": 0.1937,
+  "impurity": 0.0157,
+  "live DER": 0.0711,
+  "live impurity": 0.0165,
+  "speaker count error": 6.0,
+  "rtf_asr": 0.162,
+  "rtf_diarize": 0.08
+ },
+ {
+  "dataset": "ami",
+  "condition": "noise:10",
+  "config": "default",
+  "recordings": 1,
+  "hours": 0.26,
+  "WER": 0.2264,
+  "cpWER": 0.5709,
+  "DER": 0.2684,
+  "DER (no collar)": 0.3454,
+  "impurity": 0.037,
+  "live DER": 0.1029,
+  "live impurity": 0.0308,
+  "speaker count error": 10.0,
+  "rtf_asr": 0.193,
+  "rtf_diarize": 0.08
+ },
+ {
+  "dataset": "ci-synth-de",
+  "condition": "clean",
+  "config": "default",
+  "recordings": 6,
+  "hours": 0.1,
+  "WER": 0.0599,
+  "WER 95%": [
+   0.0465,
+   0.0716
+  ],
+  "cpWER": 0.2033,
+  "cpWER 95%": [
+   0.0903,
+   0.4081
+  ],
+  "DER": 0.0927,
+  "DER 95%": [
+   0.0321,
+   0.2042
+  ],
+  "DER (no collar)": 0.2744,
+  "DER (no collar) 95%": [
+   0.1987,
+   0.3909
+  ],
+  "impurity": 0.0783,
+  "impurity 95%": [
+   0.0146,
+   0.1914
+  ],
+  "live DER": 0.0571,
+  "live DER 95%": [
+   0.0017,
+   0.1559
+  ],
+  "live impurity": 0.0719,
+  "live impurity 95%": [
+   0.0153,
+   0.1762
+  ],
+  "speaker count error": 0.67,
+  "rtf_asr": 0.322,
+  "rtf_diarize": 0.118
+ },
+ {
+  "dataset": "ci-synth-de",
+  "condition": "noise:10",
+  "config": "default",
+  "recordings": 6,
+  "hours": 0.1,
+  "WER": 0.2126,
+  "WER 95%": [
+   0.0879,
+   0.3445
+  ],
+  "cpWER": 0.4025,
+  "cpWER 95%": [
+   0.2143,
+   0.5926
+  ],
+  "DER": 0.2709,
+  "DER 95%": [
+   0.1086,
+   0.4224
+  ],
+  "DER (no collar)": 0.4324,
+  "DER (no collar) 95%": [
+   0.3056,
+   0.5513
+  ],
+  "impurity": 0.0761,
+  "impurity 95%": [
+   0.0269,
+   0.1749
+  ],
+  "live DER": 0.259,
+  "live DER 95%": [
+   0.0778,
+   0.4232
+  ],
+  "live impurity": 0.2201,
+  "live impurity 95%": [
+   0.0669,
+   0.3963
+  ],
+  "speaker count error": 1.17,
+  "rtf_asr": 0.36,
+  "rtf_diarize": 0.12
+ }
+]

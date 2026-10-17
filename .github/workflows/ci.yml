@@ -69,6 +69,13 @@ jobs:
       - run: uv run pytest -q tests/integration
         env:
           TX_SLOW: "1"
+      - name: Benchmark suite - regression check against tests/bench/baseline-ci.json
+        run: |
+          uv run python -m transcribe.bench.suite build synth --lang de --split dev --count 6 --name ci-synth-de
+          uv run python -m transcribe.bench.suite build ami --split dev --limit 1
+          uv run python -m transcribe.bench.suite run ci --data ci-synth-de --split dev --limit 6 --conditions clean noise:10 --live
+          uv run python -m transcribe.bench.suite run ci --data ami --split dev --limit 1 --conditions clean noise:10 --live
+          uv run python -m transcribe.bench.suite report ci --baseline tests/bench/baseline-ci.json --tolerance 0.05
 
   macos-helper:
     runs-on: macos-14  # Xcode 15.4: macOS 14.2+ SDK for Core Audio process taps

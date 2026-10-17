@@ -71,15 +71,16 @@ def reverb(audio: np.ndarray, rt60: float, rng: np.random.Generator) -> np.ndarr
 
 
 def phone(audio: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    """300-3400 Hz band at 8 kHz, back to 16 kHz, light line noise."""
+    """Light line noise, then the 300-3400 Hz telephone band at 8 kHz, back to 16 kHz.
+    (Noise first: on a real line it is band-limited like the speech.)"""
     import soxr
 
-    low = soxr.resample(audio, SAMPLE_RATE, 8000)
+    low = soxr.resample(add_noise(audio, 30.0, rng), SAMPLE_RATE, 8000)
     spectrum = np.fft.rfft(low)
     f = np.fft.rfftfreq(len(low), 1 / 8000)
     spectrum[(f < 300) | (f > 3400)] = 0
     band = np.fft.irfft(spectrum, len(low)).astype(np.float32)
-    return add_noise(soxr.resample(band, 8000, SAMPLE_RATE)[:len(audio)], 30.0, rng)
+    return soxr.resample(band, 8000, SAMPLE_RATE)[:len(audio)].astype(np.float32)
 
 
 def codec(audio: np.ndarray, kind: str, kbps: int) -> np.ndarray:
