@@ -429,6 +429,25 @@ What this shows, to work on next:
    AMI. The offline second pass splits 4 people into ~11.5 labels (speaker count error
    7.5) - pure, but each split costs cpWER; the live labels get closer to 4 and beat the
    offline DER (11.6 vs 18.2 %).
+   On all 18 AMI dev meetings with `phone` audio the gap is wider: cpWER 76 % vs WER
+   34 %, speaker count error 10.6. A sweep of `speakers.diarize_threshold` (higher
+   merges more) on the same data, against the default 0.5 (`report diarize-phone
+   --compare speakers.diarize_threshold=0.5`; points, 95 % interval, recordings
+   better / worse):
+
+   | vs 0.5 | AMI cpWER | AMI DER | AMI speaker count error | German cpWER | German DER | German impurity |
+   |---|---|---|---|---|---|---|
+   | 0.6 | **-4.7 (-10.0 - -0.8)** 10/4 | **-2.7** 13/4 | 9.4 | **+8.2 (+2.1 - +14.5)** 6/12 | **+4.3** 11 worse | **+5.2** |
+   | 0.7 | **-8.7 (-14.2 - -4.3)** 16/1 | **-4.8** 15/3 | 7.8 | **+19.8 (+11.1 - +28.8)** 5/21 | **+10.4** 20 worse | **+11.4** |
+   | 0.8 | **-12.4 (-18.1 - -7.8)** 18/0 | **-5.7** 16/2 | 5.2 | **+35.1 (+25.5 - +45.9)** 2/30 | **+18.9** 31 worse | **+19.2** |
+
+   The meetings improve with every step and still over-split at 0.8; the German
+   conversations get worse with every step, because different people get merged. So no
+   single threshold fits both, and a separate one for telephone-band audio would not help
+   either: the meetings over-split on clean audio too (speaker count error 7.5 on the
+   first 4), the conversations do not (1.0). The likely cause is length - the meetings
+   run 16-50 minutes, the conversations about a minute - so the fix belongs in how the
+   speaker count is chosen, not in the threshold. 0.5 stays.
 3. **Noise costs more in German than on AMI** (WER +14 vs +6 points at 10 dB).
 4. **VAD on telephone-band audio:** Silero finds only ~73 % of the speech in band-limited
    AMI audio (69.5 of 94.8 s in a 2-minute excerpt); Whisper alone transcribes 92 % of
