@@ -39,6 +39,7 @@ from transcribe.gui.dialogs import NameSpeakerDialog
 from transcribe.gui.level_meter import DeviceCheckDialog, LevelMeter
 from transcribe.gui.speaker_panel import SpeakerPanel
 from transcribe.gui.transcript_view import TranscriptView
+from transcribe.gui.widgets import compact_combo, fit_popup
 from transcribe.i18n import N_, _
 from transcribe.storage import session_store
 from transcribe.storage.transcript_model import Speaker
@@ -51,20 +52,6 @@ STATUS = {"starting": N_("Starting"), "running": N_("Running"), "error": N_("Err
           "refining": N_("Refining")}
 STAGES = {"diarize": N_("speaker detection"), "transcribe": N_("transcription"),
           "speakers": N_("speakers")}
-
-
-MIN_COMBO_CHARS = 16  # source and device fields: at least this many characters wide
-
-
-def _fit_popup(combo: QComboBox) -> None:
-    """Make the drop-down list wide enough for the longest entry."""
-    metrics = combo.fontMetrics()
-    longest = max((metrics.horizontalAdvance(combo.itemText(i)) for i in range(combo.count())),
-                  default=0)
-    view = combo.view()
-    # text plus item padding, scroll bar and frame
-    view.setMinimumWidth(longest + 3 * metrics.averageCharWidth()
-                         + view.verticalScrollBar().sizeHint().width() + 2 * view.frameWidth())
 
 
 class LiveTab(QWidget):
@@ -112,12 +99,7 @@ class LiveTab(QWidget):
         self.start_btn.clicked.connect(self.toggle)
         self.source.currentIndexChanged.connect(self._update_controls)
         for combo in (self.source, self.input, self.output):
-            # long entries (device names, translations) must not widen the window: the
-            # field can be narrower than its longest entry, the popup shows them in full
-            combo.setSizeAdjustPolicy(
-                QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-            combo.setMinimumContentsLength(MIN_COMBO_CHARS)
-        _fit_popup(self.source)
+            compact_combo(combo)  # long device names must not widen the window
         self.mic_meter, self.sys_meter = LevelMeter(), LevelMeter()
         self.check_btn = QPushButton(_("Check devices…"))
         self.check_btn.setToolTip(_("Show signal levels of all microphones and outputs"))
@@ -179,7 +161,7 @@ class LiveTab(QWidget):
                 if e.kind == kind:
                     combo.addItem(e.name, e.device)
             combo.setToolTip("\n".join(x for x in errors if x.startswith(kind)))
-            _fit_popup(combo)
+            fit_popup(combo)
             combo.blockSignals(False)
 
     def select_device(self, entry: DeviceEntry) -> None:

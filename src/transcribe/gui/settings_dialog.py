@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -29,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from transcribe.core.config import Config, config_dir
 from transcribe.core.vocabulary import MAX_HOTWORD_CHARS, Vocabulary
+from transcribe.gui.widgets import compact_combo, path_text
 from transcribe.i18n import LANGUAGES, _
 
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large-v3-turbo", "large-v3"]
@@ -164,15 +164,15 @@ class SettingsDialog(QDialog):
         self.config = config
         self.vocab = Vocabulary.from_config(config.asr.vocabulary, config.asr.corrections)
         tabs = QTabWidget()
+        tabs.setUsesScrollButtons(False)  # all tabs visible: at least as wide as their titles
         tabs.addTab(self._asr_tab(), _("Speech recognition"))
         tabs.addTab(self._speakers_tab(), _("Speakers"))
         tabs.addTab(self._live_tab(), _("Live"))
         tabs.addTab(self._voiceprints_tab(), _("Voiceprints"))
         tabs.addTab(self._general_tab(), _("General"))
         self.tabs = tabs
-        where = QLabel(_("Saved in {path}").format(path=config_dir() / "config.toml"))
-        where.setStyleSheet("color: #888;")
-        where.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        where = path_text(_("Saved in {path}").format(path=config_dir() / "config.toml"))
+        where.setStyleSheet("QLineEdit { background: transparent; color: #888; }")
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
                                    | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self._save)
@@ -267,6 +267,7 @@ class SettingsDialog(QDialog):
         self.speaker_count.addItem(_("Silhouette (distinct voices, e.g. meetings)"),
                                    "silhouette")
         self.speaker_count.setCurrentIndex(max(0, self.speaker_count.findData(s.speaker_count)))
+        compact_combo(self.speaker_count)  # long entries (in German) widened the dialog
         self.num_threads = _int_spin(s.num_threads, 0, 64, _("auto"))
         self.live_threshold = _spin(s.live_threshold, 0.1, 0.9, 0.05)
         self.live_threshold.setToolTip(_("Live labels: similarity at which a sentence joins a "
@@ -353,8 +354,9 @@ class SettingsDialog(QDialog):
         self.ui_language.setToolTip(_("Takes effect after restarting the app"))
         self.sessions_dir = QLineEdit(self.config.sessions_dir)
         self.sessions_dir.setPlaceholderText(str(self.config.resolved_sessions_dir()))
-        models = QLabel(str(models_dir()))
-        models.setToolTip(_("Change with the TRANSCRIBE_MODELS_DIR environment variable"))
+        models = path_text(str(models_dir()))
+        models.setToolTip(str(models_dir()) + "\n"
+                          + _("Change with the TRANSCRIBE_MODELS_DIR environment variable"))
         form = QFormLayout()
         form.addRow(_("Language:"), self.ui_language)
         form.addRow(_("Sessions:"), _path_row(self.sessions_dir, self._pick_sessions_dir))
