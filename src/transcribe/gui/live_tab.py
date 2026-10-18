@@ -53,6 +53,20 @@ STAGES = {"diarize": N_("speaker detection"), "transcribe": N_("transcription"),
           "speakers": N_("speakers")}
 
 
+MIN_COMBO_CHARS = 16  # source and device fields: at least this many characters wide
+
+
+def _fit_popup(combo: QComboBox) -> None:
+    """Make the drop-down list wide enough for the longest entry."""
+    metrics = combo.fontMetrics()
+    longest = max((metrics.horizontalAdvance(combo.itemText(i)) for i in range(combo.count())),
+                  default=0)
+    view = combo.view()
+    # text plus item padding, scroll bar and frame
+    view.setMinimumWidth(longest + 3 * metrics.averageCharWidth()
+                         + view.verticalScrollBar().sizeHint().width() + 2 * view.frameWidth())
+
+
 class LiveTab(QWidget):
     session_finished = Signal(object)  # session dir (Path)
     open_session_requested = Signal(object)  # session dir: show it in the Sessions tab
@@ -97,6 +111,13 @@ class LiveTab(QWidget):
         self.start_btn.setDefault(True)
         self.start_btn.clicked.connect(self.toggle)
         self.source.currentIndexChanged.connect(self._update_controls)
+        for combo in (self.source, self.input, self.output):
+            # long entries (device names, translations) must not widen the window: the
+            # field can be narrower than its longest entry, the popup shows them in full
+            combo.setSizeAdjustPolicy(
+                QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(MIN_COMBO_CHARS)
+        _fit_popup(self.source)
         self.mic_meter, self.sys_meter = LevelMeter(), LevelMeter()
         self.check_btn = QPushButton(_("Check devices…"))
         self.check_btn.setToolTip(_("Show signal levels of all microphones and outputs"))
@@ -126,13 +147,15 @@ class LiveTab(QWidget):
         form.addRow(_("System audio:"), with_meter(self.output, self.sys_meter))
         form.addRow("", self.mix)
         form.addRow(_("Speakers:"), self.speakers)
-        controls = QHBoxLayout()
-        controls.addLayout(form, 1)
-        right = QVBoxLayout()
-        right.addWidget(self.start_btn)
-        right.addWidget(self.check_btn)
-        right.addStretch(1)
-        controls.addLayout(right)
+        # the buttons below the form, not beside it: side by side they set the window's
+        # minimum width
+        buttons = QHBoxLayout()
+        buttons.addWidget(self.start_btn)
+        buttons.addWidget(self.check_btn)
+        buttons.addStretch(1)
+        controls = QVBoxLayout()
+        controls.addLayout(form)
+        controls.addLayout(buttons)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self.view)
         splitter.addWidget(self.panel)
@@ -156,6 +179,7 @@ class LiveTab(QWidget):
                 if e.kind == kind:
                     combo.addItem(e.name, e.device)
             combo.setToolTip("\n".join(x for x in errors if x.startswith(kind)))
+            _fit_popup(combo)
             combo.blockSignals(False)
 
     def select_device(self, entry: DeviceEntry) -> None:

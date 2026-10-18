@@ -573,7 +573,7 @@ msgid "Manage known speakers (voiceprints)."
 msgstr "Bekannte Sprecher (Stimmprofile) verwalten."
 
 #: src/transcribe/cli/speakers.py:60
-#: src/transcribe/gui/live_tab.py:337
+#: src/transcribe/gui/live_tab.py:361
 #: src/transcribe/gui/main_window.py:62
 msgid "Voiceprints"
 msgstr "Stimmprofile"
@@ -844,8 +844,8 @@ msgid "Running"
 msgstr "Läuft"
 
 #: src/transcribe/gui/live_tab.py:49
-#: src/transcribe/gui/live_tab.py:345
-#: src/transcribe/gui/live_tab.py:348
+#: src/transcribe/gui/live_tab.py:369
+#: src/transcribe/gui/live_tab.py:372
 msgid "Error"
 msgstr "Fehler"
 
@@ -877,85 +877,85 @@ msgstr "Mikrofon"
 msgid "Microphone + system audio (calls)"
 msgstr "Mikrofon + Systemton (Anrufe)"
 
-#: src/transcribe/gui/live_tab.py:92
+#: src/transcribe/gui/live_tab.py:106
 msgid "Mix into one stream (cheaper)"
 msgstr "Zu einem Kanal mischen (sparsamer)"
 
-#: src/transcribe/gui/live_tab.py:95
+#: src/transcribe/gui/live_tab.py:109
 #: src/transcribe/gui/sessions_tab.py:81
 #: src/transcribe/gui/settings_dialog.py:218
 msgid "auto"
 msgstr "automatisch"
 
-#: src/transcribe/gui/live_tab.py:96
-#: src/transcribe/gui/live_tab.py:304
-#: src/transcribe/gui/live_tab.py:343
+#: src/transcribe/gui/live_tab.py:110
+#: src/transcribe/gui/live_tab.py:328
+#: src/transcribe/gui/live_tab.py:367
 msgid "Start"
 msgstr "Start"
 
-#: src/transcribe/gui/live_tab.py:101
+#: src/transcribe/gui/live_tab.py:122
 msgid "Check devices…"
 msgstr "Geräte prüfen…"
 
-#: src/transcribe/gui/live_tab.py:102
+#: src/transcribe/gui/live_tab.py:123
 msgid "Show signal levels of all microphones and outputs"
 msgstr "Signalpegel aller Mikrofone und Ausgänge anzeigen"
 
-#: src/transcribe/gui/live_tab.py:108
+#: src/transcribe/gui/live_tab.py:129
 msgid "Ready"
 msgstr "Bereit"
 
-#: src/transcribe/gui/live_tab.py:124
+#: src/transcribe/gui/live_tab.py:145
 msgid "Source:"
 msgstr "Quelle:"
 
-#: src/transcribe/gui/live_tab.py:125
+#: src/transcribe/gui/live_tab.py:146
 msgid "Microphone:"
 msgstr "Mikrofon:"
 
-#: src/transcribe/gui/live_tab.py:126
+#: src/transcribe/gui/live_tab.py:147
 msgid "System audio:"
 msgstr "Systemton:"
 
-#: src/transcribe/gui/live_tab.py:128
+#: src/transcribe/gui/live_tab.py:149
 #: src/transcribe/gui/sessions_tab.py:100
 msgid "Speakers:"
 msgstr "Sprecher:"
 
-#: src/transcribe/gui/live_tab.py:265
+#: src/transcribe/gui/live_tab.py:289
 msgid "Loading models (first run downloads them)…"
 msgstr "Modelle werden geladen (beim ersten Start heruntergeladen)…"
 
-#: src/transcribe/gui/live_tab.py:280
-#: src/transcribe/gui/live_tab.py:343
+#: src/transcribe/gui/live_tab.py:304
+#: src/transcribe/gui/live_tab.py:367
 msgid "Stop"
 msgstr "Stopp"
 
-#: src/transcribe/gui/live_tab.py:288
+#: src/transcribe/gui/live_tab.py:312
 msgid "Stopping…"
 msgstr "Wird beendet…"
 
-#: src/transcribe/gui/live_tab.py:302
+#: src/transcribe/gui/live_tab.py:326
 msgid "Session saved. <a href=\"sessions\">Name, merge or correct speakers in the Sessions tab</a>."
 msgstr "Sitzung gespeichert. <a href=\"sessions\">Sprecher im Tab „Sitzungen“ benennen, zusammenführen oder korrigieren</a>."
 
-#: src/transcribe/gui/live_tab.py:150
+#: src/transcribe/gui/live_tab.py:173
 msgid "Default microphone"
 msgstr "Standardmikrofon"
 
-#: src/transcribe/gui/live_tab.py:151
+#: src/transcribe/gui/live_tab.py:174
 msgid "Default output"
 msgstr "Standardausgabe"
 
-#: src/transcribe/gui/live_tab.py:254
+#: src/transcribe/gui/live_tab.py:278
 msgid "Audio source"
 msgstr "Audioquelle"
 
-#: src/transcribe/gui/live_tab.py:307
+#: src/transcribe/gui/live_tab.py:331
 msgid "Saved to {path}"
 msgstr "Gespeichert unter {path}"
 
-#: src/transcribe/gui/live_tab.py:267
+#: src/transcribe/gui/live_tab.py:291
 msgid "Live session"
 msgstr "Live-Sitzung"
 
