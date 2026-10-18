@@ -56,7 +56,9 @@ class SpeakerPanel(QWidget):
         self.merge_btn.clicked.connect(self._ask_merge)
         self.accept_btn.clicked.connect(lambda: self._emit(self.accept_requested))
         self.decline_btn.clicked.connect(lambda: self._emit(self.decline_requested))
-        buttons = QHBoxLayout()
+        # below each other: side by side they set the window's minimum width in German
+        # ("Zusammenführen mit…")
+        buttons = QVBoxLayout()
         buttons.addWidget(self.rename_btn)
         buttons.addWidget(self.merge_btn)
         # the question gets a line of its own: next to the buttons a long name (or a
