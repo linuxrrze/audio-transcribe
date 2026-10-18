@@ -395,6 +395,92 @@ def markdown(rows: list[Row]) -> str:
         "speech under a label that mostly belongs to someone else.\n"
 
 
+def _parse_label(config: str) -> dict[str, str]:
+    if config == "default":
+        return {}
+    return dict(item.partition("=")[::2] for item in config.split(","))
+
+
+def _counts(rs: list[Result], errs: list[str], tot: str) -> tuple[np.ndarray, np.ndarray]:
+    """Errors and totals of one rate, per recording."""
+    return (np.array([sum(r.metrics.get(x, 0.0) for x in errs) for r in rs]),
+            np.array([r.metrics.get(tot, 0.0) for r in rs]))
+
+
+def paired(results: Iterable[Result], reference: str, bootstrap: int = 1000,
+           seed: int = 0) -> list[Row]:
+    """Each setting against ``reference`` on the same recordings.
+
+    ``reference`` is ``key=value[,key=value]`` (or "default"); every setting is compared
+    with the one that differs only in these keys, so other swept keys stay fixed. Per
+    rate: the difference of the micro-averaged rates (as in ``summarize``), a 95 %
+    bootstrap interval resampling recordings - paired, so differences between recordings
+    cancel out and much smaller effects show than in the per-setting intervals - and how
+    many recordings got better / worse.
+    """
+    ref = _parse_label(reference)
+    groups: dict[tuple[str, str], dict[str, dict[str, Result]]] = {}
+    for r in results:
+        groups.setdefault((r.dataset, r.condition), {}).setdefault(r.config, {})[
+            r.recording] = r
+    if not any(_parse_label(c).items() >= ref.items() if ref else c == "default"
+               for g in groups.values() for c in g):
+        configs = sorted({c for g in groups.values() for c in g})
+        raise ValueError(f"No results for {reference!r}; settings: {'; '.join(configs)}")
+    rng = np.random.default_rng(seed)
+    rows = []
+    for (dataset, condition), by_config in sorted(groups.items()):
+        for config, recs in sorted(by_config.items()):
+            partner = label({**_parse_label(config), **ref})
+            if partner == config or partner not in by_config:
+                continue
+            base = by_config[partner]
+            common = sorted(set(recs) & set(base))
+            row: Row = {"dataset": dataset, "condition": condition, "config": config,
+                        "reference": partner, "recordings": len(common)}
+            for name, (errs, tot) in RATES.items():
+                e, t = _counts([recs[k] for k in common], errs, tot)
+                e0, t0 = _counts([base[k] for k in common], errs, tot)
+                if t.sum() <= 0 or t0.sum() <= 0:
+                    continue
+                row[name] = round(float(e.sum() / t.sum() - e0.sum() / t0.sum()), 4)
+                per = e / np.maximum(t, 1e-9) - e0 / np.maximum(t0, 1e-9)
+                row[f"{name} better/worse"] = [int((per < 0).sum()), int((per > 0).sum())]
+                if len(common) > 1 and bootstrap:
+                    idx = rng.integers(0, len(common), (bootstrap, len(common)))
+                    boot = (e[idx].sum(axis=1) / np.maximum(t[idx].sum(axis=1), 1e-9)
+                            - e0[idx].sum(axis=1) / np.maximum(t0[idx].sum(axis=1), 1e-9))
+                    row[f"{name} 95%"] = [round(float(x), 4)
+                                          for x in np.percentile(boot, [2.5, 97.5])]
+            rows.append(row)
+    return rows
+
+
+def paired_markdown(rows: list[Row]) -> str:
+    cols = [c for c in RATES if any(c in r for r in rows)]
+    head = ["dataset", "condition", "config", "vs", "n", *cols]
+    lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
+    for r in rows:
+        cells = [str(r["dataset"]), str(r["condition"]), str(r["config"]),
+                 str(r["reference"]), str(r["recordings"])]
+        for c in cols:
+            if c not in r:
+                cells.append("-")
+                continue
+            text = f"{100 * float(r[c]):+.1f}"
+            ci = r.get(f"{c} 95%")
+            if isinstance(ci, list):
+                text += f" ({100 * ci[0]:+.1f} - {100 * ci[1]:+.1f})"
+                if ci[0] > 0 or ci[1] < 0:  # the interval excludes 0
+                    text = f"**{text}**"
+            better, worse = r[f"{c} better/worse"]
+            cells.append(f"{text} {better}/{worse}")
+        lines.append("| " + " | ".join(cells) + " |")
+    return "\n".join(lines) + "\n\nDifference to the reference setting in points (negative " \
+        "= better), in brackets the 95 % confidence interval of the difference over the " \
+        "same recordings (bold: excludes 0), then how many recordings got better / worse.\n"
+
+
 def compare(rows: list[Row], baseline: list[Row], tolerance: float) -> list[str]:
     """Regressions: metrics more than ``tolerance`` (absolute) worse than the baseline."""
     base = {(b["dataset"], b["condition"], b["config"]): b for b in baseline}

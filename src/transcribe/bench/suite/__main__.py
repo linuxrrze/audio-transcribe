@@ -11,6 +11,7 @@
         [--conditions clean noise:10 phone] [--set speakers.diarize_threshold=0.4,0.5]
         [--set asr.model=small,large-v3-turbo] [--live] [--full] [--limit N]
     python -m transcribe.bench.suite report NAME [--baseline FILE --tolerance 0.02]
+        [--compare SECTION.KEY=VALUE]
 
 Tune on ``--split dev``; report ``--split test`` once settings are chosen. Results go to
 <bench dir>/results/NAME (results.jsonl, summary.json, summary.md); runs are resumable
@@ -76,6 +77,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--tolerance", type=float, default=0.02,
                    help="allowed absolute worsening per rate (default 2 points)")
     p.add_argument("--save-baseline", type=Path, help="write this run's summary as baseline")
+    p.add_argument("--compare", metavar="SECTION.KEY=VALUE",
+                   help="also compare every setting with this one on the same recordings "
+                        "(paired; e.g. asr.vad_threshold_narrowband=0.25)")
 
     args = ap.parse_args(argv)
     if args.cmd == "build":
@@ -109,17 +113,28 @@ def main(argv: list[str] | None = None) -> int:
         return _report(out, None, 0.0, None)
     else:
         return _report(bench_dir() / "results" / args.name, args.baseline, args.tolerance,
-                       args.save_baseline)
+                       args.save_baseline, args.compare)
     return 0
 
 
 def _report(out: Path, baseline: Path | None, tolerance: float,
-            save: Path | None) -> int:
-    rows = run.summarize(run.load_results(out / "results.jsonl"))
+            save: Path | None, reference: str | None = None) -> int:
+    results = run.load_results(out / "results.jsonl")
+    rows = run.summarize(results)
     (out / "summary.json").write_text(json.dumps(rows, indent=1))
     table = run.markdown(rows)
     (out / "summary.md").write_text(table)
     print(table)
+    if reference:
+        try:
+            pairs = run.paired(results, reference)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            return 2
+        (out / "paired.json").write_text(json.dumps(pairs, indent=1))
+        paired_table = run.paired_markdown(pairs)
+        (out / "paired.md").write_text(paired_table)
+        print(paired_table)
     if save:
         save.write_text(json.dumps(rows, indent=1))
         print(f"Baseline written to {save}")

@@ -208,6 +208,30 @@ def test_run_scores_caches_and_sweeps(demo, bench_home):
     assert worse and all("cpWER" in w for w in worse)
 
 
+def test_paired_compares_each_setting_on_the_same_recordings():
+    def res(rec, config, wer_errors, condition="clean"):
+        return run.Result("d", rec, "dev", condition, config, 60.0,
+                          {"wer_errors": wer_errors, "wer_total": 100})
+
+    a, b, c = "x.t=0.2,x.m=s", "x.t=0.25,x.m=s", "x.t=0.25,x.m=l"
+    results = [res(f"r{i}", a, 10 + i) for i in range(6)]  # always 2 worse than b
+    results += [res(f"r{i}", b, 8 + i) for i in range(6)]
+    results += [res(f"r{i}", c, 30) for i in range(6)]  # other model: no partner at 0.2
+    results += [res("r0", a, 50, "noise")]  # only one recording, no interval
+    results += [res("r0", b, 50, "noise")]
+    rows = run.paired(results, "x.t=0.25")
+    assert [(r["condition"], r["config"], r["reference"]) for r in rows] == [
+        ("clean", a, b), ("noise", a, b)]
+    clean, noise = rows
+    assert clean["WER"] == 0.02 and clean["WER 95%"] == [0.02, 0.02]
+    assert clean["WER better/worse"] == [0, 6] and clean["recordings"] == 6
+    assert noise["WER"] == 0.0 and "WER 95%" not in noise
+    table = run.paired_markdown(rows)
+    assert "**+2.0 (+2.0 - +2.0)** 0/6" in table and "+0.0 0/0" in table
+    with pytest.raises(ValueError, match="x.t=0.2,x.m=s; x.t=0.25,x.m=l"):
+        run.paired(results, "x.t=0.3")
+
+
 def test_configure_types():
     c = run.configure(Config(), {"speakers.resegment": "false", "asr.beam_size": "3",
                                  "speakers.live_threshold": "0.45",
@@ -235,3 +259,4 @@ def test_cli_list_and_report(demo, bench_home, capsys):
     rows[0]["WER"] = 0.0
     base.write_text(json.dumps(rows))
     assert main(["report", "r", "--baseline", str(base)]) == 1  # 10 % vs 0 %: regression
+    assert main(["report", "r", "--compare", "x.t=1"]) == 2  # no such setting

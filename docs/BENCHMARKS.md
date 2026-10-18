@@ -356,6 +356,7 @@ uv run python -m transcribe.bench.suite list
 uv run python -m transcribe.bench.suite run tune --data ami synth-de-piper --split dev \
     --conditions clean noise:10 phone --set speakers.diarize_threshold=0.4,0.5,0.6 --live
 uv run python -m transcribe.bench.suite report tune
+uv run python -m transcribe.bench.suite report tune --compare speakers.diarize_threshold=0.5
 ```
 
 - **Datasets:** AMI meetings (official dev/test split, transcripts and speaker turns),
@@ -374,6 +375,12 @@ uv run python -m transcribe.bench.suite report tune
   of speech under someone else's label), speaker-count error, speed; with `--live` the
   same for live labels. Rates are summed over recordings with 95 % bootstrap confidence
   intervals.
+- **Paired comparison:** `report NAME --compare section.key=value` compares every
+  setting with that one on the same recordings: difference per rate, its 95 % bootstrap
+  interval and how many recordings got better / worse (`paired.md`). Differences between
+  recordings cancel out, so it shows much smaller effects than the per-setting intervals
+  (which overlap even where one setting is worse on 15 of 18 meetings). Other swept keys
+  stay fixed: each setting is compared with the one that differs only in the given keys.
 - **Regression check:** `report NAME --baseline summary.json --tolerance 0.02` exits 1 if
   a rate got worse by more than 2 points.
 - Data and caches live in `~/.cache/transcribe/bench` (AMI ~60 MB per meeting,
@@ -434,12 +441,13 @@ What this shows, to work on next:
    (AMI 23.7 -> 22.2 %, German 9.6 -> 9.0 %); the speaker metrics jumped by up to 14
    points between neighbouring values without a trend. A second run on all 18 AMI dev
    meetings (9.7 h) and 40 German conversations, `phone` only, compared 0.2, 0.25 and
-   0.35 per recording (paired; difference to 0.25 in points, 95 % bootstrap interval):
+   0.35 on the same recordings (`report vad-nb-sweep2 --compare
+   asr.vad_threshold_narrowband=0.25`; difference to 0.25 in points, 95 % interval):
 
    | vs 0.25 | AMI WER | AMI cpWER | AMI DER | German WER | German cpWER | German DER |
    |---|---|---|---|---|---|---|
-   | 0.2 | -0.3 (-1.1 - +0.4) | -0.4 (-7.0 - +6.6) | +0.5 (-3.8 - +5.2) | +0.1 (-0.4 - +0.7) | -0.5 (-1.8 - +0.5) | -0.3 (-1.1 - +0.4) |
-   | 0.35 | **+1.2 (+0.5 - +1.9)** | -5.0 (-11.6 - +2.1) | -2.7 (-7.2 - +1.8) | +1.0 (-0.0 - +2.4) | -0.9 (-2.6 - +0.6) | -0.5 (-1.7 - +0.6) |
+   | 0.2 | -0.3 (-0.9 - +0.4) | -0.8 (-7.9 - +7.1) | -0.2 (-5.0 - +4.8) | +0.1 (-0.5 - +0.7) | -0.5 (-1.8 - +0.5) | -0.2 (-0.9 - +0.5) |
+   | 0.35 | **+1.2 (+0.6 - +1.8)** | -6.3 (-14.2 - +2.0) | -3.8 (-8.7 - +1.6) | +0.8 (-0.0 - +1.9) | -0.7 (-2.5 - +0.8) | -0.5 (-1.5 - +0.4) |
 
    0.2 and 0.25 are indistinguishable; 0.35 costs words (AMI: worse in 15 of 18
    meetings). No speaker metric differs significantly - the jumps on the small set were
