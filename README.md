@@ -326,16 +326,31 @@ uv run tx speakers list | consent NAME --revoke | delete NAME | export F | impor
   those speakers then stay unlabelled until refined (`tx refine -n N`).
 
 ## Installing a release
-Download the archive for your platform from the GitHub releases page and unpack it. It
+On **Debian 13+ and Ubuntu 24.04+** (amd64), install from the apt repository; you then get
+updates with your other packages:
+
+```sh
+sudo curl -fsSLo /usr/share/keyrings/transcribe-archive-keyring.gpg \
+  https://github.com/linuxrrze/audio-transcribe/releases/latest/download/transcribe-archive-keyring.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/transcribe.sources \
+  https://github.com/linuxrrze/audio-transcribe/releases/latest/download/transcribe.sources
+sudo apt update
+sudo apt install transcribe
+```
+
+This installs `tx` and `tx-gui` (with a menu entry) and the libraries they need. The
+package conflicts with `transifex-client`, which also installs a `tx` command. Each release
+also has the .deb for `sudo apt install ./transcribe_<version>_amd64.deb` without the
+repository. To remove the repository: `sudo rm /etc/apt/sources.list.d/transcribe.sources
+/usr/share/keyrings/transcribe-archive-keyring.gpg`.
+
+Elsewhere, download the archive for your platform from the GitHub releases page and unpack it. It
 contains `tx` (command line) and `Transcribe` (desktop app); on macOS, `Transcribe.app`.
 Models are not bundled: the app offers to download them on first start (or run
 `tx models download`, several hundred MB, stored in the user cache directory).
 
 - **Linux:** needs PortAudio and Qt's usual libraries (`apt install libportaudio2 libegl1
   libxkbcommon0`) and, for system audio, `pulseaudio-utils` (also for PipeWire).
-- **Debian 13 / Ubuntu 24.04 and newer:** `sudo apt install ./transcribe_<version>_amd64.deb`
-  instead pulls in those libraries and installs `tx` and `tx-gui` (with a menu entry). It
-  conflicts with `transifex-client`, which also installs a `tx` command.
 - **macOS:** grant microphone and "System Audio Recording" access when asked. Unsigned
   builds must be opened once via right-click → Open.
 - **Windows:** system audio uses WASAPI loopback (no extra drivers).
@@ -345,6 +360,23 @@ secure --extra system && uv run python packaging/build.py`
 (on macOS run `helpers/macos-audiotap/build.sh` first). The Linux bundle is ~335 MB
 (228 MB archived) and was verified here by transcribing with the frozen `tx`.
 `packaging/linux/build_deb.sh` then wraps it in a .deb.
+
+### Debian package and apt repository (maintainers)
+`.github/workflows/deb.yml` builds the .deb on every push and pull request and installs it
+on Debian 13, Ubuntu 24.04 and Ubuntu 26.04. A version tag `vX.Y.Z` (it must match
+`version` in `pyproject.toml`) runs `release.yml`, which also signs a flat apt index
+(`packaging/linux/publish-apt.sh`) and attaches it with the .deb to the release. GitHub
+redirects `releases/latest/download/FILE` to the newest release, so that URL is the apt
+repository; apt only sees the newest version, older .debs stay on their releases.
+After publishing, `apt-test` installs from the repository on the same three systems.
+
+One-time setup:
+1. Create a signing key: `gpg --quick-gen-key "Transcribe apt repository <…>" ed25519 sign 5y`.
+   Store `gpg --armor --export-secret-keys <fingerprint>` as the repository secret
+   `APT_SIGNING_KEY` (and its passphrase, if any, as `APT_SIGNING_PASSPHRASE`). Keep an
+   offline backup: with a new key every user has to download the keyring again.
+2. Before the key expires, extend it (`gpg --quick-set-expire`), update the secret and make
+   a release; users then have to run the first `curl` command again.
 
 ## Development
 ```sh
