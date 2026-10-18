@@ -1,0 +1,88 @@
+# Build the Debian package on pushes and pull requests and install it on Debian and
+# Ubuntu. release.yml calls this workflow for tags and attaches the .deb to the release.
+name: Debian package
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # The oldest supported Ubuntu: the bundle needs the build host's glibc or newer.
+    runs-on: ubuntu-24.04
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -n 1)
+          INIT=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/transcribe/__init__.py)
+          echo "pyproject $VERSION, __version__ $INIT"
+          [ "$VERSION" = "$INIT" ] || { echo "::error::pyproject.toml and __version__ differ"; exit 1; }
+          case $GITHUB_REF in
+            refs/tags/*)
+              [ "$GITHUB_REF_NAME" = "v$VERSION" ] ||
+                { echo "::error::tag $GITHUB_REF_NAME does not match version $VERSION"; exit 1; } ;;
+          esac
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libportaudio2 libegl1 libgl1 libxkbcommon0 \
+            libxkbcommon-x11-0 libfontconfig1 libdbus-1-3 lintian
+      - run: uv sync --group packaging --extra gui --extra secure --extra system
+      - name: Bundle
+        run: uv run python packaging/build.py
+      - name: Package
+        run: |
+          packaging/linux/build_deb.sh dist/transcribe deb
+          dpkg-deb --info deb/*.deb
+      # Report only: the bundle is prebuilt third-party code (see the overrides in the package).
+      - name: Lintian
+        run: lintian --fail-on none --info --display-info deb/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: deb/*.deb
+          if-no-files-found: error
+
+  install-test:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:trixie", "ubuntu:24.04", "ubuntu:26.04"]
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb
+      - name: Install
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ./transcribe_*.deb
+      - name: Run
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          tx version
+          tx plugins | grep faster-whisper
+          tx plugins | grep sherpa-onnx
+          tx-gui --smoke-test | grep "smoke test ok"
+          test -f /usr/share/applications/transcribe.desktop
+      - name: Remove
+        run: |
+          apt-get purge -y transcribe
+          ! test -e /usr/lib/transcribe
+          ! test -e /usr/bin/tx
+          ! test -e /usr/bin/tx-gui

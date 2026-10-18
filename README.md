@@ -333,6 +333,9 @@ Models are not bundled: the app offers to download them on first start (or run
 
 - **Linux:** needs PortAudio and Qt's usual libraries (`apt install libportaudio2 libegl1
   libxkbcommon0`) and, for system audio, `pulseaudio-utils` (also for PipeWire).
+- **Debian 13 / Ubuntu 24.04 and newer:** `sudo apt install ./transcribe_<version>_amd64.deb`
+  instead pulls in those libraries and installs `tx` and `tx-gui` (with a menu entry). It
+  conflicts with `transifex-client`, which also installs a `tx` command.
 - **macOS:** grant microphone and "System Audio Recording" access when asked. Unsigned
   builds must be opened once via right-click → Open.
 - **Windows:** system audio uses WASAPI loopback (no extra drivers).
@@ -341,6 +344,7 @@ Build a bundle yourself: `uv sync --group packaging --extra gui --extra
 secure --extra system && uv run python packaging/build.py`
 (on macOS run `helpers/macos-audiotap/build.sh` first). The Linux bundle is ~335 MB
 (228 MB archived) and was verified here by transcribing with the frozen `tx`.
+`packaging/linux/build_deb.sh` then wraps it in a .deb.
 
 ## Development
 ```sh

@@ -50,8 +50,11 @@ jobs:
             dist/*.zip
             dist/*.tar.gz
 
+  deb:
+    uses: ./.github/workflows/deb.yml
+
   publish:
-    needs: bundle
+    needs: [bundle, deb]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
