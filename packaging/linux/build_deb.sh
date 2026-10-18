@@ -64,10 +64,25 @@ Source: $HOMEPAGE
 
 Files: *
 Copyright: 2026 Marcel Ritter
+License: AGPL-3+
 Comment: /usr/lib/$PACKAGE is a PyInstaller bundle. It also contains Python and
  third-party libraries (Qt/PySide6, CTranslate2, ONNX Runtime, sherpa-onnx,
  faster-whisper, PyAV/FFmpeg, PortAudio and others) under their own licenses;
  their license files are in /usr/lib/$PACKAGE/_internal.
+
+License: AGPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published
+ by the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU Affero General Public License for more details.
+ .
+ You should have received a copy of the GNU Affero General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
 END
 gzip -9n > "$DOC/changelog.gz" <<END
 $PACKAGE ($VERSION) unstable; urgency=medium

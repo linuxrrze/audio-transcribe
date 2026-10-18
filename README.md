@@ -357,3 +357,10 @@ uv run python -m transcribe.bench.latency out.wav small  # real-time live latenc
 uv run python -m transcribe.bench.calibrate --sweep      # voiceprint thresholds
 ```
 
+## License
+
+Copyright (C) 2026 Marcel Ritter
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See [LICENSE](LICENSE).
+
+The release bundles and the Debian package also contain third-party libraries under their own (compatible) licenses, among them Qt/PySide6 (LGPL-3; Qt Virtual Keyboard GPL-3), FFmpeg (LGPL-3+, with the GPL-2+ x264/x265 encoders), CTranslate2, ONNX Runtime and faster-whisper (MIT) and sherpa-onnx (Apache-2.0). Speech models are downloaded on first use and are not part of the distribution.
