@@ -421,7 +421,7 @@ msgid "Duration"
 msgstr "Dauer"
 
 #: src/transcribe/cli/sessions.py:112
-#: src/transcribe/gui/settings_dialog.py:152
+#: src/transcribe/gui/settings_dialog.py:168
 #: src/transcribe/gui/speaker_panel.py:75
 msgid "Speakers"
 msgstr "Sprecher"
@@ -883,7 +883,7 @@ msgstr "Zu einem Kanal mischen (sparsamer)"
 
 #: src/transcribe/gui/live_tab.py:95
 #: src/transcribe/gui/sessions_tab.py:81
-#: src/transcribe/gui/settings_dialog.py:202
+#: src/transcribe/gui/settings_dialog.py:218
 msgid "auto"
 msgstr "automatisch"
 
@@ -960,7 +960,7 @@ msgid "Live session"
 msgstr "Live-Sitzung"
 
 #: src/transcribe/gui/main_window.py:26
-#: src/transcribe/gui/settings_dialog.py:153
+#: src/transcribe/gui/settings_dialog.py:169
 msgid "Live"
 msgstr "Live"
 
@@ -990,7 +990,7 @@ msgid "&Quit"
 msgstr "&Beenden"
 
 #: src/transcribe/gui/main_window.py:53
-#: src/transcribe/gui/settings_dialog.py:147
+#: src/transcribe/gui/settings_dialog.py:163
 msgid "Settings"
 msgstr "Einstellungen"
 
@@ -1106,7 +1106,7 @@ msgstr[1] "{name}: {n} Stimmprofile gespeichert"
 msgid "Refining: {stage} {percent}"
 msgstr "Verfeinern: {stage} {percent}"
 
-#: src/transcribe/gui/settings_dialog.py:133
+#: src/transcribe/gui/settings_dialog.py:149
 msgid "Browse…"
 msgstr "Durchsuchen…"
 
@@ -1139,247 +1139,247 @@ msgstr "Vokabular importieren"
 msgid "Export vocabulary"
 msgstr "Vokabular exportieren"
 
-#: src/transcribe/gui/settings_dialog.py:151
+#: src/transcribe/gui/settings_dialog.py:167
 msgid "Speech recognition"
 msgstr "Spracherkennung"
 
-#: src/transcribe/gui/settings_dialog.py:155
+#: src/transcribe/gui/settings_dialog.py:171
 msgid "General"
 msgstr "Allgemein"
 
-#: src/transcribe/gui/settings_dialog.py:175
+#: src/transcribe/gui/settings_dialog.py:191
 msgid "faster-whisper: CPU or NVIDIA GPU. whisper.cpp: also AMD/Intel GPUs (Vulkan) and Apple GPUs (Metal); needs whisper-server, see scripts/build_whispercpp.sh."
 msgstr "faster-whisper: CPU oder NVIDIA-GPU. whisper.cpp: auch AMD-/Intel-GPUs (Vulkan) und Apple-GPUs (Metal); benötigt whisper-server, siehe scripts/build_whispercpp.sh."
 
-#: src/transcribe/gui/settings_dialog.py:183
+#: src/transcribe/gui/settings_dialog.py:199
 msgid "(same as live)"
 msgstr "(wie live)"
 
-#: src/transcribe/gui/settings_dialog.py:195
+#: src/transcribe/gui/settings_dialog.py:211
 msgid "cuda: faster-whisper on NVIDIA; gpu: whisper.cpp on any GPU"
 msgstr "cuda: faster-whisper auf NVIDIA; gpu: whisper.cpp auf jeder GPU"
 
-#: src/transcribe/gui/settings_dialog.py:198
+#: src/transcribe/gui/settings_dialog.py:214
 msgid "Allowed languages, comma-separated (e.g. de,en)"
 msgstr "Erlaubte Sprachen, durch Kommas getrennt (z. B. de,en)"
 
-#: src/transcribe/gui/settings_dialog.py:200
+#: src/transcribe/gui/settings_dialog.py:216
 msgid "Beam search width for files and refinement (live: Live tab)"
 msgstr "Beam-Breite für Dateien und Verfeinerung (live: Reiter Live)"
 
-#: src/transcribe/gui/settings_dialog.py:203
+#: src/transcribe/gui/settings_dialog.py:219
 msgid "Punctuated example prompt (recommended)"
 msgstr "Beispiel-Prompt mit Satzzeichen (empfohlen)"
 
-#: src/transcribe/gui/settings_dialog.py:205
+#: src/transcribe/gui/settings_dialog.py:221
 msgid "Keeps punctuation and capitals; off gives more verbatim text (see docs/BENCHMARKS.md)"
 msgstr "Erhält Satzzeichen und Großschreibung; ausgeschaltet entsteht wortgetreuerer Text (siehe docs/BENCHMARKS.md)"
 
-#: src/transcribe/gui/settings_dialog.py:208
+#: src/transcribe/gui/settings_dialog.py:224
 msgid "Edit vocabulary…"
 msgstr "Vokabular bearbeiten…"
 
-#: src/transcribe/gui/settings_dialog.py:217
+#: src/transcribe/gui/settings_dialog.py:233
 msgid "own build or PATH"
 msgstr "eigener Build oder PATH"
 
-#: src/transcribe/gui/settings_dialog.py:218
+#: src/transcribe/gui/settings_dialog.py:234
 msgid "Accurate word times (DTW; needed for speaker attribution)"
 msgstr "Genaue Wortzeiten (DTW; nötig für die Sprecherzuordnung)"
 
-#: src/transcribe/gui/settings_dialog.py:223
+#: src/transcribe/gui/settings_dialog.py:239
 msgid "Engine:"
 msgstr "Engine:"
 
-#: src/transcribe/gui/settings_dialog.py:224
+#: src/transcribe/gui/settings_dialog.py:240
 msgid "Model (live and files):"
 msgstr "Modell (live und Dateien):"
 
-#: src/transcribe/gui/settings_dialog.py:225
+#: src/transcribe/gui/settings_dialog.py:241
 msgid "Model after a live session:"
 msgstr "Modell nach einer Live-Sitzung:"
 
-#: src/transcribe/gui/settings_dialog.py:226
+#: src/transcribe/gui/settings_dialog.py:242
 msgid "Compute device:"
 msgstr "Rechengerät:"
 
-#: src/transcribe/gui/settings_dialog.py:227
+#: src/transcribe/gui/settings_dialog.py:243
 msgid "Languages:"
 msgstr "Sprachen:"
 
-#: src/transcribe/gui/settings_dialog.py:228
+#: src/transcribe/gui/settings_dialog.py:244
 msgid "Beam size:"
 msgstr "Beam-Breite:"
 
-#: src/transcribe/gui/settings_dialog.py:229
+#: src/transcribe/gui/settings_dialog.py:245
 msgid "CPU threads:"
 msgstr "CPU-Threads:"
 
-#: src/transcribe/gui/settings_dialog.py:231
+#: src/transcribe/gui/settings_dialog.py:247
 msgid "Vocabulary:"
 msgstr "Vokabular:"
 
-#: src/transcribe/gui/settings_dialog.py:242
+#: src/transcribe/gui/settings_dialog.py:258
 msgid "Clustering distance of the speaker detection: lower finds more speakers"
 msgstr "Clustering-Abstand der Sprechererkennung: niedriger findet mehr Sprecher"
 
-#: src/transcribe/gui/settings_dialog.py:244
+#: src/transcribe/gui/settings_dialog.py:260
 msgid "Second pass over sentences (recommended)"
 msgstr "Zweiter Durchgang über Sätze (empfohlen)"
 
-#: src/transcribe/gui/settings_dialog.py:246
+#: src/transcribe/gui/settings_dialog.py:262
 msgid "Re-clusters transcript phrases: fixes merged turns in fast dialogue and far too many speakers"
 msgstr "Gruppiert die Sätze des Transkripts neu: behebt zusammengelegte Wortwechsel in schnellen Dialogen und viel zu viele Sprecher"
 
-#: src/transcribe/gui/settings_dialog.py:249
+#: src/transcribe/gui/settings_dialog.py:265
 msgid "Estimate (may split a person; merge afterwards)"
 msgstr "Schätzen (kann eine Person aufteilen; danach zusammenführen)"
 
-#: src/transcribe/gui/settings_dialog.py:251
+#: src/transcribe/gui/settings_dialog.py:267
 msgid "Silhouette (distinct voices, e.g. meetings)"
 msgstr "Silhouette (gut unterscheidbare Stimmen, z. B. Besprechungen)"
 
-#: src/transcribe/gui/settings_dialog.py:256
+#: src/transcribe/gui/settings_dialog.py:272
 msgid "Live labels: similarity at which a sentence joins a known speaker; higher finds more speakers"
 msgstr "Live-Zuordnung: Ähnlichkeit, ab der ein Satz einem bekannten Sprecher zugeordnet wird; höher findet mehr Sprecher"
 
-#: src/transcribe/gui/settings_dialog.py:259
+#: src/transcribe/gui/settings_dialog.py:275
 msgid "The same for telephone-band audio (phone and some call audio), where voices sound more alike"
 msgstr "Dasselbe für Audio im Telefonband (Telefon und manche Anrufe), in dem Stimmen ähnlicher klingen"
 
-#: src/transcribe/gui/settings_dialog.py:262
+#: src/transcribe/gui/settings_dialog.py:278
 msgid "Speaker threshold:"
 msgstr "Sprecher-Schwelle:"
 
-#: src/transcribe/gui/settings_dialog.py:264
+#: src/transcribe/gui/settings_dialog.py:280
 msgid "Number of speakers:"
 msgstr "Anzahl der Sprecher:"
 
-#: src/transcribe/gui/settings_dialog.py:265
+#: src/transcribe/gui/settings_dialog.py:281
 msgid "Threads:"
 msgstr "Threads:"
 
-#: src/transcribe/gui/settings_dialog.py:266
+#: src/transcribe/gui/settings_dialog.py:282
 msgid "Live speaker threshold:"
 msgstr "Live-Sprecher-Schwelle:"
 
-#: src/transcribe/gui/settings_dialog.py:267
+#: src/transcribe/gui/settings_dialog.py:283
 msgid "… for telephone audio:"
 msgstr "… für Telefon-Audio:"
 
-#: src/transcribe/gui/settings_dialog.py:268
+#: src/transcribe/gui/settings_dialog.py:284
 msgid "If you know how many people speak, give the number when transcribing (Sessions tab: Refine with a speaker count) - the most reliable setting."
 msgstr "Wenn Sie wissen, wie viele Personen sprechen, geben Sie die Anzahl beim Transkribieren an (Reiter Sitzungen: Verfeinern mit Sprecheranzahl) – die zuverlässigste Einstellung."
 
-#: src/transcribe/gui/settings_dialog.py:277
+#: src/transcribe/gui/settings_dialog.py:293
 msgid "Refine the transcript when a session stops"
 msgstr "Transkript nach dem Beenden einer Sitzung verfeinern"
 
-#: src/transcribe/gui/settings_dialog.py:280
+#: src/transcribe/gui/settings_dialog.py:296
 msgid "New audio between two decodes; smaller = faster text, more CPU"
 msgstr "Neues Audio zwischen zwei Dekodierungen; kleiner = schnellerer Text, mehr CPU-Last"
 
-#: src/transcribe/gui/settings_dialog.py:283
+#: src/transcribe/gui/settings_dialog.py:299
 msgid "Pause that ends an utterance"
 msgstr "Pause, die eine Äußerung beendet"
 
-#: src/transcribe/gui/settings_dialog.py:286
+#: src/transcribe/gui/settings_dialog.py:302
 msgid "1 = fastest; larger is slightly more accurate"
 msgstr "1 = am schnellsten; größer ist etwas genauer"
 
-#: src/transcribe/gui/settings_dialog.py:289
+#: src/transcribe/gui/settings_dialog.py:305
 msgid "Decode every:"
 msgstr "Dekodieren alle:"
 
-#: src/transcribe/gui/settings_dialog.py:290
+#: src/transcribe/gui/settings_dialog.py:306
 msgid "Utterance ends after:"
 msgstr "Äußerung endet nach:"
 
-#: src/transcribe/gui/settings_dialog.py:291
+#: src/transcribe/gui/settings_dialog.py:307
 msgid "Longest utterance:"
 msgstr "Längste Äußerung:"
 
-#: src/transcribe/gui/settings_dialog.py:292
+#: src/transcribe/gui/settings_dialog.py:308
 msgid "Beam size (live):"
 msgstr "Beam-Breite (live):"
 
-#: src/transcribe/gui/settings_dialog.py:297
+#: src/transcribe/gui/settings_dialog.py:313
 msgid "Recognise known people"
 msgstr "Bekannte Personen erkennen"
 
-#: src/transcribe/gui/settings_dialog.py:299
+#: src/transcribe/gui/settings_dialog.py:315
 msgid "Store voiceprints (needed to learn voices)"
 msgstr "Stimmprofile speichern (nötig, um Stimmen zu lernen)"
 
-#: src/transcribe/gui/settings_dialog.py:301
+#: src/transcribe/gui/settings_dialog.py:317
 msgid "Encrypt voiceprints (key in the OS keyring)"
 msgstr "Stimmprofile verschlüsseln (Schlüssel im Schlüsselbund des Systems)"
 
-#: src/transcribe/gui/settings_dialog.py:304
+#: src/transcribe/gui/settings_dialog.py:320
 msgid "Similarity at which a known person is labelled automatically"
 msgstr "Ähnlichkeit, ab der eine bekannte Person automatisch benannt wird"
 
-#: src/transcribe/gui/settings_dialog.py:307
+#: src/transcribe/gui/settings_dialog.py:323
 msgid "Similarity at which the app asks 'Is this X?'"
 msgstr "Ähnlichkeit, ab der die App fragt: „Ist das X?“"
 
-#: src/transcribe/gui/settings_dialog.py:309
+#: src/transcribe/gui/settings_dialog.py:325
 msgid "Required lead over the second-best person"
 msgstr "Nötiger Vorsprung vor der zweitbesten Person"
 
-#: src/transcribe/gui/settings_dialog.py:311
+#: src/transcribe/gui/settings_dialog.py:327
 msgid "Manage voiceprints…"
 msgstr "Stimmprofile verwalten…"
 
-#: src/transcribe/gui/settings_dialog.py:313
+#: src/transcribe/gui/settings_dialog.py:329
 msgid "Voiceprints are biometric data: stored only on this computer, only with the person's consent, deletable at any time."
 msgstr "Stimmprofile sind biometrische Daten: nur auf diesem Computer gespeichert, nur mit Einwilligung der Person, jederzeit löschbar."
 
-#: src/transcribe/gui/settings_dialog.py:321
+#: src/transcribe/gui/settings_dialog.py:337
 msgid "Label automatically from:"
 msgstr "Automatisch benennen ab:"
 
-#: src/transcribe/gui/settings_dialog.py:322
+#: src/transcribe/gui/settings_dialog.py:338
 msgid "Suggest from:"
 msgstr "Vorschlagen ab:"
 
-#: src/transcribe/gui/settings_dialog.py:323
+#: src/transcribe/gui/settings_dialog.py:339
 msgid "Margin:"
 msgstr "Vorsprung:"
 
-#: src/transcribe/gui/settings_dialog.py:324
+#: src/transcribe/gui/settings_dialog.py:340
 msgid "Voiceprints per person:"
 msgstr "Stimmprofile pro Person:"
 
-#: src/transcribe/gui/settings_dialog.py:332
+#: src/transcribe/gui/settings_dialog.py:348
 msgid "Automatic (system language)"
 msgstr "Automatisch (Systemsprache)"
 
-#: src/transcribe/gui/settings_dialog.py:337
+#: src/transcribe/gui/settings_dialog.py:353
 msgid "Takes effect after restarting the app"
 msgstr "Wirksam nach einem Neustart der App"
 
-#: src/transcribe/gui/settings_dialog.py:341
+#: src/transcribe/gui/settings_dialog.py:357
 msgid "Change with the TRANSCRIBE_MODELS_DIR environment variable"
 msgstr "Änderbar über die Umgebungsvariable TRANSCRIBE_MODELS_DIR"
 
-#: src/transcribe/gui/settings_dialog.py:343
+#: src/transcribe/gui/settings_dialog.py:359
 msgid "Language:"
 msgstr "Sprache:"
 
-#: src/transcribe/gui/settings_dialog.py:344
+#: src/transcribe/gui/settings_dialog.py:360
 msgid "Sessions:"
 msgstr "Sitzungen:"
 
-#: src/transcribe/gui/settings_dialog.py:345
+#: src/transcribe/gui/settings_dialog.py:361
 msgid "Models:"
 msgstr "Modelle:"
 
-#: src/transcribe/gui/settings_dialog.py:375
+#: src/transcribe/gui/settings_dialog.py:391
 msgid "whisper-server binary"
 msgstr "whisper-server-Programm"
 
-#: src/transcribe/gui/settings_dialog.py:381
+#: src/transcribe/gui/settings_dialog.py:397
 msgid "Sessions folder"
 msgstr "Ordner für Sitzungen"
 
@@ -1387,7 +1387,7 @@ msgstr "Ordner für Sitzungen"
 msgid "{terms} terms, {corrections} corrections."
 msgstr "Begriffe: {terms}, Korrekturen: {corrections}."
 
-#: src/transcribe/gui/settings_dialog.py:356
+#: src/transcribe/gui/settings_dialog.py:372
 msgid "none"
 msgstr "keine"
 
@@ -1401,7 +1401,7 @@ msgstr "Nur die ersten {used} von {total} Hinweiswörtern passen in Whispers Pro
 msgid "All files"
 msgstr "Alle Dateien"
 
-#: src/transcribe/gui/settings_dialog.py:157
+#: src/transcribe/gui/settings_dialog.py:173
 msgid "Saved in {path}"
 msgstr "Gespeichert in {path}"
 
@@ -1409,7 +1409,7 @@ msgstr "Gespeichert in {path}"
 msgid "Text files"
 msgstr "Textdateien"
 
-#: src/transcribe/gui/settings_dialog.py:355
+#: src/transcribe/gui/settings_dialog.py:371
 msgid "{terms} terms, {corrections} corrections"
 msgstr "Begriffe: {terms}, Korrekturen: {corrections}"
 

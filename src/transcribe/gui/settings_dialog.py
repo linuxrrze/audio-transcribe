@@ -109,9 +109,25 @@ class VocabularyDialog(QDialog):
             Path(path).write_text(self.vocabulary().to_text() + "\n", encoding="utf-8")
 
 
+class _DecimalSpinBox(QDoubleSpinBox):
+    """Takes both "." and "," as the decimal point, in every language. Qt reads the other
+    one as a thousands separator and drops it: "0.5" gave 5 in German, "0,5" 5 in English
+    (no setting here needs thousands)."""
+
+    def _fix(self, text: str) -> str:
+        point = self.locale().decimalPoint()
+        return text.replace(".", point).replace(",", point)
+
+    def validate(self, text: str, pos: int):  # noqa: ANN201 - Qt returns a tuple
+        return super().validate(self._fix(text), pos)
+
+    def valueFromText(self, text: str) -> float:  # noqa: N802 - Qt API
+        return super().valueFromText(self._fix(text))
+
+
 def _spin(value: float, lo: float, hi: float, step: float, decimals: int = 2,
           suffix: str = "") -> QDoubleSpinBox:
-    box = QDoubleSpinBox()
+    box = _DecimalSpinBox()
     box.setRange(lo, hi)
     box.setSingleStep(step)
     box.setDecimals(decimals)

@@ -308,6 +308,24 @@ def test_settings_language_and_refine_model(app, config):
     assert dlg.apply().live.refine_model == ""
 
 
+def test_settings_decimals_accept_point_and_comma(app, config):
+    from PySide6.QtCore import QLocale
+    from PySide6.QtTest import QTest
+
+    from transcribe.gui.settings_dialog import SettingsDialog
+
+    dlg = SettingsDialog(config)
+    step = dlg.step  # seconds, with a " s" suffix
+    for language in (QLocale.Language.German, QLocale.Language.English):
+        step.setLocale(QLocale(language))
+        for typed in ("0.5", "0,5"):  # the other separator used to be dropped: 5 s
+            step.lineEdit().selectAll()
+            step.lineEdit().del_()
+            QTest.keyClicks(step.lineEdit(), typed)
+            step.interpretText()
+            assert step.value() == 0.5, (language, typed)
+
+
 def test_voiceprints_dialog(app, config, tmp_path, monkeypatch):
     from PySide6.QtWidgets import QInputDialog, QMessageBox
 
