@@ -918,7 +918,7 @@ msgid "System audio:"
 msgstr "Systemton:"
 
 #: src/transcribe/gui/live_tab.py:128
-#: src/transcribe/gui/sessions_tab.py:98
+#: src/transcribe/gui/sessions_tab.py:100
 msgid "Speakers:"
 msgstr "Sprecher:"
 
@@ -1023,8 +1023,8 @@ msgid "Right-click a line (or selected lines) to change the speaker; double-clic
 msgstr "Rechtsklick auf eine Zeile (oder markierte Zeilen) ändert den Sprecher; Doppelklick bearbeitet den Text."
 
 #: src/transcribe/gui/sessions_tab.py:67
-#: src/transcribe/gui/sessions_tab.py:172
-#: src/transcribe/gui/sessions_tab.py:180
+#: src/transcribe/gui/sessions_tab.py:179
+#: src/transcribe/gui/sessions_tab.py:187
 msgid "Play"
 msgstr "Abspielen"
 
@@ -1042,67 +1042,67 @@ msgstr "Verfeinern"
 msgid "Re-run speaker detection and transcription on the recording"
 msgstr "Sprechererkennung und Transkription auf der Aufnahme erneut ausführen"
 
-#: src/transcribe/gui/sessions_tab.py:210
+#: src/transcribe/gui/sessions_tab.py:217
 msgid "Edit line"
 msgstr "Zeile bearbeiten"
 
-#: src/transcribe/gui/sessions_tab.py:211
+#: src/transcribe/gui/sessions_tab.py:218
 msgid "Each line becomes a line of its own (split where the speaker changes);\ndelete all text to remove the line."
 msgstr "Jede Zeile wird zu einer eigenen Zeile (dort trennen, wo der Sprecher wechselt);\nden ganzen Text löschen, um die Zeile zu entfernen."
 
-#: src/transcribe/gui/sessions_tab.py:278
+#: src/transcribe/gui/sessions_tab.py:285
 msgid "Export transcript"
 msgstr "Transkript exportieren"
 
-#: src/transcribe/gui/sessions_tab.py:175
+#: src/transcribe/gui/sessions_tab.py:182
 msgid "Pause"
 msgstr "Pause"
 
-#: src/transcribe/gui/sessions_tab.py:198
+#: src/transcribe/gui/sessions_tab.py:205
 msgid "New speaker"
 msgstr "Neuer Sprecher"
 
-#: src/transcribe/gui/sessions_tab.py:199
+#: src/transcribe/gui/sessions_tab.py:206
 msgid "Name of the new speaker:"
 msgstr "Name des neuen Sprechers:"
 
-#: src/transcribe/gui/sessions_tab.py:301
+#: src/transcribe/gui/sessions_tab.py:308
 msgid "Refined"
 msgstr "Verfeinert"
 
-#: src/transcribe/gui/sessions_tab.py:306
+#: src/transcribe/gui/sessions_tab.py:313
 msgid "Refine failed"
 msgstr "Verfeinern fehlgeschlagen"
 
-#: src/transcribe/gui/sessions_tab.py:126
+#: src/transcribe/gui/sessions_tab.py:133
 msgid "{n} speaker"
 msgid_plural "{n} speakers"
 msgstr[0] "{n} Sprecher"
 msgstr[1] "{n} Sprecher"
 
-#: src/transcribe/gui/sessions_tab.py:220
+#: src/transcribe/gui/sessions_tab.py:227
 msgid "Edit failed"
 msgstr "Bearbeiten fehlgeschlagen"
 
-#: src/transcribe/gui/sessions_tab.py:257
+#: src/transcribe/gui/sessions_tab.py:264
 msgid "Voiceprint not stored"
 msgstr "Stimmprofil nicht gespeichert"
 
-#: src/transcribe/gui/sessions_tab.py:258
+#: src/transcribe/gui/sessions_tab.py:265
 msgid "The speaker is renamed without learning the voice."
 msgstr "Der Sprecher wird umbenannt, ohne die Stimme zu lernen."
 
-#: src/transcribe/gui/sessions_tab.py:281
+#: src/transcribe/gui/sessions_tab.py:288
 msgid "Exported to {path}"
 msgstr "Exportiert nach {path}"
 
-#: src/transcribe/gui/sessions_tab.py:251
+#: src/transcribe/gui/sessions_tab.py:258
 msgid "{name}: {n} voiceprint stored"
 msgid_plural "{name}: {n} voiceprints stored"
 msgstr[0] "{name}: {n} Stimmprofil gespeichert"
 msgstr[1] "{name}: {n} Stimmprofile gespeichert"
 
-#: src/transcribe/gui/sessions_tab.py:295
+#: src/transcribe/gui/sessions_tab.py:302
 msgid "Refining: {stage} {percent}"
 msgstr "Verfeinern: {stage} {percent}"
 
