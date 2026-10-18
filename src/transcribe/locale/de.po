@@ -1313,7 +1313,7 @@ msgstr "Stimmprofile speichern (nötig, um Stimmen zu lernen)"
 
 #: src/transcribe/gui/settings_dialog.py:318
 msgid "Encrypt voiceprints (key in the OS keyring)"
-msgstr "Stimmprofile verschlüsseln (Schlüssel im Schlüsselbund des Systems)"
+msgstr "Stimmprofile verschlüsseln (Schlüssel im System-Schlüsselbund)"
 
 #: src/transcribe/gui/settings_dialog.py:321
 msgid "Similarity at which a known person is labelled automatically"
