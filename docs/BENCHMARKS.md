@@ -427,6 +427,27 @@ What this shows, to work on next:
    AMI audio (69.5 of 94.8 s in a 2-minute excerpt); Whisper alone transcribes 92 % of
    the words. (An earlier version of the `phone` condition added full-band noise after
    band-limiting, which made the VAD collapse to 12 % - not realistic, fixed.)
+   **Fixed:** speech detection detects telephone-band audio (`audio/bandwidth.py`, as for
+   the live labels) and uses `asr.vad_threshold_narrowband = 0.25` there instead of 0.5
+   (`asr.vad_threshold`, unchanged for wideband audio). On the first data (4 meetings,
+   10 conversations) any value of 0.15-0.35 lowered the phone WER by 1-2 points vs 0.5
+   (AMI 23.7 -> 22.2 %, German 9.6 -> 9.0 %); the speaker metrics jumped by up to 14
+   points between neighbouring values without a trend. A second run on all 18 AMI dev
+   meetings (9.7 h) and 40 German conversations, `phone` only, compared 0.2, 0.25 and
+   0.35 per recording (paired; difference to 0.25 in points, 95 % bootstrap interval):
+
+   | vs 0.25 | AMI WER | AMI cpWER | AMI DER | German WER | German cpWER | German DER |
+   |---|---|---|---|---|---|---|
+   | 0.2 | -0.3 (-1.1 - +0.4) | -0.4 (-7.0 - +6.6) | +0.5 (-3.8 - +5.2) | +0.1 (-0.4 - +0.7) | -0.5 (-1.8 - +0.5) | -0.3 (-1.1 - +0.4) |
+   | 0.35 | **+1.2 (+0.5 - +1.9)** | -5.0 (-11.6 - +2.1) | -2.7 (-7.2 - +1.8) | +1.0 (-0.0 - +2.4) | -0.9 (-2.6 - +0.6) | -0.5 (-1.7 - +0.6) |
+
+   0.2 and 0.25 are indistinguishable; 0.35 costs words (AMI: worse in 15 of 18
+   meetings). No speaker metric differs significantly - the jumps on the small set were
+   noise, probably because the second pass re-clusters the transcript's phrases, so a
+   few changed words can move whole stretches to another label. 0.25 stays.
+   At 0.25 the 18 meetings are much harder than the first 4 (phone WER 33.8 vs 22.2 %,
+   cpWER 76 %, DER 47 %, live DER 35.5 %, speaker count error 10.6 with 4 people);
+   German: WER 9.0 %, cpWER 54 %, DER 27 %, live DER 7.0 %.
 5. **Many speakers in a short recording:** in one 5-voice conversation the second pass
    merged the voices into 2 (cpWER 88 %) - its speaker-count estimate ignores speakers
    with < 3 s of speech; the live labels got this recording right.
