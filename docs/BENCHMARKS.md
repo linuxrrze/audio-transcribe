@@ -448,6 +448,51 @@ What this shows, to work on next:
    first 4), the conversations do not (1.0). The likely cause is length - the meetings
    run 16-50 minutes, the conversations about a minute - so the fix belongs in how the
    speaker count is chosen, not in the threshold. 0.5 stays.
+
+   **Length confirmed:** the diarizer alone (no Whisper) on the first 2, 5 and 10 minutes
+   of each of the 18 meetings (`phone`) vs the full meeting; "people" = reference
+   speakers with at least 3 s in the excerpt, "estimate" = the count the second pass
+   uses (`speaker_count`, here without its cap of 15):
+
+   | excerpt | people | diarizer clusters | estimate | over-count | diarizer DER |
+   |---|---|---|---|---|---|
+   | 2 min | 2.4 | 7.7 | 3.5 | +1.1 | 39.5 % |
+   | 5 min | 3.4 | 17.4 | 8.1 | +4.7 | 43.6 % |
+   | 10 min | 4.0 | 32.2 | 13.3 | +9.3 | 46.2 % |
+   | full (32 min on average) | 4.0 | 96.8 | 17.7 | +13.7 | 62.1 % |
+
+   The clusters grow about in proportion to the length (~3 per minute; TS3004d: 11, 28,
+   47, 191), and from 10 minutes to the full meeting the over-count still rises with the
+   same 4 people. The estimate counts clusters with at least 3 s and 1 % of the speech -
+   only 18 s in a 30-minute meeting, which many split-off clusters reach (the 4th
+   largest label holds a median 7.3 % of the speech, the 8th 3.0 %). The one-minute
+   German conversations are bounded by the 3 s instead and under-count (24 of 40).
+   A higher minimum share, applied to the same cached diarization (count only, before
+   the second pass):
+
+   | minimum share | AMI over-count | AMI under-counted | German count error |
+   |---|---|---|---|
+   | 1 % (default) | +13.7 | 0 / 18 | 1.23 |
+   | 3 % | +4.0 | 0 / 18 | 1.23 |
+   | 5 % | +1.4 | 0 / 18 | 1.23 |
+   | 8 % | -0.9 | 12 / 18 | 1.38 |
+
+   Next: test a higher minimum share end to end (cpWER, impurity); the risk is a person
+   with less than that share of a long recording losing their own label.
+
+   **The other count method,** `speakers.speaker_count = "silhouette"` (the k of best
+   silhouette score up to the estimate), on the same data against "estimate" (`report
+   speaker-count-phone --compare speakers.speaker_count=estimate`):
+
+   | silhouette vs estimate | cpWER | DER | impurity | speaker count error |
+   |---|---|---|---|---|
+   | AMI (18 meetings) | **-14.8 (-22.7 - -6.6)** 15/3 | **-7.8 (-12.8 - -2.8)** 16/2 | **+13.0 (+6.2 - +20.9)** 1/17 | 10.6 -> 2.3 |
+   | German (40 conversations) | +0.7 (-3.6 - +5.2) 6/3 | +0.9 (-1.4 - +3.5) 6/3 | +2.0 (+0.0 - +4.6) 0/3 | 1.2 -> 1.0 |
+
+   The largest gain of any setting on the meetings, but impurity triples there (7.8 ->
+   20.8 %): different people end up under one label, which the user cannot undo (labels
+   can be merged in the app, not split) - the reason "estimate" stays the default (it also
+   collapsed a radio play with similar voices into 3 speakers, see `resegment.py`).
 3. **Noise costs more in German than on AMI** (WER +14 vs +6 points at 10 dB).
 4. **VAD on telephone-band audio:** Silero finds only ~73 % of the speech in band-limited
    AMI audio (69.5 of 94.8 s in a 2-minute excerpt); Whisper alone transcribes 92 % of
