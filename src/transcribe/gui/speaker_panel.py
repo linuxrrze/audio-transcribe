@@ -40,6 +40,10 @@ class SpeakerPanel(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.list = QListWidget()
+        # a long name suggestion is cut with "…" (full text in the tooltip) instead of
+        # making the narrow list scroll sideways
+        self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.list.setTextElideMode(Qt.TextElideMode.ElideRight)
         self.list.currentItemChanged.connect(self._update_buttons)
         self.rename_btn = QPushButton(_("Name…"))
         self.merge_btn = QPushButton(_("Merge into…"))
@@ -87,8 +91,8 @@ class SpeakerPanel(QWidget):
                                                 else "")
             item = QListWidgetItem(_swatch(speaker_color(sid)), text)
             item.setData(Qt.ItemDataRole.UserRole, sid)
-            item.setToolTip(sid + (_(", score {score}").format(score=f"{spk.score:.2f}")
-                                   if spk.score else ""))
+            score = _(", score {score}").format(score=f"{spk.score:.2f}") if spk.score else ""
+            item.setToolTip(f"{text}\n{sid}{score}")  # the full text: the list may cut it
             self.list.addItem(item)
             if sid == current:
                 self.list.setCurrentItem(item)

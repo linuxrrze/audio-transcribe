@@ -422,7 +422,7 @@ msgstr "Dauer"
 
 #: src/transcribe/cli/sessions.py:112
 #: src/transcribe/gui/settings_dialog.py:152
-#: src/transcribe/gui/speaker_panel.py:71
+#: src/transcribe/gui/speaker_panel.py:75
 msgid "Speakers"
 msgstr "Sprecher"
 
@@ -1413,38 +1413,38 @@ msgstr "Textdateien"
 msgid "{terms} terms, {corrections} corrections"
 msgstr "Begriffe: {terms}, Korrekturen: {corrections}"
 
-#: src/transcribe/gui/speaker_panel.py:44
+#: src/transcribe/gui/speaker_panel.py:48
 msgid "Name…"
 msgstr "Benennen…"
 
-#: src/transcribe/gui/speaker_panel.py:45
+#: src/transcribe/gui/speaker_panel.py:49
 #: src/transcribe/gui/voiceprints_dialog.py:143
 msgid "Merge into…"
 msgstr "Zusammenführen mit…"
 
-#: src/transcribe/gui/speaker_panel.py:46
+#: src/transcribe/gui/speaker_panel.py:50
 msgid "Yes"
 msgstr "Ja"
 
-#: src/transcribe/gui/speaker_panel.py:47
+#: src/transcribe/gui/speaker_panel.py:51
 msgid "No"
 msgstr "Nein"
 
-#: src/transcribe/gui/speaker_panel.py:136
+#: src/transcribe/gui/speaker_panel.py:140
 msgid "Merge speaker"
 msgstr "Sprecher zusammenführen"
 
-#: src/transcribe/gui/speaker_panel.py:137
+#: src/transcribe/gui/speaker_panel.py:141
 msgid "Merge {speaker} into:"
 msgstr "{speaker} zusammenführen mit:"
 
-#: src/transcribe/gui/speaker_panel.py:148
-msgid "Is this <b>{name}</b>?"
-msgstr "Ist das <b>{name}</b>?"
-
-#: src/transcribe/gui/speaker_panel.py:90
+#: src/transcribe/gui/speaker_panel.py:94
 msgid ", score {score}"
 msgstr ", Wert {score}"
+
+#: src/transcribe/gui/speaker_panel.py:152
+msgid "Is this <b>{name}</b>?"
+msgstr "Ist das <b>{name}</b>?"
 
 #: src/transcribe/gui/transcript_view.py:205
 msgid "Edit text… (double-click)"
