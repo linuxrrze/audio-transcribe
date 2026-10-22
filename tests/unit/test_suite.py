@@ -208,6 +208,17 @@ def test_run_scores_caches_and_sweeps(demo, bench_home):
     assert worse and all("cpWER" in w for w in worse)
 
 
+def test_compare_ignores_jitter_inside_the_confidence_interval():
+    def row(der, ci=None):
+        r = {"dataset": "d", "condition": "noise:10", "config": "default", "DER": der}
+        return {**r, "DER 95%": ci} if ci else r
+
+    base = [row(0.271)]
+    assert run.compare([row(0.325, [0.135, 0.496])], base, 0.05) == []  # baseline inside CI
+    assert run.compare([row(0.425, [0.30, 0.55])], base, 0.05)  # baseline below CI
+    assert run.compare([row(0.325)], base, 0.05)  # single recording: tolerance only
+
+
 def test_paired_compares_each_setting_on_the_same_recordings():
     def res(rec, config, wer_errors, condition="clean"):
         return run.Result("d", rec, "dev", condition, config, 60.0,

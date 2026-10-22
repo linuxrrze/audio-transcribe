@@ -482,7 +482,9 @@ def paired_markdown(rows: list[Row]) -> str:
 
 
 def compare(rows: list[Row], baseline: list[Row], tolerance: float) -> list[str]:
-    """Regressions: metrics more than ``tolerance`` (absolute) worse than the baseline."""
+    """Regressions: metrics more than ``tolerance`` (absolute) worse than the baseline and,
+    where the row has a 95 % confidence interval, with the baseline below that interval -
+    so small, noisy sets don't fail on run-to-run jitter (e.g. another runner CPU)."""
     base = {(b["dataset"], b["condition"], b["config"]): b for b in baseline}
     problems = []
     for r in rows:
@@ -490,8 +492,14 @@ def compare(rows: list[Row], baseline: list[Row], tolerance: float) -> list[str]
         if b is None:
             continue
         for name in RATES:
-            if name in r and name in b and float(r[name]) > float(b[name]) + tolerance:
-                problems.append(f"{r['dataset']} [{r['condition']}] {r['config']}: {name} "
-                                f"{100 * float(r[name]):.1f} % (baseline "
-                                f"{100 * float(b[name]):.1f} %)")
+            if name not in r or name not in b or float(r[name]) <= float(b[name]) + tolerance:
+                continue
+            ci = r.get(f"{name} 95%")
+            if ci and float(b[name]) >= float(ci[0]):
+                continue
+            problems.append(f"{r['dataset']} [{r['condition']}] {r['config']}: {name} "
+                            f"{100 * float(r[name]):.1f} % (baseline "
+                            f"{100 * float(b[name]):.1f} %"
+                            + (f", 95 % CI {100 * ci[0]:.1f}-{100 * ci[1]:.1f}" if ci else "")
+                            + ")")
     return problems
