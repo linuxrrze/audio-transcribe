@@ -43,9 +43,12 @@ MIN_PHRASE = 0.6  # shorter phrases are not embedded (unreliable); they inherit 
 # Diarizer speakers count towards k only with at least this much speech, absolute and
 # as a share of all speech. On a 50 min radio play the diarizer found 20 speakers: 8
 # large ones, a few with 1-2 % (minor characters) and crumbs below 1 %, several of them
-# a single turn - spurious clusters.
+# a single turn - spurious clusters. The diarizer also splits real people more the longer
+# the recording (~3 clusters per minute on meetings); 3 % keeps that in check (AMI cpWER
+# 76 -> 58 %, docs/BENCHMARKS.md), at the cost of very quiet participants of long
+# recordings sharing another's label. k is only an upper bound for the second pass.
 MIN_SPEAKER_S = 3.0
-MIN_SPEAKER_SHARE = 0.01
+MIN_SPEAKER_SHARE = 0.03
 PAD = 0.05
 
 

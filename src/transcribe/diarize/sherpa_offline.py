@@ -67,12 +67,14 @@ class SherpaDiarizer:
     def __init__(self, segmentation_model: str = "pyannote-segmentation-3.0",
                  embedding_model: str = "nemo-titanet-small", threshold: float = 0.5,
                  num_threads: int = 0, isolated: bool = True,
-                 resegment: bool = True, speaker_count: str = "estimate") -> None:
+                 resegment: bool = True, speaker_count: str = "estimate",
+                 min_speaker_share: float = 0.03) -> None:
         self.segmentation_path = models.ensure(segmentation_model)
         self.embedding_model = embedding_model
         self.embedding_path = models.ensure(embedding_model)
         self.resegment = resegment
         self.speaker_count = speaker_count  # how the second pass chooses k (resegment.py)
+        self.min_speaker_share = min_speaker_share  # for the "estimate" of k
         self._phrase_embedder = None
         self.threshold = threshold
         self.num_threads = num_threads or max(1, (os.cpu_count() or 2) // 2)
@@ -82,7 +84,8 @@ class SherpaDiarizer:
     def from_config(cls, config: Config) -> SherpaDiarizer:
         s = config.speakers
         return cls(s.segmentation_model, s.embedding_model, s.diarize_threshold, s.num_threads,
-                   resegment=s.resegment, speaker_count=s.speaker_count)
+                   resegment=s.resegment, speaker_count=s.speaker_count,
+                   min_speaker_share=s.min_speaker_share)
 
     def phrase_embedder(self):
         """Embedder for the second pass on transcript phrases, or None if disabled."""

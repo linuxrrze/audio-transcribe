@@ -61,6 +61,9 @@ class SpeakerConfig:
     # Without --speakers: "estimate" (never merges voices; may over-split - merge in the
     # app) or "silhouette" (best for meetings with distinct voices; can merge similar ones)
     speaker_count: str = "estimate"
+    # "estimate" counts diarizer speakers with at least this share of the speech (and 3 s);
+    # the diarizer splits people more the longer the recording (docs/BENCHMARKS.md)
+    min_speaker_share: float = 0.03
     num_threads: int = 0  # 0 = half the CPU cores
     identify_known: bool = True  # label speakers that match stored voiceprints
     store_voiceprints: bool = True  # False: never persist embeddings (sessions or DB)

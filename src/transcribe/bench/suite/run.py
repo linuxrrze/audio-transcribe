@@ -187,7 +187,8 @@ def evaluate(ds: Dataset, rec: Recording, condition: str, c: Config, overrides: 
         m["diarizer_der"] = metrics.der(rec.ref_turns(), [(t.t0, t.t1, t.speaker_id)
                                                           for t in turns], 0.25).rate
         if c.speakers.resegment and turns:
-            k = speaker_count(speech_per_speaker([(t.t0, t.t1, t.speaker_id) for t in turns]))
+            k = speaker_count(speech_per_speaker([(t.t0, t.t1, t.speaker_id) for t in turns]),
+                              min_share=c.speakers.min_speaker_share)
             resegment(hyp_words, audio(), engines.embedder(c), max_speakers=k,
                       count=c.speakers.speaker_count)
         m["rtf_asr"] = asr["seconds"] / max(rec.duration, 1e-9)

@@ -86,10 +86,11 @@ def test_too_little_material_leaves_labels_alone():
 
 def test_speaker_count_ignores_tiny_clusters():
     speech = speech_per_speaker([(0, 200, "S1"), (200, 400, "S2"),
-                                 (400, 405, "S3"),   # 5 s, 1.2 % -> a minor character
+                                 (400, 405, "S3"),   # 5 s, 1.2 %: a minor character
                                  (405, 407, "S4"),   # < 3 s -> spurious
                                  (407, 410, "S5")])  # 3 s but < 1 % -> spurious
-    assert speaker_count(speech) == 3
+    assert speaker_count(speech) == 2  # default 3 %: S3 is below the share too
+    assert speaker_count(speech, min_share=0.01) == 3
 
 
 def _naive_silhouette(x, labels):

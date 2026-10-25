@@ -463,7 +463,7 @@ What this shows, to work on next:
 
    The clusters grow about in proportion to the length (~3 per minute; TS3004d: 11, 28,
    47, 191), and from 10 minutes to the full meeting the over-count still rises with the
-   same 4 people. The estimate counts clusters with at least 3 s and 1 % of the speech -
+   same 4 people. The estimate counted clusters with at least 3 s and 1 % of the speech -
    only 18 s in a 30-minute meeting, which many split-off clusters reach (the 4th
    largest label holds a median 7.3 % of the speech, the 8th 3.0 %). The one-minute
    German conversations are bounded by the 3 s instead and under-count (24 of 40).
@@ -472,13 +472,32 @@ What this shows, to work on next:
 
    | minimum share | AMI over-count | AMI under-counted | German count error |
    |---|---|---|---|
-   | 1 % (default) | +13.7 | 0 / 18 | 1.23 |
+   | 1 % (previous default) | +13.7 | 0 / 18 | 1.23 |
    | 3 % | +4.0 | 0 / 18 | 1.23 |
    | 5 % | +1.4 | 0 / 18 | 1.23 |
    | 8 % | -0.9 | 12 / 18 | 1.38 |
 
-   Next: test a higher minimum share end to end (cpWER, impurity); the risk is a person
-   with less than that share of a long recording losing their own label.
+   **End to end** (second pass included; `report min-share-phone --compare
+   speakers.min_speaker_share=0.01`; points, 95 % interval, recordings better / worse):
+
+   | vs 1 % | AMI cpWER | AMI DER | AMI impurity | AMI speaker count error | German (all metrics) |
+   |---|---|---|---|---|---|
+   | 3 % | **-18.3 (-24.1 - -12.2)** 18/0 | **-8.9 (-12.2 - -5.9)** 17/1 | **+2.9 (+1.1 - +5.4)** 0/18 | 10.6 -> 4.4 | identical |
+   | 5 % | **-22.1 (-28.4 - -15.8)** 18/0 | **-8.9 (-13.1 - -5.1)** 15/3 | **+8.1 (+4.6 - +11.8)** 0/18 | 10.6 -> 1.8 | identical |
+
+   AMI cpWER / DER / impurity: 76.1 / 46.8 / 7.8 % at 1 %, 57.8 / 37.9 / 10.7 % at 3 %,
+   54.0 / 37.9 / 15.9 % at 5 %; labels per meeting (4 people) 14.6, 8.4, 5.8. The German
+   conversations are bounded by the 3 s, not the share, so nothing changes there. On
+   `clean` audio (first 4 meetings, 10 conversations; `report min-share-clean`) 3 %
+   lowers AMI cpWER by 8.9 points (4/0) at +0.1 impurity; 5 % collapses IS1008b (cpWER
+   26.6 -> 60.8 %, two people under one of its 4 labels).
+
+   The predicted risk is real: people without a label of their own (no label where they
+   are the majority) rise from 1 of 72 at 1 % to 3 at 3 % and 8 at 5 %. At 3 % that is
+   MIO094 in IB4003 (4.4 % of a 34-minute meeting) and FEE042 in ES2011c (17.9 %, a
+   similar voice: with k close to the true count the clustering pairs similar voices); at
+   5 % also people with 9-20 % of the speech. Extra labels can be merged in the app,
+   merged people cannot be split, so **3 % is the new default** (`speakers.min_speaker_share`).
 
    **The other count method,** `speakers.speaker_count = "silhouette"` (the k of best
    silhouette score up to the estimate), on the same data against "estimate" (`report

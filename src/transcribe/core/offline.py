@@ -21,7 +21,12 @@ from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core.vocabulary import Vocabulary
 from transcribe.diarize.align import Turn, assign_speakers, words_to_segments
 from transcribe.diarize.base import Diarizer
-from transcribe.diarize.resegment import resegment, speaker_count, speech_per_speaker
+from transcribe.diarize.resegment import (
+    MIN_SPEAKER_SHARE,
+    resegment,
+    speaker_count,
+    speech_per_speaker,
+)
 from transcribe.storage.transcript_model import Speaker, Transcript, Word
 
 StageProgress = Callable[[str, float], None]  # (stage, fraction 0..1)
@@ -192,8 +197,9 @@ def transcribe_audio(
         if embedder is not None:  # second pass on transcript phrases (see resegment.py)
             t = time.perf_counter()
             report("speakers", 0.0)
-            k_max = speaker_count(speech_per_speaker([(x.t0, x.t1, x.speaker_id)
-                                                      for x in turns]))
+            k_max = speaker_count(
+                speech_per_speaker([(x.t0, x.t1, x.speaker_id) for x in turns]),
+                min_share=getattr(diarizer, "min_speaker_share", MIN_SPEAKER_SHARE))
             timings["resegment_phrases_changed"] = resegment(
                 words, audio, embedder, num_speakers, max_speakers=k_max,
                 count=getattr(diarizer, "speaker_count", "estimate"))
