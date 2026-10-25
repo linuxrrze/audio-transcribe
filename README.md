@@ -58,6 +58,18 @@ Any format ffmpeg reads works (decoded via PyAV). Models download on first use t
 user cache dir (override with `TRANSCRIBE_MODELS_DIR`); sessions are stored under the user
 data dir (`sessions_dir` in `config.toml`).
 
+Every session keeps its audio as `audio.flac` (16 kHz mono; live sessions with mic and
+system audio: one file per channel), so `tx refine` (or **Refine** in the app) can process
+it again at any time with the current code, models and settings - also after the
+original file was moved or deleted. For `tx transcribe` this needs up to about 70 MB per
+hour; `--no-keep-audio`, or `keep_file_audio = false` in `config.toml`, stores only the
+transcript and the path of the original file. Refining a session without audio (also one
+made before this option existed) falls back to that original file while it still exists,
+and then stores its audio in the session. `tx refine` replaces `transcript.json`: speaker
+names carry over, hand-edited text and line assignments do not. The previous transcript is
+kept as `versions/transcript.<time>.json` (named by when it was last written), so old and
+new results can be compared (a live session also keeps its `transcript.live.json`).
+
 **Settings** live in `config.toml`, which the app's **Settings** dialog writes; you can also
 edit it by hand (only the keys you set, the rest uses defaults; CLI flags override it):
 

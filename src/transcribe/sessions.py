@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -14,10 +15,11 @@ from transcribe.audio.base import SAMPLE_RATE
 from transcribe.core.config import Config, vocabulary
 from transcribe.live.session import LIVE_TRANSCRIPT, refine_channels
 from transcribe.storage import editing, session_store
-from transcribe.storage.recorder import MERGED, load_recording, recorded_channels
+from transcribe.storage.recorder import MERGED, load_recording, recorded_channels, save_recording
 from transcribe.storage.transcript_model import Speaker, Transcript
 
 PLAYBACK_MIX = "playback.flac"
+VERSIONS = "versions"  # earlier transcript.json files, kept when a session is refined
 StageProgress = Callable[[str, float], None]
 
 
@@ -86,12 +88,41 @@ def playback_audio(session_dir: Path) -> Path | None:
                 mix[: len(s)] += s
             sf.write(mix_path, np.clip(mix, -1, 1), SAMPLE_RATE, subtype="PCM_16")
         return mix_path
+    source = session_source(session_dir)
+    return source if source is not None and source.exists() else None
+
+
+def session_source(session_dir: Path) -> Path | None:
+    """The original file of a `tx transcribe` session (it may have moved since)."""
     meta_file = session_dir / session_store.SESSION_META
-    if meta_file.exists():
-        source = tomllib.loads(meta_file.read_text(encoding="utf-8")).get("source")
-        if source and Path(source).exists():
-            return Path(source)
-    return None
+    if not meta_file.exists():
+        return None
+    source = tomllib.loads(meta_file.read_text(encoding="utf-8")).get("source")
+    return Path(source) if isinstance(source, str) and source else None
+
+
+def session_audio(session_dir: Path, keep: bool = False) -> dict[str, np.ndarray]:
+    """Channel id -> audio to refine: the recording, else the original file.
+
+    File sessions from before ``keep_file_audio`` only know the source path; it is used
+    while it still exists and, with ``keep``, stored as the session's recording."""
+    audio = {ch: load_recording(session_dir, ch) for ch in recorded_channels(session_dir)}
+    audio = {ch: a for ch, a in audio.items() if len(a)}
+    if audio:
+        return audio
+    source = session_source(session_dir)
+    if source is None:
+        raise FileNotFoundError(f"No recording in {session_dir}")
+    if not source.is_file():
+        raise FileNotFoundError(
+            f"No recording in {session_dir}, and its original file {source} no longer "
+            "exists. Transcribe the file again (tx transcribe stores its audio).")
+    from transcribe.audio.file import load_audio
+
+    signal = load_audio(source)
+    if keep and len(signal):
+        save_recording(session_dir, signal)
+    return {"": signal}
 
 
 def rename_speaker(session_dir: Path, speaker_id: str, name: str) -> None:
@@ -179,14 +210,17 @@ def _edit(session_dir: Path, config: Config | None,
 
 
 def refine_session(session_dir: Path, config: Config, num_speakers: int | None = None,
-                   progress: StageProgress | None = None, identify: bool = True) -> Transcript:
-    """Re-run diarization + transcription on a session's recording (all channels)."""
+                   progress: StageProgress | None = None, identify: bool = True,
+                   audio: dict[str, np.ndarray] | None = None) -> Transcript:
+    """Re-run diarization + transcription on a session's recording (all channels).
+
+    ``audio``: from ``session_audio`` if the caller loaded it already. Replaces
+    ``transcript.json`` and keeps the old one in ``versions/`` (``keep_version``); a live
+    session also keeps ``transcript.live.json``."""
     from transcribe.core.offline import load_engines, transcribe_audio
 
-    audio = {ch: load_recording(session_dir, ch) for ch in recorded_channels(session_dir)}
-    audio = {ch: a for ch, a in audio.items() if len(a)}
-    if not audio:
-        raise FileNotFoundError(f"No recording in {session_dir}")
+    if audio is None:
+        audio = session_audio(session_dir, keep=config.keep_file_audio)
     path = session_store.resolve_transcript(session_dir)
     previous = Transcript.load(transcript_path(session_dir)) if transcript_path(
         session_dir).exists() else Transcript()
@@ -205,5 +239,21 @@ def refine_session(session_dir: Path, config: Config, num_speakers: int | None =
 
         process_session(session_dir, audio if len(audio) > 1 else next(iter(audio.values())),
                         final, SherpaEmbedder.from_config(config), config)
+    keep_version(path)
     final.save(path)
     return final
+
+
+def keep_version(path: Path) -> Path | None:
+    """Copy a transcript into ``versions/``, named by when it was last written."""
+    if not path.exists():
+        return None
+    stamp = datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d_%H%M%S")
+    target = path.parent / VERSIONS / f"{path.stem}.{stamp}{path.suffix}"
+    suffix = 1
+    while target.exists():
+        target = target.with_name(f"{path.stem}.{stamp}_{suffix}{path.suffix}")
+        suffix += 1
+    target.parent.mkdir(exist_ok=True)
+    shutil.copy2(path, target)  # keeps the time; transcript.json stays until replaced
+    return target

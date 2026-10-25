@@ -117,6 +117,9 @@ class Config:
     live: LiveConfig = field(default_factory=LiveConfig)
     ui: UiConfig = field(default_factory=UiConfig)
     sessions_dir: str = ""
+    # `tx transcribe FILE`: store the input as the session's audio.flac (16 kHz mono, like
+    # a live recording) so `tx refine` can re-run it later without the original file
+    keep_file_audio: bool = True
 
     def resolved_sessions_dir(self) -> Path:
         return Path(self.sessions_dir) if self.sessions_dir else data_dir() / "sessions"
@@ -133,6 +136,7 @@ class Config:
             live=_build(LiveConfig, raw.get("live", {})),
             ui=_build(UiConfig, raw.get("ui", {})),
             sessions_dir=raw.get("sessions_dir", ""),
+            keep_file_audio=raw.get("keep_file_audio", True),
         )
 
     def save(self, path: Path | None = None) -> None:

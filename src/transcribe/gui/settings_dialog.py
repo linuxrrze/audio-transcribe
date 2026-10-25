@@ -354,12 +354,18 @@ class SettingsDialog(QDialog):
         self.ui_language.setToolTip(_("Takes effect after restarting the app"))
         self.sessions_dir = QLineEdit(self.config.sessions_dir)
         self.sessions_dir.setPlaceholderText(str(self.config.resolved_sessions_dir()))
+        self.keep_file_audio = QCheckBox(_("Keep the audio of transcribed files in the "
+                                           "session (to refine it later)"))
+        self.keep_file_audio.setChecked(self.config.keep_file_audio)
+        self.keep_file_audio.setToolTip(_("tx transcribe stores the file as 16 kHz FLAC "
+                                          "(up to about 70 MB per hour)"))
         models = path_text(str(models_dir()))
         models.setToolTip(str(models_dir()) + "\n"
                           + _("Change with the TRANSCRIBE_MODELS_DIR environment variable"))
         form = QFormLayout()
         form.addRow(_("Language:"), self.ui_language)
         form.addRow(_("Sessions:"), _path_row(self.sessions_dir, self._pick_sessions_dir))
+        form.addRow(self.keep_file_audio)
         form.addRow(_("Models:"), models)
         return _page(form)
 
@@ -436,6 +442,7 @@ class SettingsDialog(QDialog):
         lv.max_buffer = self.max_buffer.value()
         lv.beam_size = self.live_beam.value()
         c.sessions_dir = self.sessions_dir.text().strip()
+        c.keep_file_audio = self.keep_file_audio.isChecked()
         c.ui.language = self.ui_language.currentData()
         return c
 

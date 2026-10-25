@@ -75,17 +75,23 @@ class AudioRecorder:
 
     def finalize(self) -> Path:
         """Close the current part and merge all parts into ``audio.flac``."""
-        import soundfile as sf
-
         self._close_part()
-        merged = self.session_dir / self.merged_name
         channel = "" if self.merged_name == MERGED else self.merged_name[6:-5]
-        sf.write(merged, load_recording(self.session_dir, channel), SAMPLE_RATE,
-                 subtype="PCM_16")
+        merged = save_recording(self.session_dir, load_recording(self.session_dir, channel),
+                                channel)
         for part in sorted(self.parts_dir.glob("part-*.flac")):
             part.unlink()
         self.parts_dir.rmdir()
         return merged
+
+
+def save_recording(session_dir: Path, samples: np.ndarray, channel: str = "") -> Path:
+    """Store 16 kHz mono audio as a session's recording (e.g. the input of a file run)."""
+    import soundfile as sf
+
+    merged = session_dir / _names(channel)[1]
+    sf.write(merged, np.clip(samples, -1.0, 1.0), SAMPLE_RATE, subtype="PCM_16")
+    return merged
 
 
 def load_recording(session_dir: Path, channel: str = "") -> np.ndarray:

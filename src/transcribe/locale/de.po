@@ -110,7 +110,7 @@ msgstr "[Standard: {}]"
 msgid "[env var: {}]"
 msgstr "[Umgebungsvariable: {}]"
 
-#: src/transcribe/cli/main.py:418
+#: src/transcribe/cli/main.py:425
 msgid "Audio levels - 🎤 inputs (--input), 🔊 system audio (--output); * = default"
 msgstr "Audiopegel - 🎤 Eingänge (--input), 🔊 Systemton (--output); * = Standard"
 
@@ -138,105 +138,105 @@ msgstr "Installierte Plugins je Gruppe anzeigen."
 msgid "Transcribe an audio file with speaker diarization."
 msgstr "Audiodatei mit Sprechererkennung transkribieren."
 
-#: src/transcribe/cli/main.py:225
+#: src/transcribe/cli/main.py:233
 msgid "Transcribe live from the microphone; Ctrl+C stops (and refines)."
 msgstr "Live vom Mikrofon transkribieren; Strg+C beendet (und verfeinert)."
 
-#: src/transcribe/cli/main.py:299
+#: src/transcribe/cli/main.py:307
 msgid "Re-run full diarization + transcription on a session's recording."
 msgstr "Sprechererkennung und Transkription für die Aufnahme einer Sitzung neu ausführen."
 
-#: src/transcribe/cli/main.py:357
+#: src/transcribe/cli/main.py:364
 msgid "Index"
 msgstr "Index"
 
-#: src/transcribe/cli/main.py:357
+#: src/transcribe/cli/main.py:364
 msgid "Microphone / input"
 msgstr "Mikrofon / Eingang"
 
-#: src/transcribe/cli/main.py:357
+#: src/transcribe/cli/main.py:364
 msgid "Channels"
 msgstr "Kanäle"
 
-#: src/transcribe/cli/main.py:357
+#: src/transcribe/cli/main.py:364
 msgid "Rate"
 msgstr "Rate"
 
-#: src/transcribe/cli/main.py:358
+#: src/transcribe/cli/main.py:365
 msgid "Host API"
 msgstr "Host-API"
 
-#: src/transcribe/cli/main.py:358
-#: src/transcribe/cli/main.py:363
+#: src/transcribe/cli/main.py:365
+#: src/transcribe/cli/main.py:370
 msgid "Default"
 msgstr "Standard"
 
-#: src/transcribe/cli/main.py:363
+#: src/transcribe/cli/main.py:370
 #: src/transcribe/cli/speakers.py:60
 msgid "ID"
 msgstr "ID"
 
-#: src/transcribe/cli/main.py:363
+#: src/transcribe/cli/main.py:370
 msgid "System audio source"
 msgstr "Systemton-Quelle"
 
-#: src/transcribe/cli/main.py:347
+#: src/transcribe/cli/main.py:354
 msgid "List microphones and system-audio (output) devices."
 msgstr "Mikrofone und Systemton-Geräte (Ausgänge) anzeigen."
 
-#: src/transcribe/cli/main.py:370
+#: src/transcribe/cli/main.py:377
 msgid "Show live signal levels of microphones and system-audio devices.\n\nSpeak, and play something in the meeting app: the devices that move are the ones to pass to `tx live --input ... --output ...`."
 msgstr "Live-Pegel von Mikrofonen und Systemton-Geräten anzeigen.\n\nSprechen Sie und spielen Sie etwas in der Meeting-App ab: Die Geräte, deren Pegel sich bewegt, geben Sie an `tx live --input ... --output ...` weiter."
 
-#: src/transcribe/cli/main.py:431
+#: src/transcribe/cli/main.py:438
 msgid "Export a transcript to another format."
 msgstr "Transkript in ein anderes Format exportieren."
 
-#: src/transcribe/cli/main.py:453
+#: src/transcribe/cli/main.py:460
 #: src/transcribe/cli/sessions.py:125
 #: src/transcribe/cli/speakers.py:60
 msgid "Name"
 msgstr "Name"
 
-#: src/transcribe/cli/main.py:453
+#: src/transcribe/cli/main.py:460
 msgid "Kind"
 msgstr "Art"
 
-#: src/transcribe/cli/main.py:453
+#: src/transcribe/cli/main.py:460
 msgid "Cached"
 msgstr "Vorhanden"
 
-#: src/transcribe/cli/main.py:453
+#: src/transcribe/cli/main.py:460
 msgid "Description"
 msgstr "Beschreibung"
 
-#: src/transcribe/cli/main.py:451
+#: src/transcribe/cli/main.py:458
 msgid "List downloadable models and whether they are cached."
 msgstr "Herunterladbare Modelle anzeigen und ob sie bereits vorhanden sind."
 
-#: src/transcribe/cli/main.py:470
+#: src/transcribe/cli/main.py:477
 msgid "Download models (default: the configured Whisper and diarization models)."
 msgstr "Modelle herunterladen (Standard: die konfigurierten Whisper- und Sprechererkennungsmodelle)."
 
-#: src/transcribe/cli/main.py:201
-#: src/transcribe/cli/main.py:274
+#: src/transcribe/cli/main.py:205
+#: src/transcribe/cli/main.py:282
 msgid "Loading models (first run downloads them)..."
 msgstr "Modelle werden geladen (beim ersten Start heruntergeladen)..."
 
-#: src/transcribe/cli/main.py:336
+#: src/transcribe/cli/main.py:343
 msgid "Identifying speakers..."
 msgstr "Sprecher werden erkannt..."
 
-#: src/transcribe/cli/main.py:358
+#: src/transcribe/cli/main.py:365
 msgid "Inputs (--input)"
 msgstr "Eingänge (--input)"
 
-#: src/transcribe/cli/main.py:364
+#: src/transcribe/cli/main.py:371
 msgid "System audio (--output)"
 msgstr "Systemton (--output)"
 
+#: src/transcribe/cli/main.py:469
 #: src/transcribe/cli/main.py:462
-#: src/transcribe/cli/main.py:455
 msgid "yes"
 msgstr "ja"
 
@@ -269,7 +269,7 @@ msgid "Output format."
 msgstr "Ausgabeformat."
 
 #: src/transcribe/cli/main.py:85
-#: src/transcribe/cli/main.py:435
+#: src/transcribe/cli/main.py:442
 msgid "Write output here."
 msgstr "Ausgabe in diese Datei schreiben."
 
@@ -281,44 +281,44 @@ msgstr "Zu erkennende Namen/Abkürzungen, durch Kommas getrennt (ergänzt die Ko
 msgid "Vocabulary file: one term per line, 'wrong -> right' for corrections."
 msgstr "Vokabular-Datei: ein Begriff pro Zeile, 'falsch -> richtig' für Korrekturen."
 
-#: src/transcribe/cli/main.py:295
-#: src/transcribe/cli/main.py:221
+#: src/transcribe/cli/main.py:303
+#: src/transcribe/cli/main.py:229
 msgid "Session saved to {path}"
 msgstr "Sitzung gespeichert unter {path}"
 
-#: src/transcribe/cli/main.py:320
+#: src/transcribe/cli/main.py:327
 msgid "Loading models..."
 msgstr "Modelle werden geladen..."
 
-#: src/transcribe/cli/main.py:325
+#: src/transcribe/cli/main.py:332
 msgid "Refined transcript saved to {path}"
 msgstr "Verfeinertes Transkript gespeichert unter {path}"
 
-#: src/transcribe/cli/main.py:341
+#: src/transcribe/cli/main.py:348
 msgid "{speaker} is {name} (score {score})"
 msgstr "{speaker} ist {name} (Wert {score})"
 
-#: src/transcribe/cli/main.py:342
+#: src/transcribe/cli/main.py:349
 msgid "{speaker} might be {name} (score {score})"
 msgstr "{speaker} könnte {name} sein (Wert {score})"
 
-#: src/transcribe/cli/main.py:465
+#: src/transcribe/cli/main.py:472
 msgid "Cache: {path}"
 msgstr "Cache: {path}"
 
-#: src/transcribe/cli/main.py:483
+#: src/transcribe/cli/main.py:490
 msgid "All configured models are present."
 msgstr "Alle konfigurierten Modelle sind vorhanden."
 
-#: src/transcribe/cli/main.py:412
+#: src/transcribe/cli/main.py:419
 msgid "No audio devices found."
 msgstr "Keine Audiogeräte gefunden."
 
-#: src/transcribe/cli/main.py:448
+#: src/transcribe/cli/main.py:455
 msgid "Wrote {path}"
 msgstr "Geschrieben: {path}"
 
-#: src/transcribe/cli/main.py:463
+#: src/transcribe/cli/main.py:470
 msgid "{model}  cached: {state}"
 msgstr "{model}  vorhanden: {state}"
 
@@ -330,68 +330,72 @@ msgstr "Audio-/Videodatei."
 msgid "Store a session folder."
 msgstr "Sitzungsordner speichern."
 
-#: src/transcribe/cli/main.py:229
+#: src/transcribe/cli/main.py:197
+msgid "Store the audio in the session folder, so `tx refine` can re-run it later (default: keep_file_audio in the config)."
+msgstr "Audio im Sitzungsordner speichern, damit `tx refine` sie später erneut verarbeiten kann (Standard: keep_file_audio in der Konfiguration)."
+
+#: src/transcribe/cli/main.py:237
 msgid "Replay a file instead of the microphone (for testing)."
 msgstr "Datei statt Mikrofon abspielen (zum Testen)."
 
-#: src/transcribe/cli/main.py:230
+#: src/transcribe/cli/main.py:238
 msgid "Replay --file as fast as possible."
 msgstr "--file so schnell wie möglich abspielen."
 
-#: src/transcribe/cli/main.py:232
+#: src/transcribe/cli/main.py:240
 msgid "mic | system (what the computer plays) | both"
 msgstr "mic | system (was der Computer abspielt) | both"
 
-#: src/transcribe/cli/main.py:234
+#: src/transcribe/cli/main.py:242
 msgid "Input device index or name (see `tx devices`)."
 msgstr "Index oder Name des Eingangsgeräts (siehe `tx devices`)."
 
-#: src/transcribe/cli/main.py:237
+#: src/transcribe/cli/main.py:245
 msgid "System audio device (see `tx devices`); default: default output."
 msgstr "Systemton-Gerät (siehe `tx devices`); Standard: Standardausgang."
 
-#: src/transcribe/cli/main.py:240
+#: src/transcribe/cli/main.py:248
 msgid "With --source both: sum mic+system into one stream (cheaper, no echo suppression or channel separation)."
 msgstr "Mit --source both: Mikrofon und Systemton zu einem Strom mischen (sparsamer, ohne Echounterdrückung und Kanaltrennung)."
 
-#: src/transcribe/cli/main.py:242
+#: src/transcribe/cli/main.py:250
 msgid "Session name."
 msgstr "Name der Sitzung."
 
-#: src/transcribe/cli/main.py:253
+#: src/transcribe/cli/main.py:261
 msgid "Re-run the full pipeline on the recording when stopped."
 msgstr "Nach dem Beenden die vollständige Verarbeitung auf der Aufnahme erneut ausführen."
 
-#: src/transcribe/cli/main.py:302
+#: src/transcribe/cli/main.py:310
 #: src/transcribe/cli/speakers.py:28
 msgid "Session folder."
 msgstr "Sitzungsordner."
 
-#: src/transcribe/cli/main.py:376
+#: src/transcribe/cli/main.py:383
 msgid "Only these inputs (index or name); repeatable."
 msgstr "Nur diese Eingänge (Index oder Name); mehrfach angebbar."
 
-#: src/transcribe/cli/main.py:379
+#: src/transcribe/cli/main.py:386
 msgid "Only these system-audio devices (see `tx devices`); repeatable."
 msgstr "Nur diese Systemton-Geräte (siehe `tx devices`); mehrfach angebbar."
 
-#: src/transcribe/cli/main.py:382
+#: src/transcribe/cli/main.py:389
 msgid "Stop after this many seconds (default: until Ctrl+C)."
 msgstr "Nach so vielen Sekunden beenden (Standard: bis Strg+C)."
 
-#: src/transcribe/cli/main.py:433
+#: src/transcribe/cli/main.py:440
 msgid "Session folder or transcript.json."
 msgstr "Sitzungsordner oder transcript.json."
 
-#: src/transcribe/cli/main.py:434
+#: src/transcribe/cli/main.py:441
 msgid "Exporter name."
 msgstr "Name des Exportformats."
 
-#: src/transcribe/cli/main.py:473
+#: src/transcribe/cli/main.py:480
 msgid "Asset names, whisper:<model> or ggml:<model>; default: everything the config needs."
 msgstr "Modellnamen, whisper:<Modell> oder ggml:<Modell>; Standard: alles, was die Konfiguration benötigt."
 
-#: src/transcribe/cli/main.py:293
+#: src/transcribe/cli/main.py:301
 msgid "Refinement aborted; live transcript kept."
 msgstr "Verfeinerung abgebrochen; Live-Transkript wurde behalten."
 
@@ -399,7 +403,7 @@ msgstr "Verfeinerung abgebrochen; Live-Transkript wurde behalten."
 msgid "{stage} (finding speech…)"
 msgstr "{stage} (sucht Sprachabschnitte…)"
 
-#: src/transcribe/cli/main.py:487
+#: src/transcribe/cli/main.py:494
 msgid "Unknown model {name}"
 msgstr "Unbekanntes Modell {name}"
 
@@ -1359,23 +1363,31 @@ msgstr "Automatisch (Systemsprache)"
 msgid "Takes effect after restarting the app"
 msgstr "Wirksam nach einem Neustart der App"
 
-#: src/transcribe/gui/settings_dialog.py:361
+#: src/transcribe/gui/settings_dialog.py:357
+msgid "Keep the audio of transcribed files in the session (to refine it later)"
+msgstr "Audio transkribierter Dateien in der Sitzung behalten (zum späteren Verfeinern)"
+
+#: src/transcribe/gui/settings_dialog.py:360
+msgid "tx transcribe stores the file as 16 kHz FLAC (up to about 70 MB per hour)"
+msgstr "tx transcribe speichert die Datei als 16-kHz-FLAC (bis etwa 70 MB pro Stunde)"
+
+#: src/transcribe/gui/settings_dialog.py:366
 msgid "Language:"
 msgstr "Sprache:"
 
-#: src/transcribe/gui/settings_dialog.py:362
+#: src/transcribe/gui/settings_dialog.py:367
 msgid "Sessions:"
 msgstr "Sitzungen:"
 
-#: src/transcribe/gui/settings_dialog.py:363
+#: src/transcribe/gui/settings_dialog.py:369
 msgid "Models:"
 msgstr "Modelle:"
 
-#: src/transcribe/gui/settings_dialog.py:393
+#: src/transcribe/gui/settings_dialog.py:399
 msgid "whisper-server binary"
 msgstr "whisper-server-Programm"
 
-#: src/transcribe/gui/settings_dialog.py:399
+#: src/transcribe/gui/settings_dialog.py:405
 msgid "Sessions folder"
 msgstr "Ordner für Sitzungen"
 
@@ -1383,11 +1395,11 @@ msgstr "Ordner für Sitzungen"
 msgid "{terms} terms, {corrections} corrections."
 msgstr "Begriffe: {terms}, Korrekturen: {corrections}."
 
-#: src/transcribe/gui/settings_dialog.py:359
+#: src/transcribe/gui/settings_dialog.py:364
 msgid "Change with the TRANSCRIBE_MODELS_DIR environment variable"
 msgstr "Änderbar über die Umgebungsvariable TRANSCRIBE_MODELS_DIR"
 
-#: src/transcribe/gui/settings_dialog.py:374
+#: src/transcribe/gui/settings_dialog.py:380
 msgid "none"
 msgstr "keine"
 
@@ -1409,7 +1421,7 @@ msgstr "Gespeichert in {path}"
 msgid "Text files"
 msgstr "Textdateien"
 
-#: src/transcribe/gui/settings_dialog.py:373
+#: src/transcribe/gui/settings_dialog.py:379
 msgid "{terms} terms, {corrections} corrections"
 msgstr "Begriffe: {terms}, Korrekturen: {corrections}"
 

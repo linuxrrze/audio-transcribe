@@ -192,6 +192,10 @@ def transcribe(
     out: OutOpt = None,
     save_session: Annotated[bool, typer.Option(
         "--session/--no-session", help=_("Store a session folder."))] = True,
+    keep_audio: Annotated[bool | None, typer.Option(
+        "--keep-audio/--no-keep-audio",
+        help=_("Store the audio in the session folder, so `tx refine` can re-run it later "
+               "(default: keep_file_audio in the config)."))] = None,
 ) -> None:
     from transcribe.audio.file import load_audio
     from transcribe.core.offline import load_engines, transcribe_audio
@@ -212,6 +216,10 @@ def transcribe(
     if diarize and transcript.speakers:
         _identify(config, path, audio, transcript)
     if path is not None:
+        if config.keep_file_audio if keep_audio is None else keep_audio:
+            from transcribe.storage.recorder import save_recording
+
+            save_recording(path, audio)
         session_store.save_session(path, transcript, {
             "source": str(file.resolve()), "asr_engine": config.asr.engine,
             "asr_model": config.asr.model, "languages": config.asr.languages,
@@ -309,16 +317,15 @@ def refine(
     vocab: VocabOpt = None,
     vocab_file: VocabFileOpt = None,
 ) -> None:
-    from transcribe.sessions import refine_session
-    from transcribe.storage.recorder import recorded_channels
+    from transcribe.sessions import refine_session, session_audio
 
     config = _config(model, device, lang, threshold, vocab, vocab_file, engine)
-    channels = recorded_channels(session)
-    stages = [f"{ch} {st}".strip() if len(channels) > 1 else st
-              for ch in channels for st in _offline_stages(config, True)]
-    try:
+    try:  # the audio first: a missing recording is reported before any progress bars
+        audio = session_audio(session, keep=config.keep_file_audio)
+        stages = [f"{ch} {st}".strip() if len(audio) > 1 else st
+                  for ch in audio for st in _offline_stages(config, True)]
         with err.status(_("Loading models...")), _stage_progress(stages) as report:
-            refine_session(session, config, num_speakers, report)
+            refine_session(session, config, num_speakers, report, audio=audio)
     except FileNotFoundError as e:
         err.print(f"[red]{e}[/]")
         raise typer.Exit(1) from e
