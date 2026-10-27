@@ -150,8 +150,9 @@ class DeviceEntry:
     is_default: bool
 
 
-def list_devices() -> tuple[list[DeviceEntry], list[str]]:
-    """All input and system-audio devices, plus errors from enumerating them."""
+def list_devices(apps: bool = True) -> tuple[list[DeviceEntry], list[str]]:
+    """All input and system-audio devices (and applications playing audio, unless
+    ``apps`` is False), plus errors from enumerating them."""
     from transcribe.audio.mic import list_input_devices
     from transcribe.audio.system import output_devices
 
@@ -170,7 +171,23 @@ def list_devices() -> tuple[list[DeviceEntry], list[str]]:
             entries.append(DeviceEntry(f"out:{o.id}", "output", o.id, o.name, o.is_default))
     except RuntimeError as e:
         errors.append(f"outputs: {e}")
+    if apps:
+        entries += app_entries()
     return entries, errors
+
+
+def app_entries() -> list[DeviceEntry]:
+    """Applications with audio output, as system-audio choices (``app:<name>``)."""
+    from transcribe.audio.apps import list_audio_apps
+    from transcribe.i18n import _
+
+    out = []
+    for app in list_audio_apps():
+        label = _("App: {name}").format(name=app.name)
+        if app.playing:
+            label += " " + _("(playing)")
+        out.append(DeviceEntry(f"out:{app.device}", "output", app.device, label, False))
+    return out
 
 
 class _Unavailable:

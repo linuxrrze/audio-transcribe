@@ -48,6 +48,8 @@ Each stage runs in a worker thread and passes data through bounded `queue.Queue`
 
 *(M5 as implemented: `CommandSource` reads 16 kHz float32 PCM from a helper process - `parec` on Linux, the Swift `transcribe-audiotap` on macOS; Windows uses `soundcard` WASAPI loopback. `MixerSource` keeps channels separate, `MixDownSource` sums them (padding a silent real-time channel instead of stalling). Sessions run one streamer and recorder per channel with a shared speaker tracker, and drop mic segments that repeat overlapping system audio (echo).)*
 
+*(Per-app capture as implemented: `--output app:<name or pid>` replaces the output device of the "system" channel, so "me vs them" becomes mic + meeting app. `audio/apps.py` lists apps with audio output (Linux: `pactl` sink inputs, JSON with a text fallback; macOS: the helper's `--list`) and records each matching playback stream - Linux: `parec --monitor-stream=<sink input>`, which reads a copy and changes no routing, so the user still hears the app and a crash leaves nothing to restore (a null sink + loopback or moving the stream was rejected for that reason); macOS: the helper's `--pid`. Streams are polled, jitter-buffered and summed into clock-paced frames: silence while the app is not playing or after it quits, picked up again when it plays. Windows needs the WASAPI process-loopback API (`ActivateAudioInterfaceAsync`, Windows 10 2004+), which no current dependency exposes - not implemented.)*
+
 **Designing for meetings later:** a meeting source is just a composite source. Its simplest form is mic + per-app loopback, i.e. "me" vs. "them" on separate channels, which already makes diarization much easier. Richer forms are bot or SDK integrations that deliver **per-participant streams with names**: Jitsi via `lib-jitsi-meet` or a Jibri-style bot; Zoom via the Meeting SDK or RTMS; Teams via the Graph/ACS bot. These would set `channel_id`/`speaker_hint`, and the diarizer must honour them, for example by skipping clustering when a channel is known to carry a single speaker. Sources are discovered via Python entry points (`transcribe.sources`) so that third parties can add them.
 
 ### 2.2 VAD
@@ -101,12 +103,13 @@ Exporters (plugin group `transcribe.exporters`): TXT, Markdown, SRT/WebVTT, JSON
 
 ### 2.7 Frontends
 **CLI (`typer` + `rich`)**, command name e.g. `tx`:
-- `tx devices`: list mic and loopback sources
+- `tx devices`: list mic and loopback sources, and apps playing audio (`--output app:<name>`)
 - `tx live [--source mic --source system] [--model small] [--lang auto|de|en] [--out DIR]`: rich live view; partial text dimmed, coloured speaker labels
 - `tx transcribe FILE`: offline, with full diarization
 - `tx refine SESSION`, `tx export SESSION --format srt|md|txt|json`
 - `tx speakers list|enroll|rename|merge|delete|export|import`
 - `tx models list|download`: models are fetched to a cache dir on first use, with offline mode supported
+- `tx setup`: first-run choices (model for the hardware, languages, voiceprints) and download, interactive or with flags
 
 **GUI (PySide6):**
 - Main window: source picker + level meters, start/pause/stop, and a live transcript view (speaker-coloured blocks, grey partials, autoscroll with "jump to live").
@@ -149,9 +152,9 @@ transcription/
 3. **M2 Live mic:** ring buffer, LocalAgreement streaming, live embeddings + online clustering, rich CLI live view, crash-safe session recording, end-of-session refinement.
 4. **M3 Voiceprints:** SQLite store, enrollment (implicit and explicit), open-set matching with calibrated thresholds, `tx speakers` commands, privacy options.
 5. **M4 GUI:** PySide6 app covering live view, speaker panel, session browser with synced playback.
-6. **M5 System audio:** WASAPI loopback, PipeWire monitor, macOS audio-tap helper; mixer for mic + system as separate channels.
-7. **M6 Packaging:** *(done: PyInstaller one-folder bundle with `tx` + `Transcribe`, smoke-tested in `packaging/build.py`; CI on Linux/Windows/macOS incl. a PulseAudio null sink and a Swift helper build; release workflow with optional macOS signing/notarization; plugin registry has built-in fallbacks because frozen apps may lack entry-point metadata)* PyInstaller (or Briefcase) builds via GitHub Actions; macOS signing/notarization with mic and audio-capture entitlements; first-run model download wizard.
-8. **Later:** meeting sources (per-app capture → Jitsi bot → Zoom/Teams SDKs), optional pyannote plugin, `tx serve` API, summarisation hooks.
+6. **M5 System audio:** WASAPI loopback, PipeWire monitor, macOS audio-tap helper; mixer for mic + system as separate channels. *(Per-app capture added: `app:<name>` on Linux and macOS, see §2.1; Windows still captures whole devices.)*
+7. **M6 Packaging:** *(done: PyInstaller one-folder bundle with `tx` + `Transcribe`, smoke-tested in `packaging/build.py`; CI on Linux/Windows/macOS incl. a PulseAudio null sink and a Swift helper build; release workflow with optional macOS signing/notarization; plugin registry has built-in fallbacks because frozen apps may lack entry-point metadata; first-run setup wizard in the app and `tx setup`: hardware detection (CUDA, whisper.cpp GPU build, CPU cores) → model recommendation, languages, voiceprint privacy, download with byte progress, cancel and retry - `core/setup.py`)* PyInstaller (or Briefcase) builds via GitHub Actions; macOS signing/notarization with mic and audio-capture entitlements; first-run model download wizard.
+8. **Later:** meeting sources (per-app capture *(done on Linux/macOS; Windows process loopback open)* → Jitsi bot → Zoom/Teams SDKs), optional pyannote plugin, `tx serve` API, summarisation hooks.
 
 ## 5. Key risks
 - **CPU latency:** mitigate with small int8 models, VAD gating, and a configurable latency/quality trade-off; the refinement pass recovers quality afterwards.

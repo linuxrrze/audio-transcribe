@@ -242,7 +242,8 @@ def live(
         "--input", "-i", help=_("Input device index or name (see `tx devices`)."))] = None,
     output_device: Annotated[str | None, typer.Option(
         "--output",
-        help=_("System audio device (see `tx devices`); default: default output."))]
+        help=_("System audio device, or one application as app:<name or pid> (see `tx "
+               "devices`); default: default output."))]
     = None,
     mix: Annotated[bool, typer.Option(
         help=_("With --source both: sum mic+system into one stream (cheaper, no echo "
@@ -264,6 +265,7 @@ def live(
 ) -> None:
     from rich.live import Live
 
+    from transcribe.audio.apps import APP_PREFIX, app_available
     from transcribe.audio.factory import build_source
     from transcribe.cli.live_view import LiveView
     from transcribe.live.factory import build_live_session
@@ -276,6 +278,11 @@ def live(
     except (RuntimeError, ValueError) as e:
         err.print(f"[red]{e}[/]")
         raise typer.Exit(1) from e
+    if (file is None and source_kind != "mic" and output_device
+            and output_device.startswith(APP_PREFIX)
+            and not app_available(output_device[len(APP_PREFIX):])):
+        err.print(f"[yellow]{_('{app} has no audio output yet; its channel stays silent '
+                               'until it plays.').format(app=output_device)}[/]")
     if file is not None and name == "live":
         name = file.stem
     session_dir = session_store.new_session_dir(config.resolved_sessions_dir(), name)
@@ -351,8 +358,12 @@ def _identify(config: Config, session_dir: Path | None, audio, transcript: Trans
                                   score=f"{m.score:.2f}"))
 
 
-@app.command(help=_("List microphones and system-audio (output) devices."))
+@app.command(help=_("List microphones, system-audio (output) devices and applications "
+                    "playing audio."))
 def devices() -> None:
+    import platform
+
+    from transcribe.audio.apps import list_audio_apps
     from transcribe.audio.mic import list_input_devices
     from transcribe.audio.system import output_devices
 
@@ -372,6 +383,14 @@ def devices() -> None:
     for o in output_devices():
         outs.add_row(o.id, o.name, "*" if o.is_default else "")
     console.print(outs)
+    if platform.system() == "Windows":
+        err.print(_("Capturing a single application is not supported on Windows yet."))
+        return
+    apps = Table(_("ID"), _("Application"), _("PID"), _("Playing"),
+                 title=_("Applications (--output app:<name or pid>)"))
+    for a in list_audio_apps():
+        apps.add_row(a.device, a.name, str(a.pid or ""), "*" if a.playing else "")
+    console.print(apps)
 
 
 @app.command(help=_(
@@ -493,14 +512,136 @@ def models_download(
         if not name.startswith(("whisper:", "ggml:")) and name not in models.ASSETS:
             err.print(f"[red]{_('Unknown model {name}').format(name=name)}[/]")
             raise typer.Exit(1)
-        with Progress(console=err, transient=True) as progress:
-            task = progress.add_task(name, total=None)
+    _download(names)
 
-            def on_bytes(done: int, total: int, task: TaskID = task) -> None:
-                progress.update(task, completed=done, total=total or None)
 
-            path = models.download(name, on_bytes)
-        err.print(f"{name}: {path}")
+def _download(names: list[str]) -> None:
+    """Download with one byte-progress bar per file; Ctrl+C cancels."""
+    from rich.progress import DownloadColumn
+
+    columns = (TextColumn("{task.description:<28}"), BarColumn(), _PercentColumn(),
+               DownloadColumn())
+    with Progress(*columns, console=err) as progress:
+        tasks = {n: progress.add_task(n, total=None, start=False) for n in names}
+
+        def on_bytes(name: str, done: int, total: int) -> None:
+            task: TaskID = tasks[name]
+            progress.start_task(task)
+            progress.update(task, completed=done, total=total or None)
+
+        try:
+            models.download_all(names, on_bytes)
+        except KeyboardInterrupt:
+            err.print(f"[yellow]{_('Download cancelled.')}[/]")
+            raise typer.Exit(1) from None
+        except Exception as e:  # noqa: BLE001 - network errors etc.
+            err.print(f"[red]{_('Download failed: {error}').format(error=e)}[/]")
+            raise typer.Exit(1) from e
+    err.print(_("Models stored in {path}").format(path=models.models_dir()))
+
+
+def _interactive() -> bool:
+    """Prompts only on a terminal (a script or pipe gets the recommendations)."""
+    import sys
+
+    return sys.stdin.isatty()
+
+
+@app.command(help=_(
+    "First-run setup: pick a model for this computer, languages and voiceprint privacy, "
+    "then download the models. Without --yes it asks; given options are not asked."))
+def setup(
+    profile: Annotated[str | None, typer.Option(
+        help=_("Model choice: fast | balanced | accurate | cuda | gpu (default: "
+               "recommended for this computer)."))] = None,
+    lang: Annotated[str | None, typer.Option(
+        "--lang", "-l", help=_("Spoken languages: de,en | de | en."))] = None,
+    ui_language: Annotated[str | None, typer.Option(
+        help=_("Language of the app: auto | en | de."))] = None,
+    voiceprints: Annotated[bool | None, typer.Option(
+        "--voiceprints/--no-voiceprints",
+        help=_("Store voiceprints and recognise known people."))] = None,
+    download: Annotated[bool | None, typer.Option(
+        "--download/--no-download", help=_("Download the models now."))] = None,
+    yes: Annotated[bool, typer.Option(
+        "--yes", "-y", help=_("Don't ask; use the recommendation for anything not given."))]
+    = False,
+) -> None:
+    from rich.prompt import Confirm, Prompt
+
+    from transcribe.core import setup as core_setup
+    from transcribe.core.config import required_models
+    from transcribe.i18n import LANGUAGES
+
+    ask = not yes and _interactive()
+    config = Config.load()
+    hw = core_setup.detect_hardware()
+    choices = core_setup.profiles_for(hw)
+    recommended = core_setup.recommend(hw)
+    if profile is not None and profile not in core_setup.PROFILES:
+        err.print(f"[red]{_('Unknown profile {name}').format(name=profile)}[/]")
+        raise typer.Exit(1)
+    if lang is not None and lang not in core_setup.LANGUAGE_CHOICES:
+        err.print(f"[red]{_('Unknown languages {lang}').format(lang=lang)}[/]")
+        raise typer.Exit(1)
+    if ui_language is not None and ui_language not in ("auto", *LANGUAGES):
+        err.print(f"[red]{_('Unknown language {lang}').format(lang=ui_language)}[/]")
+        raise typer.Exit(1)
+
+    err.print(core_setup.hardware_text(hw))
+    if not hw.has_gpu:
+        err.print(f"[dim]{_(core_setup.NO_GPU_HINT)}[/]")
+    if profile is None and ask:
+        table = Table("#", _("Model"), _("Download"), _("Speed"))
+        numbers = [str(i) for i in range(1, len(choices) + 1)]
+        default = str(choices.index(recommended) + 1)
+        if core_setup.config_path().exists():  # offer to keep hand-made settings
+            matching = core_setup.matching_profile(config)
+            numbers.insert(0, "0")
+            default = str(choices.index(matching) + 1) if matching in choices else "0"
+            table.add_row("0", _("Keep the current settings ({model})").format(
+                model=config.asr.model), "", "")
+        for i, p in enumerate(choices, 1):
+            label = _(p.label) + (f" [bold]{_('(recommended)')}[/]" if p is recommended else "")
+            table.add_row(str(i), label,
+                          core_setup.format_size(core_setup.profile_size_mb(p, config)),
+                          _(p.speed))
+        err.print(table)
+        number = Prompt.ask(_("Model"), console=err, choices=numbers, default=default)
+        profile = choices[int(number) - 1].key if number != "0" else None
+    if lang is None and ask:
+        for value, label in core_setup.LANGUAGE_CHOICES.items():
+            err.print(f"  [bold]{value}[/]: {_(label)}")
+        current = ",".join(config.asr.languages)
+        lang = Prompt.ask(_("Spoken languages"), console=err,
+                          choices=list(core_setup.LANGUAGE_CHOICES),
+                          default=current if current in core_setup.LANGUAGE_CHOICES
+                          else "de,en")
+    if ui_language is None and ask:
+        ui_language = Prompt.ask(_("Language of the app"), console=err,
+                                 choices=["auto", *LANGUAGES], default=config.ui.language)
+    if voiceprints is None and ask:
+        err.print(f"[dim]{_(core_setup.VOICEPRINT_NOTE)}[/]")
+        voiceprints = Confirm.ask(_("Store voiceprints and recognise known people?"),
+                                  console=err, default=config.speakers.store_voiceprints)
+    chosen = core_setup.PROFILES[profile] if profile else (
+        None if core_setup.config_path().exists() else recommended)
+    core_setup.apply_choices(config, chosen, ui_language,
+                             lang.split(",") if lang else None, voiceprints, voiceprints)
+    config.save()
+    err.print(_("Settings saved to {path}").format(path=core_setup.config_path()))
+    missing = models.missing_models(*required_models(config))
+    if not missing:
+        err.print(_("All configured models are present."))
+        return
+    size = core_setup.format_size(sum(core_setup.size_mb(n) for n in missing))
+    if download is None:
+        download = Confirm.ask(_("Download {count} models now ({size})?").format(
+            count=len(missing), size=size), console=err, default=True) if ask else True
+    if download:
+        _download(missing)
+    else:
+        err.print(_("Models download on first use, or with `tx models download`."))
 
 
 if __name__ == "__main__":

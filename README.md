@@ -22,10 +22,12 @@ See [docs/PLAN.md](docs/PLAN.md) for the architecture and roadmap and
   "Is this X?" suggestions), session browser with playback synced to the text, export,
   refine, settings and a voiceprint manager (consent, enrollment, deletion).
 - **M6** packaging: PyInstaller bundles (CLI + desktop app) for Linux, Windows and macOS
-  built by GitHub Actions; first-run model download; CI on all three platforms.
+  built by GitHub Actions; first-run setup (`tx setup` / wizard in the app: model for the
+  hardware, languages, privacy, download); CI on all three platforms.
 - **M5** system audio: transcribe what the computer plays (`--source system`), or
   microphone + system audio as separate channels (`--source both`) with echo suppression
-  - the basis for recording Zoom/Teams/Jitsi calls.
+  - the basis for recording Zoom/Teams/Jitsi calls; or only one application's audio
+  (`--output app:zoom`, Linux and macOS).
 - **whisper.cpp engine** (`--engine whisper.cpp`): GPU acceleration on AMD/Intel (Vulkan)
   and Apple (Metal) GPUs.
 
@@ -44,6 +46,7 @@ uses the active one).
 
 ## Usage
 ```sh
+uv run tx setup                                  # first run: model, languages, download
 uv run tx transcribe meeting.m4a                 # de/en auto, speakers auto
 uv run tx transcribe talk.mp3 -n 2 -l de -f srt -o talk.srt
 uv run tx export <session-dir> -f md
@@ -57,6 +60,17 @@ uv run tx refine <session-dir> -m medium         # re-run refinement, e.g. bigge
 Any format ffmpeg reads works (decoded via PyAV). Models download on first use to the
 user cache dir (override with `TRANSCRIBE_MODELS_DIR`); sessions are stored under the user
 data dir (`sessions_dir` in `config.toml`).
+
+**First run:** `tx setup` (or the wizard the app shows when there is no `config.toml` yet
+or models are missing; later via **File → Download models…**) detects CUDA, a whisper.cpp
+GPU build and the CPU cores, and recommends a model: `small` on the CPU, `base` live +
+`small` for the final transcript on fewer than 8 cores, `large-v3-turbo` on an NVIDIA GPU,
+`small` live + `large-v3-turbo` with whisper.cpp on other GPUs. It also asks for the app
+language, the spoken languages and whether voiceprints are stored, saves `config.toml`
+and downloads the models with progress (cancel and retry in the app, Ctrl+C in the
+terminal). Non-interactive: `tx setup -y [--profile fast|balanced|accurate|cuda|gpu]
+[--lang de,en] [--ui-language de] [--no-voiceprints] [--no-download]`. Everything stays
+editable in **File → Settings**.
 
 Every session keeps its audio as `audio.flac` (16 kHz mono; live sessions with mic and
 system audio: one file per channel), so `tx refine` (or **Refine** in the app) can process
@@ -228,15 +242,18 @@ uv run tx gui
 ```
 ![Sessions tab](docs/screenshots/sessions.png)
 
-- **Live:** pick microphone, system audio or both; partial text appears dimmed, finished
-  lines get coloured speaker labels. Naming a speaker while recording applies at once;
-  the voice is learned (with the consent checkbox ticked) when the session stops.
+- **Live:** pick microphone, system audio (a device, or one app) or both; partial text
+  appears dimmed, finished lines get coloured speaker labels. Naming a speaker while
+  recording applies at once; the voice is learned (with the consent checkbox ticked) when
+  the session stops.
 - **Sessions:** click a timestamp to play from there; the playing line is highlighted.
   Fix diarization by merging speakers, accept or decline suggestions, refine (optionally
   with a known speaker count), export. Correct single lines - see below.
 - **File → Settings:** engine and models, speakers, live mode, voiceprint thresholds,
   storage; the vocabulary has its own editor (import/export a list, shows how many hint
   words fit Whisper's prompt).
+- **File → Download models…:** the setup wizard of the first start (model for this
+  computer, languages, voiceprint privacy, download with progress).
 - **File → Voiceprints:** everyone with stored voiceprints - add a person, enroll a voice
   from a recording, record or withdraw consent, rename, merge, notes, list and delete
   single voiceprints, import/export, delete.
@@ -277,9 +294,10 @@ samples along). When you later enroll a speaker (*Name…* with "learn this voic
 
 ### System audio / calls (`--source system|both`)
 ```sh
-uv run tx devices                         # inputs + system-audio sources
+uv run tx devices                         # inputs, system-audio sources, apps playing
 uv run tx live -s both -n 3               # you (mic) + call participants (system audio)
 uv run tx live -s system --output <id>    # only what a given output device plays
+uv run tx live -s both --output app:zoom  # you + only the Zoom app (not music, alerts)
 uv run tx live -s both --mix              # one summed stream: cheaper on CPU
 ```
 **Check the devices first:** `tx levels` shows a live meter for every microphone (🎤,
@@ -290,12 +308,33 @@ In the app, each device picker has a meter that previews the selected device whi
 (and shows the session level while recording); **Check devices…** lists all devices with
 meters and a "Use" button.
 
-| Platform | System audio capture | Status |
-|---|---|---|
-| Linux | PulseAudio/PipeWire monitor via `parec` (pulseaudio-utils) | tested (PulseAudio 17) |
-| Windows | WASAPI loopback via `soundcard` (extra `system`) | **untested** |
-| macOS 14.2+ | Core Audio process tap, Swift helper `helpers/macos-audiotap` | **not yet compiled/tested** |
-| macOS < 14.2 | BlackHole virtual device selected as `--input` | - |
+| Platform | System audio capture | One application (`app:`) | Status |
+|---|---|---|---|
+| Linux | PulseAudio/PipeWire monitor via `parec` (pulseaudio-utils) | `parec --monitor-stream` per playback stream | device: tested (PulseAudio 17); app: CI test, PipeWire untested |
+| Windows | WASAPI loopback via `soundcard` (extra `system`) | **not supported yet** | **untested** |
+| macOS 14.2+ | Core Audio process tap, Swift helper `helpers/macos-audiotap` | the helper's `--pid` | **not yet compiled/tested** |
+| macOS < 14.2 | BlackHole virtual device selected as `--input` | - | - |
+
+**One application** (e.g. the meeting client): `--output app:<name or pid>`, with
+`--source system` or `both`; `tx devices` lists the apps that have audio output, and the
+app's system-audio picker lists them below the devices ("App: …"). The name matches the
+application name or program (case-insensitive, part of it is enough: `app:zoom` finds
+"ZOOM VoiceEngine"); a browser with several tabs playing is captured as a whole. Music,
+notifications and other apps stay out of the transcript.
+- The app may start playing after the session started, pause, or quit: the channel is
+  silent meanwhile and picks the app up again when it plays (checked every second).
+- **Linux:** each of the app's playback streams is recorded with `parec
+  --monitor-stream=<index>`, which reads a copy of the stream. Nothing is re-routed: you
+  keep hearing the app on its usual device, and a crash leaves nothing behind to restore
+  (unlike a null sink + loopback, or moving the stream - which PulseAudio's stream-restore
+  would also remember for the app). With PipeWire this goes through pipewire-pulse, which
+  implements monitor streams; not tested here yet.
+- **macOS:** the tap helper captures the process (`transcribe-audiotap --list` shows the
+  processes with audio; `--output <pid>` works too).
+- **Windows:** per-process loopback needs the WASAPI process-loopback API (Windows 10
+  2004+, `ActivateAudioInterfaceAsync` with `AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS`), which
+  neither `soundcard` nor another dependency exposes; not implemented yet - capture the
+  output device the meeting app plays to instead (`--output <id>`).
 
 - `both` keeps two channels (`mic`, `system`): remote participants and you are separated
   by channel, each channel is recorded (`audio-mic.flac`, `audio-system.flac`) and
@@ -358,8 +397,9 @@ repository. To remove the repository: `sudo rm /etc/apt/sources.list.d/transcrib
 
 Elsewhere, download the archive for your platform from the GitHub releases page and unpack it. It
 contains `tx` (command line) and `Transcribe` (desktop app); on macOS, `Transcribe.app`.
-Models are not bundled: the app offers to download them on first start (or run
-`tx models download`, several hundred MB, stored in the user cache directory).
+Models are not bundled: on first start the app's setup wizard picks a model for the
+computer and downloads it (or run `tx setup`, or `tx models download`; several hundred MB,
+stored in the user cache directory).
 
 - **Linux:** needs PortAudio and Qt's usual libraries (`apt install libportaudio2 libegl1
   libxkbcommon0`) and, for system audio, `pulseaudio-utils` (also for PipeWire).

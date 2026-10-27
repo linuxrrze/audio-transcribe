@@ -6,6 +6,8 @@
 - macOS 14.2+: Core Audio process tap through the bundled ``transcribe-audiotap`` helper
   (needs the "System Audio Recording" permission). Older macOS: route output through a
   virtual device such as BlackHole and select it as microphone input.
+
+A single application instead of a whole device: ``audio/apps.py`` (``app:<name>``).
 """
 
 from __future__ import annotations
@@ -162,6 +164,12 @@ def output_devices() -> list[OutputDevice]:
 
 
 def system_source(device: str | None = None, channel_id: str = "system") -> AudioSource:
+    """What an output device plays, or one application's audio (``app:<name or pid>``,
+    see ``audio/apps.py``)."""
+    from transcribe.audio.apps import APP_PREFIX, app_source
+
+    if device and device.startswith(APP_PREFIX):
+        return app_source(device[len(APP_PREFIX):], channel_id)
     system = platform.system()
     if system == "Linux":
         if shutil.which("parec") is None:

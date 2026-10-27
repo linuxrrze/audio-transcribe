@@ -1,6 +1,7 @@
-"""Dialogs: naming a speaker (with consent), first-run model download.
+"""Dialogs: naming a speaker (with consent).
 
-Settings: ``settings_dialog``; stored voiceprints: ``voiceprints_dialog``.
+Settings: ``settings_dialog``; stored voiceprints: ``voiceprints_dialog``; first-run setup
+and model download: ``setup_wizard``.
 """
 
 from __future__ import annotations
@@ -12,10 +13,8 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QVBoxLayout,
 )
 
@@ -77,67 +76,3 @@ class NameSpeakerDialog(QDialog):
         """(name, enroll) - enroll implies consent was given."""
         return self.name.text().strip(), self.learn.isChecked() and self.consent.isChecked()
 
-
-class ModelSetupDialog(QDialog):
-    """First run: download the models the configuration needs (shows progress)."""
-
-    def __init__(self, missing: list[str], parent=None) -> None:
-        from PySide6.QtWidgets import QProgressBar
-
-        super().__init__(parent)
-        self.setWindowTitle(_("Download models"))
-        self.missing = list(missing)
-        intro = QLabel(_("Transcribe runs entirely on this computer. These models are "
-                         "needed once (several hundred MB in total):"))
-        intro.setWordWrap(True)
-        self.items = QLabel("\n".join(f"• {m}" for m in self.missing))
-        self.bar = QProgressBar()
-        self.bar.setRange(0, len(self.missing))
-        self.current = QLabel("")
-        self.download_btn = QPushButton(_("Download"))
-        self.download_btn.clicked.connect(self.start)
-        later = QPushButton(_("Later"))
-        later.clicked.connect(self.reject)
-        row = QHBoxLayout()
-        row.addStretch(1)
-        row.addWidget(later)
-        row.addWidget(self.download_btn)
-        layout = QVBoxLayout(self)
-        for w in (intro, self.items, self.bar, self.current):
-            layout.addWidget(w)
-        layout.addLayout(row)
-
-    def start(self) -> None:
-        from transcribe.core import models
-        from transcribe.gui.bridge import Job
-
-        self.download_btn.setEnabled(False)
-        names = list(self.missing)
-        job = Job(lambda: [models.download(n) for n in names], self)
-
-        # progress per finished item is approximated by polling the cache
-        def poll() -> None:
-            done = sum(models.model_present(n) if ":" in n else models.is_present(n)
-                       for n in names)
-            self.bar.setValue(done)
-            if done < len(names):
-                self.current.setText(_("Downloading {model}…").format(model=names[done]))
-
-        from PySide6.QtCore import QTimer
-
-        timer = QTimer(self)
-        timer.timeout.connect(poll)
-        timer.start(1000)
-        def done(_result: object) -> None:
-            timer.stop()
-            self.bar.setValue(len(names))
-            self.accept()
-
-        def failed(message: str) -> None:
-            timer.stop()
-            self.current.setText(message)
-            self.download_btn.setEnabled(True)
-
-        job.done.connect(done)
-        job.failed.connect(failed)
-        job.start()

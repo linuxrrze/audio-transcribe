@@ -11,6 +11,7 @@ import hashlib
 import os
 import shutil
 import tarfile
+import threading
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ class ModelAsset:
     sha256: str
     main_file: str  # path of the primary file relative to the asset dir
     description: str = ""
+    size_mb: float = 0.0  # download size, shown before downloading (0 = unknown)
 
     @property
     def is_archive(self) -> bool:
@@ -45,21 +47,21 @@ ASSETS: dict[str, ModelAsset] = {
             f"{_SHERPA}/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2",
             "24615ee884c897d9d2ba09bb4d30da6bb1b15e685065962db5b02e76e4996488",
             "sherpa-onnx-pyannote-segmentation-3-0/model.onnx",
-            "pyannote segmentation 3.0 (MIT), ONNX export",
+            "pyannote segmentation 3.0 (MIT), ONNX export", 7,
         ),
         ModelAsset(
             "wespeaker-resnet34-lm", "embedding",
             f"{_SHERPA}/speaker-recongition-models/wespeaker_en_voxceleb_resnet34_LM.onnx",
             "e9848563da86f263117134dfd7ad63c92355b37de492b55e325400c9d9c39012",
             "wespeaker_en_voxceleb_resnet34_LM.onnx",
-            "WeSpeaker ResNet34-LM, VoxCeleb (256-dim)",
+            "WeSpeaker ResNet34-LM, VoxCeleb (256-dim)", 27,
         ),
         ModelAsset(
             "nemo-titanet-small", "embedding",
             f"{_SHERPA}/speaker-recongition-models/nemo_en_titanet_small.onnx",
             "ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e",
             "nemo_en_titanet_small.onnx",
-            "NVIDIA NeMo TitaNet-small (CC-BY-4.0, 192-dim); default",
+            "NVIDIA NeMo TitaNet-small (CC-BY-4.0, 192-dim); default", 40,
         ),
         ModelAsset(
             "piper-de-thorsten", "tts",
@@ -137,6 +139,10 @@ ASSETS: dict[str, ModelAsset] = {
 ProgressFn = Callable[[int, int], None]  # (bytes_done, bytes_total)
 
 
+class Cancelled(Exception):
+    """Raised by a progress callback to abort a download (see ``download_all``)."""
+
+
 def models_dir() -> Path:
     env = os.environ.get("TRANSCRIBE_MODELS_DIR")
     return Path(env) if env else Path(platformdirs.user_cache_dir(APP_NAME)) / "models"
@@ -159,7 +165,11 @@ def ensure(name: str, progress: ProgressFn | None = None) -> Path:
         return main
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.parent / f".{name}.part"
-    _download(asset.url, tmp, progress)
+    try:
+        _download(asset.url, tmp, progress)
+    except BaseException:  # failed or cancelled: no partial file left behind
+        tmp.unlink(missing_ok=True)
+        raise
     digest = _sha256(tmp)
     if digest != asset.sha256:
         tmp.unlink()
@@ -217,10 +227,56 @@ def whisper_present(model: str) -> bool:
     return True
 
 
-def ensure_whisper(model: str) -> Path:
+WHISPER_FILES = ["config.json", "preprocessor_config.json", "model.bin", "tokenizer.json",
+                 "vocabulary.*"]  # what faster-whisper's download_model fetches
+
+
+def ensure_whisper(model: str, progress: ProgressFn | None = None) -> Path:
     from faster_whisper.utils import download_model
 
-    return Path(download_model(model, cache_dir=str(whisper_dir())))
+    if progress is None or Path(model).is_dir():
+        return Path(download_model(model, cache_dir=str(whisper_dir())))
+    # faster-whisper's download (same repo, files and cache layout), with byte progress
+    import huggingface_hub
+    from faster_whisper.utils import _MODELS
+
+    repo = model if "/" in model else _MODELS.get(model)
+    if repo is None:
+        raise ValueError(f"Unknown Whisper model {model!r}")
+    return Path(huggingface_hub.snapshot_download(
+        repo, cache_dir=str(whisper_dir()), allow_patterns=WHISPER_FILES,
+        tqdm_class=hub_progress(progress)))
+
+
+def hub_progress(progress: ProgressFn) -> type:
+    """A tqdm class for ``snapshot_download`` that reports bytes to ``progress``.
+
+    huggingface_hub (1.x) sums the bytes of all files into bars of unit "B" made from
+    this class; older versions only count files, so no bytes are reported (the total stays
+    unknown). An exception from ``progress`` (``Cancelled``) aborts the download; the Xet
+    backend also prints it as a traceback (``download_all`` checks again per file).
+    """
+    from tqdm.auto import tqdm  # type: ignore[import-untyped]
+
+    state = {"done": 0, "total": 0}
+
+    class _Bar(tqdm):  # type: ignore[type-arg]
+        def __init__(self, *args, **kwargs) -> None:
+            self._bytes = kwargs.get("unit") == "B"
+            self._done = float(kwargs.get("initial") or 0)
+            kwargs.pop("name", None)  # huggingface_hub's own tqdm option
+            kwargs["disable"] = True  # no console output
+            super().__init__(*args, **kwargs)
+
+        def update(self, n: float | None = 1) -> bool | None:
+            self._done += n or 0
+            if self._bytes:  # several byte bars (transfer, written): the furthest one
+                state["done"] = max(state["done"], int(self._done))
+                state["total"] = max(state["total"], int(self.total or 0))
+                progress(state["done"], state["total"])
+            return None
+
+    return _Bar
 
 
 # --- ggml models for whisper.cpp (Hugging Face, ggerganov/whisper.cpp) ------------------
@@ -266,7 +322,32 @@ def missing_models(whisper_models: list[str], assets: list[str]) -> list[str]:
 def download(name: str, progress: ProgressFn | None = None) -> Path:
     """Download ``whisper:<model>``, ``ggml:<model>`` or a named asset."""
     if name.startswith("whisper:"):
-        return ensure_whisper(name.split(":", 1)[1])
+        return ensure_whisper(name.split(":", 1)[1], progress)
     if name.startswith("ggml:"):
         return ensure_ggml(name.split(":", 1)[1], progress)
     return ensure(name, progress)
+
+
+def download_all(names: list[str], progress: Callable[[str, int, int], None] | None = None,
+                 cancel: threading.Event | None = None) -> None:
+    """Download ``names`` one after the other; ``progress(name, done, total)`` reports
+    bytes (``done == total`` once a file is complete). Setting ``cancel`` aborts with
+    ``Cancelled``, during a file or before the next one."""
+    for name in names:
+        if cancel is not None and cancel.is_set():
+            raise Cancelled(name)
+
+        size = [0]
+
+        def report(done: int, total: int, name: str = name, size: list[int] = size) -> None:
+            if cancel is not None and cancel.is_set():
+                raise Cancelled(name)
+            size[0] = max(size[0], total, done)
+            if progress:
+                progress(name, done, total)
+
+        download(name, report)
+        if cancel is not None and cancel.is_set():  # e.g. Xet finished the file anyway
+            raise Cancelled(name)
+        if progress:  # complete (also when nothing was reported, e.g. already cached)
+            progress(name, size[0] or 1, size[0] or 1)

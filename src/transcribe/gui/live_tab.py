@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from transcribe.audio.apps import APP_PREFIX
 from transcribe.audio.base import AudioSource
 from transcribe.audio.levels import DeviceEntry, LevelMonitor, device_source, list_devices
 from transcribe.core.config import Config
@@ -52,6 +53,16 @@ STATUS = {"starting": N_("Starting"), "running": N_("Running"), "error": N_("Err
           "refining": N_("Refining")}
 STAGES = {"diarize": N_("speaker detection"), "transcribe": N_("transcription"),
           "speakers": N_("speakers")}
+
+
+class _PopupCombo(QComboBox):
+    """Signals before its list opens (to refresh the entries)."""
+
+    about_to_show = Signal()
+
+    def showPopup(self) -> None:  # noqa: N802 - Qt API
+        self.about_to_show.emit()
+        super().showPopup()
 
 
 class LiveTab(QWidget):
@@ -89,7 +100,8 @@ class LiveTab(QWidget):
         for label, key in SOURCES:
             self.source.addItem(_(label), key)
         self.input = QComboBox()
-        self.output = QComboBox()
+        self.output = _PopupCombo()
+        self.output.about_to_show.connect(self._refresh_apps)
         self.mix = QCheckBox(_("Mix into one stream (cheaper)"))
         self.speakers = QSpinBox()
         self.speakers.setRange(0, 20)
@@ -151,23 +163,44 @@ class LiveTab(QWidget):
 
     # --- devices -----------------------------------------------------------------------
     def refresh_devices(self) -> None:
+        """Fill the device pickers (keeping the selection); the system-audio picker also
+        lists applications playing audio (captured on their own, ``app:<name>``)."""
         entries, errors = list_devices()
         for combo, kind, default in ((self.input, "input", _("Default microphone")),
                                      (self.output, "output", _("Default output"))):
+            selected = combo.currentData()
             combo.blockSignals(True)
             combo.clear()
             combo.addItem(default, None)
+            apps = False
             for e in entries:
                 if e.kind == kind:
+                    if e.device.startswith(APP_PREFIX) and not apps:
+                        combo.insertSeparator(combo.count())  # devices above, apps below
+                        apps = True
                     combo.addItem(e.name, e.device)
+            index = 0
+            if selected is not None:
+                if combo.findData(selected) < 0:  # e.g. an app that stopped playing
+                    combo.addItem(selected, selected)
+                index = combo.findData(selected)
+            combo.setCurrentIndex(index)
             combo.setToolTip("\n".join(x for x in errors if x.startswith(kind)))
             fit_popup(combo)
             combo.blockSignals(False)
+
+    def _refresh_apps(self) -> None:
+        """Before the system-audio list opens: apps start and stop playing."""
+        if not self.running:
+            self.refresh_devices()
 
     def select_device(self, entry: DeviceEntry) -> None:
         """Select ``entry`` in its combo and switch the source to include it."""
         combo = self.input if entry.kind == "input" else self.output
         index = combo.findData(entry.device)
+        if index < 0 and entry.device.startswith(APP_PREFIX):  # started playing since
+            combo.addItem(entry.name, entry.device)
+            index = combo.count() - 1
         if index >= 0:
             combo.setCurrentIndex(index)
         kind = self.source.currentData()

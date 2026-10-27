@@ -33,7 +33,8 @@ class MainWindow(QMainWindow):
 
         menu = self.menuBar().addMenu(_("&File"))
         for text, slot in [(_("&Settings…"), self._settings),
-                           (_("&Voiceprints…"), self._people), (_("&Quit"), self.close)]:
+                           (_("&Voiceprints…"), self._people),
+                           (_("&Download models…"), self.setup), (_("&Quit"), self.close)]:
             action = QAction(text, self)
             action.triggered.connect(slot)
             menu.addAction(action)
@@ -54,6 +55,16 @@ class MainWindow(QMainWindow):
             return
         if SettingsDialog(self.config, self).exec():
             self.sessions.reload()  # the sessions folder may have changed
+
+    def setup(self) -> None:
+        """The setup wizard: model for this hardware, languages, privacy, download."""
+        from transcribe.gui.setup_wizard import SetupWizard
+
+        if self.live.running:
+            QMessageBox.information(self, _("Download models"),
+                                    _("Stop the live session first."))
+            return
+        SetupWizard(self.config, self).exec()
 
     def _people(self) -> None:
         try:

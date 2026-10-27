@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
         print(_("The GUI needs the 'gui' extra: pip install 'transcribe[gui]'"),
               file=sys.stderr)
         return 1
-    from transcribe.core.config import Config, required_models
+    from transcribe.core.config import Config
     from transcribe.gui.main_window import MainWindow
 
     app = QApplication.instance() or QApplication([sys.argv[0], *argv])
@@ -45,13 +45,11 @@ def main(argv: list[str] | None = None) -> int:
         print("smoke test ok")
         return code
 
-    def first_run() -> None:
-        from transcribe.core.models import missing_models
-        from transcribe.gui.dialogs import ModelSetupDialog
+    def first_run() -> None:  # no config.toml yet, or models missing: the setup wizard
+        from transcribe.core.setup import needs_setup
 
-        missing = missing_models(*required_models(config))
-        if missing:
-            ModelSetupDialog(missing, window).exec()
+        if needs_setup(config):
+            window.setup()
 
     QTimer.singleShot(0, first_run)
     return _run(app, window)

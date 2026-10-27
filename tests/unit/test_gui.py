@@ -484,3 +484,102 @@ def test_wayland_textinput_noise_is_silenced(monkeypatch):
     monkeypatch.setenv("QT_LOGGING_RULES", "qt.qpa.wayland.textinput=true")
     quiet_qt_logging()  # the user wants to see them
     assert os.environ["QT_LOGGING_RULES"] == "qt.qpa.wayland.textinput=true"
+
+
+def test_live_tab_offers_apps_as_system_audio(app, config, monkeypatch):
+    from transcribe.audio.levels import DeviceEntry
+    from transcribe.gui import live_tab
+    from transcribe.gui.live_tab import LiveTab
+
+    devices = [DeviceEntry("out:hdmi", "output", "hdmi", "HDMI", True),
+               DeviceEntry("out:app:Zoom", "output", "app:Zoom", "App: Zoom (playing)", False)]
+    monkeypatch.setattr(live_tab, "list_devices", lambda: (list(devices), []))
+    tab = LiveTab(config, preview=False)
+    items = [tab.output.itemData(i) for i in range(tab.output.count())]
+    assert items == [None, "hdmi", None, "app:Zoom"]  # default, devices, separator, apps
+    tab.output.setCurrentIndex(tab.output.findData("app:Zoom"))
+    devices.pop()  # Zoom stopped playing: the selection stays
+    tab._refresh_apps()
+    assert tab.output.currentData() == "app:Zoom"
+    tab.select_device(DeviceEntry("out:app:Teams", "output", "app:Teams", "App: Teams", False))
+    assert tab.output.currentData() == "app:Teams"
+    assert tab.source.currentData() == "both"
+
+
+def test_setup_wizard_saves_downloads_and_retries(app, config, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QDialog
+
+    from transcribe.core import models
+    from transcribe.core.setup import Hardware
+    from transcribe.gui.setup_wizard import SetupWizard
+
+    path = tmp_path / "config.toml"
+    monkeypatch.setattr(models, "missing_models",
+                        lambda *a: ["whisper:base", "nemo-titanet-small"])
+    fail = [True]
+
+    def download(names, progress, cancel):  # in the download thread, like the real one
+        for name in names:
+            progress(name, 50, 100)
+            if fail[0] and name == "nemo-titanet-small":
+                raise OSError("network down")
+            progress(name, 100, 100)
+
+    w = SetupWizard(config, hardware=Hardware(4), download=download, path=path)
+    assert w.profile_buttons["fast"].isChecked()  # recommended for 4 cores, no GPU
+    assert "(recommended)" in w.profile_buttons["fast"].text()
+    assert "cuda" not in w.profile_buttons
+    w.profile_buttons["accurate"].setChecked(True)
+    w._next()
+    w.languages.setCurrentIndex(w.languages.findData("de"))
+    w.store.setChecked(False)
+    w._next()  # saves the settings, shows the download page
+    saved = Config.load(path)
+    assert (saved.asr.model, saved.live.refine_model) == ("small", "large-v3-turbo")
+    assert saved.asr.languages == ["de"] and not saved.speakers.store_voiceprints
+    assert config.live.refine_model == "large-v3-turbo"  # the app's config object too
+    assert list(w.bars) == ["whisper:base", "nemo-titanet-small"]
+    assert w.next_btn.text() == "Download"
+
+    w._next()
+    assert pump(app, lambda: not w.downloading)
+    assert "network down" in w.status.text() and w.next_btn.text() == "Retry"
+    assert w.bars["whisper:base"].value() == 1000
+    assert 0 < w.total.value() < 1000
+    fail[0] = False
+    w._next()  # retry: only what is still missing
+    assert pump(app, lambda: not w.downloading)
+    assert w.total.value() == 1000 and w.next_btn.text() == "Finish"
+    w._next()
+    assert w.result() == QDialog.DialogCode.Accepted
+
+
+def test_setup_wizard_cancel_and_keep_current(app, config, tmp_path, monkeypatch):
+    from transcribe.core import models
+    from transcribe.core.setup import Hardware
+    from transcribe.gui.setup_wizard import SetupWizard
+
+    path = tmp_path / "config.toml"
+    config.asr.model = "medium"  # hand-made settings ...
+    config.save(path)
+    monkeypatch.setattr(models, "missing_models", lambda *a: ["whisper:medium"])
+
+    def download(names, progress, cancel):
+        progress(names[0], 10, 100)
+        cancel.wait(10)
+        raise models.Cancelled(names[0])
+
+    w = SetupWizard(config, hardware=Hardware(16, cuda_devices=1), download=download,
+                    path=path)
+    assert w.profile_buttons[""].isChecked()  # ... are kept by default
+    assert "cuda" in w.profile_buttons
+    w._next()
+    w._next()
+    assert Config.load(path).asr.model == "medium"
+    w._next()
+    assert pump(app, lambda: w.bars["whisper:medium"].value() == 100)
+    assert w.cancel_btn.isVisibleTo(w) and not w.next_btn.isEnabled()
+    w.cancel_download()
+    assert pump(app, lambda: not w.downloading)
+    assert "cancelled" in w.status.text() and w.next_btn.text() == "Retry"
+    w.reject()  # "Later"

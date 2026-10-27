@@ -8,6 +8,7 @@ import Foundation
 struct Options {
     var rate: Double = 16000
     var pid: pid_t? = nil
+    var list = false
 }
 
 func parseOptions() -> Options {
@@ -17,8 +18,9 @@ func parseOptions() -> Options {
         switch arg {
         case "--rate": opts.rate = Double(args.next() ?? "") ?? opts.rate
         case "--pid": opts.pid = pid_t(args.next() ?? "")
+        case "--list": opts.list = true
         case "-h", "--help":
-            print("usage: transcribe-audiotap [--rate HZ] [--pid PID]")
+            print("usage: transcribe-audiotap [--rate HZ] [--pid PID] | --list")
             exit(0)
         default:
             fail("unknown argument \(arg)")
@@ -92,7 +94,46 @@ func processObject(for pid: pid_t) -> AudioObjectID {
     return object
 }
 
+/// --list: one JSON line per process known to Core Audio:
+/// {"pid": 123, "bundle": "us.zoom.xos", "output": true} ("output": playing right now).
+func listProcesses() -> Never {
+    let system = AudioObjectID(kAudioObjectSystemObject)
+    var address = globalAddress(kAudioHardwarePropertyProcessObjectList)
+    var size: UInt32 = 0
+    check(AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size),
+          "AudioObjectGetPropertyDataSize(process list)")
+    var objects = [AudioObjectID](repeating: kAudioObjectUnknown,
+                                  count: Int(size) / MemoryLayout<AudioObjectID>.size)
+    check(AudioObjectGetPropertyData(system, &address, 0, nil, &size, &objects),
+          "AudioObjectGetPropertyData(process list)")
+    for object in objects {
+        var pidAddress = globalAddress(kAudioProcessPropertyPID)
+        var pid: pid_t = -1
+        var pidSize = UInt32(MemoryLayout<pid_t>.size)
+        guard AudioObjectGetPropertyData(object, &pidAddress, 0, nil, &pidSize, &pid) == noErr,
+              pid > 0 else { continue }
+        var runningAddress = globalAddress(kAudioProcessPropertyIsRunningOutput)
+        var running: UInt32 = 0
+        var runningSize = UInt32(MemoryLayout<UInt32>.size)
+        _ = AudioObjectGetPropertyData(object, &runningAddress, 0, nil, &runningSize, &running)
+        var bundleAddress = globalAddress(kAudioProcessPropertyBundleID)
+        var bundle: Unmanaged<CFString>?
+        var bundleSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        var bundleID = ""
+        if AudioObjectGetPropertyData(object, &bundleAddress, 0, nil, &bundleSize,
+                                      &bundle) == noErr, let bundle {
+            bundleID = bundle.takeRetainedValue() as String
+        }
+        let row: [String: Any] = ["pid": Int(pid), "bundle": bundleID, "output": running != 0]
+        if let data = try? JSONSerialization.data(withJSONObject: row) {
+            FileHandle.standardOutput.write(data + "\n".data(using: .utf8)!)
+        }
+    }
+    exit(0)
+}
+
 let opts = parseOptions()
+if opts.list { listProcesses() }
 
 // 1. Tap: all system audio, or one process mixed down to stereo.
 let tapDescription: CATapDescription
